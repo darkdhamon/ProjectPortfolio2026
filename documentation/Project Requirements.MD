@@ -29,8 +29,22 @@ A web-based project portfolio platform designed for software developers to showc
 * Developer introduction blurb
 * Featured projects carousel
 
-  * Auto-rotates every 5 seconds
-  * Pauses on hover
+  * Contains up to 5 projects
+  * Desktop behavior:
+  
+    * Auto-rotates every 5 seconds
+    * Pauses on hover
+    * Supports keyboard navigation with arrow keys
+    * Displays UI arrow controls
+  * Mobile behavior:
+  
+    * Swipe navigation enabled
+    * No auto-rotation
+    * No UI arrow controls
+  * Project selection behavior:
+  
+    * If more than 5 featured projects exist, select 5 randomly from featured projects
+    * If fewer than 5 featured projects exist, fill remaining slots with the most recent available projects
 
 ### 4.2 Project Management
 
@@ -38,12 +52,27 @@ A web-based project portfolio platform designed for software developers to showc
 * Fields:
 
   * Title
-  * Primary image
+  * Start date
+  * End date (optional)
+  * Primary image (optional)
   * Screenshot gallery (optional)
   * Short description (max 350 characters)
   * Long description (Markdown supported)
   * GitHub link (optional)
   * Demo link (optional)
+  * Developer roles for project (set)
+  * Technologies used (set)
+  * Skills used (set)
+  * Collaborators (optional list)
+
+    * Name (required)
+    * GitHub profile (optional)
+    * Website link (optional)
+    * Photo (optional)
+    * Roles for project (set)
+  * Published indicator (default false)
+  * Featured indicator (default false)
+  * Milestones (optional list)
 * Behavior:
 
   * Hide buttons if links are not provided
@@ -198,6 +227,13 @@ A web-based project portfolio platform designed for software developers to showc
 ### 6.9 Portfolio PDF Export
 
 * Generate downloadable portfolio summary
+
+### 6.10 AI Chat Bot
+
+* Optional recruiter-facing chatbot
+* Answer questions using portfolio content, resume, skills, and project metadata
+* Summarize developer experience and recommend relevant projects
+* Hidden or disabled if AI configuration is not provided
 
 ---
 
