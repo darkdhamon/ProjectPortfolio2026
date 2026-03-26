@@ -133,8 +133,16 @@ A web-based project portfolio platform designed for software developers to showc
 ### 4.10 Testing & CI/CD
 
 * Unit tests required
+* Canonical protected branches are `main`, `stage`, and `dev`
+* `Production`, `Staging`, and `Development` are aliases for `main`, `stage`, and `dev`
+* GitHub Actions pipeline runs unit tests automatically on changes to `main`, `stage`, and `dev`
 * Minimum 70% code coverage
-* Deployment fails if threshold not met
+* Pull requests into `main` and `stage` fail if unit test coverage is below 70%
+* Direct commits to `main`, `stage`, and `dev` are not allowed
+* Changes must be made in feature branches and merged into protected branches through pull requests
+* Changes merged into `main` automatically deploy to configured destinations only when deployable project files are changed
+* Changes limited to documentation, tests, or other non-deployable files do not trigger deployment
+* Release branches may be created when continuous deployment is not desired for a particular deployment
 
 ---
 
@@ -166,14 +174,22 @@ A web-based project portfolio platform designed for software developers to showc
 
 * Primary: Azure
 * Support for alternative hosting
+* Configuration priority order: project configuration files < app secrets < environment variables
 
 ### Setup Wizard
 
 * First-run configuration:
 
-  * Database setup
-  * Connection strings
-  * Initial admin setup
+  * Check whether a database connection string already exists
+  * If no connection string exists, prompt the user to provide one
+  * Validate the provided connection string before saving it to app secrets
+  * Check whether any users already exist
+  * If no users exist, create a new user and assign initial admin access
+  * If users exist, ask whether an existing user should be configured as the admin for this server
+  * If an existing user is selected, confirm login credentials and add the `portfolioAdmin` role to that account
+  * If an existing user is not selected, create a new user and assign admin access
+  * Ask whether the user has seed import data available
+  * Support importing seed data from the expected JSON format during initial setup
 
 ---
 
