@@ -48,7 +48,6 @@ try {
 
         dotnet test $project.FullName `
             --configuration Release `
-            --no-build `
             --logger "trx" `
             --results-directory $resultsRoot `
             --collect:"XPlat Code Coverage"
