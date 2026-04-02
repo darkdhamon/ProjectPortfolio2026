@@ -251,6 +251,13 @@ A web-based project portfolio platform designed for software developers to showc
 * Summarize developer experience and recommend relevant projects
 * Hidden or disabled if AI configuration is not provided
 
+### 6.11 Work History
+
+* Optional work history section
+* Display employer, title, start date, end date, and summary of responsibilities
+* Support current roles with no end date
+* Hide the section if no work history entries exist
+
 ---
 
 ## 7. UI/UX Considerations
