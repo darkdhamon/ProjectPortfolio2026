@@ -1,0 +1,74 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - stage
+      - dev
+  pull_request:
+    branches:
+      - main
+      - stage
+      - dev
+  workflow_dispatch:
+
+jobs:
+  build-test-and-coverage:
+    name: build-test-and-coverage
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: pwsh
+
+    env:
+      SOLUTION_ROOT: ProjectPortfolio2026
+      CLIENT_ROOT: ProjectPortfolio2026/projectportfolio2026.client
+      SERVER_ROOT: ProjectPortfolio2026/ProjectPortfolio2026.Server
+      SOLUTION_FILE: ProjectPortfolio2026/ProjectPortfolio2026.slnx
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ProjectPortfolio2026/projectportfolio2026.client/package-lock.json
+
+      - name: Restore client dependencies
+        working-directory: ${{ env.CLIENT_ROOT }}
+        run: npm ci
+
+      - name: Lint client
+        working-directory: ${{ env.CLIENT_ROOT }}
+        run: npm run lint
+
+      - name: Build client
+        working-directory: ${{ env.CLIENT_ROOT }}
+        run: npm run build
+
+      - name: Restore .NET solution
+        run: dotnet restore $env:SOLUTION_FILE
+
+      - name: Build .NET solution
+        run: dotnet build $env:SOLUTION_FILE --configuration Release --no-restore
+
+      - name: Run .NET tests with coverage gate
+        run: ./.github/scripts/run-dotnet-tests-with-coverage.ps1
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ProjectPortfolio2026/TestResults
+          if-no-files-found: ignore

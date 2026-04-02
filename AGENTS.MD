@@ -30,3 +30,4 @@
 ## Knowledge Capture
 
 - When errors require a workaround to complete a user task, document the workaround in `AGENTS.MD` so future tasks can be completed faster.
+- When `gh api` payloads become fragile in PowerShell because of quoting, prefer direct `gh` commands or write JSON to a temporary file before calling the API.
