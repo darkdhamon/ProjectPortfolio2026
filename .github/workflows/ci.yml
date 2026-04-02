@@ -27,10 +27,22 @@ jobs:
       CLIENT_ROOT: ProjectPortfolio2026/projectportfolio2026.client
       SERVER_ROOT: ProjectPortfolio2026/ProjectPortfolio2026.Server
       SOLUTION_FILE: ProjectPortfolio2026/ProjectPortfolio2026.slnx
+      MINIMUM_COVERAGE: 70
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Determine coverage enforcement
+        id: coverage-policy
+        run: |
+          $targetBranch = if ("${{ github.event_name }}" -eq "pull_request") { "${{ github.base_ref }}" } else { "${{ github.ref_name }}" }
+          $enforceCoverageGate = if ($targetBranch -in @("main", "stage")) { "true" } else { "false" }
+
+          "target_branch=$targetBranch" >> $env:GITHUB_OUTPUT
+          "enforce_coverage_gate=$enforceCoverageGate" >> $env:GITHUB_OUTPUT
+
+          Write-Host "Coverage enforcement for branch '$targetBranch': $enforceCoverageGate"
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -63,6 +75,8 @@ jobs:
         run: dotnet build $env:SOLUTION_FILE --configuration Release --no-restore
 
       - name: Run .NET tests with coverage gate
+        env:
+          ENFORCE_COVERAGE_GATE: ${{ steps.coverage-policy.outputs.enforce_coverage_gate }}
         run: ./.github/scripts/run-dotnet-tests-with-coverage.ps1
 
       - name: Upload test results

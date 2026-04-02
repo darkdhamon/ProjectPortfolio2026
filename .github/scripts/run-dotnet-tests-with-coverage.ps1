@@ -19,7 +19,12 @@ function Fail-Check {
 
 $solutionRoot = Join-Path $PSScriptRoot "..\..\ProjectPortfolio2026"
 $resultsRoot = Join-Path $solutionRoot "TestResults"
-$minimumCoverage = 70.0
+$minimumCoverage = if ($env:MINIMUM_COVERAGE) { [double]$env:MINIMUM_COVERAGE } else { 70.0 }
+$enforceCoverageGate = $true
+
+if ($env:ENFORCE_COVERAGE_GATE) {
+    $enforceCoverageGate = $env:ENFORCE_COVERAGE_GATE -eq "true"
+}
 
 try {
     if (Test-Path -LiteralPath $resultsRoot) {
@@ -31,8 +36,18 @@ try {
     $testProjects = Get-ChildItem -Path $solutionRoot -Recurse -Filter *.csproj |
         Where-Object { $_.Name -match 'Tests?\.csproj$' -or $_.BaseName -match 'Tests?$' }
 
-    if (-not $testProjects) {
+    if (-not $testProjects -and $enforceCoverageGate) {
         Fail-Check "No .NET test projects were found. Add unit tests to satisfy repository policy."
+    }
+
+    if (-not $testProjects) {
+        Write-Host "::warning::No .NET test projects were found. Coverage is being reported as advisory because coverage enforcement is disabled for this branch."
+        if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "## Coverage Check Warning"
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "No .NET test projects were found. Coverage enforcement is disabled for this branch."
+        }
+        return
     }
 
     foreach ($project in $testProjects) {
@@ -81,8 +96,16 @@ try {
         Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Combined .NET line coverage: $coveragePercent%"
     }
 
-    if ($coveragePercent -lt $minimumCoverage) {
+    if ($coveragePercent -lt $minimumCoverage -and $enforceCoverageGate) {
         Fail-Check "Coverage check failed. Required: $minimumCoverage%. Actual: $coveragePercent%."
+    }
+
+    if ($coveragePercent -lt $minimumCoverage) {
+        Write-Host "::warning::Coverage is below the $minimumCoverage% target, but coverage enforcement is disabled for this branch. Actual: $coveragePercent%."
+        if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Coverage is below the target, but enforcement is disabled for this branch."
+        }
     }
 }
 catch {
