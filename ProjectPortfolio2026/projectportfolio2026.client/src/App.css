@@ -528,8 +528,9 @@
 
 .project-year-spacer .eyebrow {
     margin: 0;
-    font-size: 0.72rem;
-    letter-spacing: 0.24em;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.28em;
     text-align: center;
 }
 
