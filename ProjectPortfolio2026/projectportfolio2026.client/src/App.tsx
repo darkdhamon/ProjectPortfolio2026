@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type TouchEvent } from 'react';
+import { startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type TouchEvent } from 'react';
 import profilePlaceholder from './assets/Placeholders/Profile-Placeholder.png';
 import projectImageUnavailable from './assets/Placeholders/Project-Image-Unavailable.png';
 import screenshotMissing from './assets/Placeholders/Screenshot-Missing.png';
@@ -106,7 +106,6 @@ interface NavItem {
     href?: string;
 }
 
-type CarouselTransitionDirection = 'forward' | 'backward';
 
 const pageSize = 6;
 const startupRetryDelayMs = 2000;
@@ -348,7 +347,7 @@ function HomePage({
         }
 
         const timer = window.setInterval(() => {
-            showNextProject();
+            handleAutoplayAdvance();
         }, 5000);
 
         return () => window.clearInterval(timer);
@@ -385,13 +384,17 @@ function HomePage({
         });
     }
 
-    function showProject(nextIndex: number, _direction: CarouselTransitionDirection) {
+    function showProject(nextIndex: number) {
         if (nextIndex === activeIndex) {
             return;
         }
 
         setActiveIndex(nextIndex);
     }
+
+    const handleAutoplayAdvance = useEffectEvent(() => {
+        setActiveIndex(currentIndex => (currentIndex + 1) % projects.length);
+    });
 
     function handleCarouselKeyDown(event: KeyboardEvent<HTMLElement>) {
         if (isMobile || projects.length <= 1) {
@@ -440,35 +443,6 @@ function HomePage({
 
     return (
         <main className="home-page">
-            <section className="home-intro">
-                <p className="eyebrow">Developer Introduction</p>
-                <div className="home-intro-grid">
-                    <div className="home-intro-copy">
-                        <h1>Building practical, resilient software that stays readable as products grow.</h1>
-                        <p className="hero-description">
-                            I design and ship full-stack applications with a bias toward maintainable architecture,
-                            polished user experience, and calm, traceable delivery. This portfolio highlights projects
-                            where product thinking and engineering discipline had to work together.
-                        </p>
-                    </div>
-
-                    <div className="hero-stats" aria-label="Developer snapshot">
-                        <div className="stat-card">
-                            <span className="stat-label">Focus</span>
-                            <strong>Full Stack</strong>
-                        </div>
-                        <div className="stat-card">
-                            <span className="stat-label">Strengths</span>
-                            <strong>UX + APIs</strong>
-                        </div>
-                        <div className="stat-card">
-                            <span className="stat-label">Approach</span>
-                            <strong>Ship Clearly</strong>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             <section className="featured-panel">
                 <div className="featured-panel-heading">
                     <div>
@@ -536,7 +510,7 @@ function HomePage({
                                     key={project.id}
                                     className={`carousel-indicator${index === activeIndex ? ' active' : ''}`}
                                     type="button"
-                                    onClick={() => showProject(index, index > activeIndex ? 'forward' : 'backward')}
+                                    onClick={() => showProject(index)}
                                     aria-label={`Show featured project ${index + 1}: ${project.title}`}
                                     aria-pressed={index === activeIndex}
                                 />
@@ -544,6 +518,35 @@ function HomePage({
                         </div>
                     </section>
                 ) : null}
+            </section>
+
+            <section className="home-intro">
+                <p className="eyebrow">Developer Introduction</p>
+                <div className="home-intro-grid">
+                    <div className="home-intro-copy">
+                        <h1>Building practical, resilient software that stays readable as products grow.</h1>
+                        <p className="hero-description">
+                            I design and ship full-stack applications with a bias toward maintainable architecture,
+                            polished user experience, and calm, traceable delivery. This portfolio highlights projects
+                            where product thinking and engineering discipline had to work together.
+                        </p>
+                    </div>
+
+                    <div className="hero-stats" aria-label="Developer snapshot">
+                        <div className="stat-card">
+                            <span className="stat-label">Focus</span>
+                            <strong>Full Stack</strong>
+                        </div>
+                        <div className="stat-card">
+                            <span className="stat-label">Strengths</span>
+                            <strong>UX + APIs</strong>
+                        </div>
+                        <div className="stat-card">
+                            <span className="stat-label">Approach</span>
+                            <strong>Ship Clearly</strong>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
     );
