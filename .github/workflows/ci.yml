@@ -79,10 +79,17 @@ jobs:
           ENFORCE_COVERAGE_GATE: ${{ steps.coverage-policy.outputs.enforce_coverage_gate }}
         run: ./.github/scripts/run-dotnet-tests-with-coverage.ps1
 
+      - name: Run client tests with coverage gate
+        env:
+          ENFORCE_COVERAGE_GATE: ${{ steps.coverage-policy.outputs.enforce_coverage_gate }}
+        run: ./.github/scripts/run-client-tests-with-coverage.ps1
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: ProjectPortfolio2026/TestResults
+          path: |
+            ProjectPortfolio2026/CoverageResults
+            ProjectPortfolio2026/TestResults
           if-no-files-found: ignore

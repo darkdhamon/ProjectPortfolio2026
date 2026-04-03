@@ -2,6 +2,19 @@ import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState
 import profilePlaceholder from './assets/Placeholders/Profile-Placeholder.png';
 import projectImageUnavailable from './assets/Placeholders/Project-Image-Unavailable.png';
 import screenshotMissing from './assets/Placeholders/Screenshot-Missing.png';
+import {
+    buildDetailPath,
+    buildListSearch,
+    createRouteKey,
+    formatFullDate,
+    formatProjectDates,
+    mergeProjects,
+    parseRoute,
+    readLocation,
+    renderMarkdownParagraphs,
+    type AppLocation,
+    type ListFilters
+} from './appSupport';
 import './App.css';
 
 interface ProjectSummary {
@@ -75,18 +88,7 @@ interface ApiErrorResponse {
     message?: string;
 }
 
-interface ListFilters {
-    searchInput: string;
-    selectedSkills: string[];
-}
-
-interface AppLocation {
-    pathname: string;
-    search: string;
-}
-
 const pageSize = 6;
-const detailRoutePattern = /^\/projects\/(?<id>\d+)\/?$/;
 
 function App() {
     const [location, setLocation] = useState<AppLocation>(() => readLocation());
@@ -812,118 +814,6 @@ function MediaFrame({
             onError={() => setFailedSource(candidateSrc)}
         />
     );
-}
-
-function parseRoute(location: AppLocation) {
-    const match = detailRoutePattern.exec(location.pathname);
-    if (match?.groups?.id) {
-        return {
-            kind: 'detail' as const,
-            projectId: Number.parseInt(match.groups.id, 10),
-            listSearch: location.search
-        };
-    }
-
-    return {
-        kind: 'list' as const,
-        filters: parseListFilters(location.search)
-    };
-}
-
-function parseListFilters(search: string): ListFilters {
-    const params = new URLSearchParams(search);
-    return {
-        searchInput: params.get('search')?.trim() ?? '',
-        selectedSkills: parseSkills(params.get('skills'))
-    };
-}
-
-function buildListSearch(filters: ListFilters) {
-    const params = new URLSearchParams();
-    const trimmedSearch = filters.searchInput.trim();
-
-    if (trimmedSearch.length > 0) {
-        params.set('search', trimmedSearch);
-    }
-
-    if (filters.selectedSkills.length > 0) {
-        params.set('skills', filters.selectedSkills.join(','));
-    }
-
-    const search = params.toString();
-    return search.length > 0 ? `?${search}` : '';
-}
-
-function buildDetailPath(projectId: number, listSearch: string) {
-    return `/projects/${projectId}${listSearch}`;
-}
-
-function createRouteKey(filters: ListFilters) {
-    return JSON.stringify({
-        searchInput: filters.searchInput.trim(),
-        selectedSkills: [...filters.selectedSkills].sort((left, right) => left.localeCompare(right))
-    });
-}
-
-function parseSkills(skills: string | null) {
-    if (!skills) {
-        return [];
-    }
-
-    return skills
-        .split(',')
-        .map(skill => skill.trim())
-        .filter((skill, index, allSkills) => skill.length > 0 && allSkills.indexOf(skill) === index);
-}
-
-function renderMarkdownParagraphs(markdown: string) {
-    return markdown
-        .split(/\r?\n\r?\n/)
-        .map(paragraph => paragraph.trim())
-        .filter(paragraph => paragraph.length > 0)
-        .map(paragraph => <p key={paragraph}>{paragraph.replace(/^#+\s*/, '')}</p>);
-}
-
-function mergeProjects(currentProjects: ProjectSummary[], nextProjects: ProjectSummary[]) {
-    const seen = new Set(currentProjects.map(project => project.id));
-    const mergedProjects = [...currentProjects];
-
-    for (const project of nextProjects) {
-        if (!seen.has(project.id)) {
-            mergedProjects.push(project);
-            seen.add(project.id);
-        }
-    }
-
-    return mergedProjects;
-}
-
-function formatProjectDates(startDate: string, endDate?: string | null) {
-    const start = formatMonth(startDate);
-    const end = endDate ? formatMonth(endDate) : 'Present';
-    return `${start} to ${end}`;
-}
-
-function formatMonth(value: string) {
-    return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
-        month: 'short',
-        year: 'numeric'
-    });
-}
-
-function formatFullDate(value: string) {
-    return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-    });
-}
-
-function readLocation(): AppLocation {
-    return {
-        pathname: window.location.pathname,
-        search: window.location.search
-    };
 }
 
 export default App;
