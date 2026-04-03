@@ -323,14 +323,54 @@ describe('App', () => {
         expect(screen.getByText('Designer | QA')).toBeInTheDocument();
         expect(screen.getByText('Overview dashboard')).toBeInTheDocument();
         expect(screen.getByText('Screenshot 1 of 2')).toBeInTheDocument();
+        expect(screen.getAllByAltText('Launch Control screenshot 2')).toHaveLength(2);
 
         fireEvent.click(screen.getByRole('button', { name: 'Show next screenshot' }));
         expect(screen.getByText('Screenshot 2 of 2')).toBeInTheDocument();
         expect(screen.getByText('Launch Control interface preview.')).toBeInTheDocument();
+        expect(screen.getAllByAltText('Overview dashboard')).toHaveLength(2);
 
         const collaboratorImage = screen.getByAltText('Taylor Dev profile');
         fireEvent.error(collaboratorImage);
         expect(screen.getByAltText('Taylor Dev profile')).toHaveAttribute('src', expect.stringContaining('Profile-Placeholder'));
+    });
+
+    it('shows only a single slide when the detail view has one screenshot', async () => {
+        window.history.replaceState({}, '', '/projects/88');
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            requestId: 'request-1',
+            id: 88,
+            title: 'Single Shot',
+            startDate: '2024-01-01',
+            endDate: null,
+            primaryImageUrl: 'https://cdn.example.com/primary.png',
+            shortDescription: 'Single screenshot project.',
+            longDescriptionMarkdown: 'Only one screenshot is available.',
+            gitHubUrl: null,
+            demoUrl: null,
+            isPublished: true,
+            isFeatured: false,
+            screenshots: [
+                {
+                    imageUrl: 'https://cdn.example.com/single-shot.png',
+                    caption: 'Single view',
+                    sortOrder: 1
+                }
+            ],
+            developerRoles: [],
+            technologies: [],
+            skills: [],
+            collaborators: [],
+            milestones: []
+        }));
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Single Shot' })).toBeInTheDocument();
+        expect(screen.getByText('Screenshot 1 of 1')).toBeInTheDocument();
+        expect(screen.getAllByAltText('Single view')).toHaveLength(1);
+        expect(screen.queryByRole('button', { name: 'Show next screenshot' })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Project screenshot selection')).not.toBeInTheDocument();
     });
 
     it('lets the detail back link navigate to the list route without scrolling reset', async () => {

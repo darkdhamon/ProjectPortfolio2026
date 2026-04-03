@@ -724,6 +724,42 @@ function ScreenshotCarousel({
         setActiveIndex(currentIndex => currentIndex >= screenshots.length ? 0 : currentIndex);
     }, [screenshots.length]);
 
+    const displayScreenshots = screenshots.length === 1
+        ? [{
+            screenshot: screenshots[0],
+            state: 'active',
+            key: `active-${screenshots[0]?.sortOrder ?? 0}`
+        }]
+        : screenshots.length === 2
+        ? (() => {
+            const activeScreenshot = screenshots[activeIndex];
+            const inactiveIndex = activeIndex === 0 ? 1 : 0;
+            const inactiveScreenshot = screenshots[inactiveIndex];
+
+            return [
+                {
+                    screenshot: inactiveScreenshot,
+                    state: 'prev1',
+                    key: `prev1-${inactiveScreenshot.sortOrder}-${activeIndex}`
+                },
+                {
+                    screenshot: activeScreenshot,
+                    state: 'active',
+                    key: `active-${activeScreenshot.sortOrder}-${activeIndex}`
+                },
+                {
+                    screenshot: inactiveScreenshot,
+                    state: 'next1',
+                    key: `next1-${inactiveScreenshot.sortOrder}-${activeIndex}`
+                }
+            ];
+        })()
+        : screenshots.map((screenshot, index) => ({
+            screenshot,
+            state: getFeaturedCardState(index, activeIndex, screenshots.length),
+            key: `${screenshot.sortOrder}-${screenshot.imageUrl}`
+        }));
+
     function showRelativeScreenshot(step: number) {
         setActiveIndex(currentIndex => {
             const nextIndex = currentIndex + step;
@@ -811,10 +847,10 @@ function ScreenshotCarousel({
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}>
                 <div className="detail-carousel-track">
-                    {screenshots.map((screenshot, index) => (
+                    {displayScreenshots.map(({ screenshot, state, key }) => (
                         <figure
-                            key={`${screenshot.sortOrder}-${screenshot.imageUrl}`}
-                            className={`detail-carousel-slide ${getFeaturedCardState(index, activeIndex, screenshots.length)}`}>
+                            key={key}
+                            className={`detail-carousel-slide ${state}`}>
                             <MediaFrame
                                 src={screenshot.imageUrl}
                                 alt={screenshot.caption?.trim() || `${projectTitle} screenshot ${screenshot.sortOrder}`}
