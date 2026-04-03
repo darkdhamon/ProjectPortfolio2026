@@ -62,7 +62,9 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
         var totalCount = await query.CountAsync(cancellationToken);
 
         var items = await query
-            .OrderByDescending(project => project.StartDate)
+            .OrderBy(project => project.EndDate.HasValue ? 1 : 0)
+            .ThenByDescending(project => project.EndDate ?? project.StartDate)
+            .ThenByDescending(project => project.StartDate)
             .ThenBy(project => project.Title)
             .Skip((normalizedPage - 1) * normalizedPageSize)
             .Take(normalizedPageSize)

@@ -118,6 +118,14 @@ export function formatProjectDates(startDate: string, endDate?: string | null) {
     return `${start} to ${end}`;
 }
 
+export function getProjectYearSpacerLabel(endDate?: string | null) {
+    if (!endDate) {
+        return 'Present';
+    }
+
+    return new Date(`${endDate}T00:00:00`).getFullYear().toString();
+}
+
 export function formatMonth(value: string) {
     return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
         month: 'short',
