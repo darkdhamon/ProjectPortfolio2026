@@ -731,29 +731,22 @@ function ScreenshotCarousel({
             key: `active-${screenshots[0]?.sortOrder ?? 0}`
         }]
         : screenshots.length === 2
-        ? (() => {
-            const activeScreenshot = screenshots[activeIndex];
-            const inactiveIndex = activeIndex === 0 ? 1 : 0;
-            const inactiveScreenshot = screenshots[inactiveIndex];
+        ? screenshots.flatMap((screenshot, index) => {
+            const isActive = index === activeIndex;
 
             return [
                 {
-                    screenshot: inactiveScreenshot,
-                    state: 'prev1',
-                    key: `prev1-${inactiveScreenshot.sortOrder}-${activeIndex}`
+                    screenshot,
+                    state: isActive ? 'active' : 'next1',
+                    key: `center-${screenshot.sortOrder}-${index}`
                 },
                 {
-                    screenshot: activeScreenshot,
-                    state: 'active',
-                    key: `active-${activeScreenshot.sortOrder}-${activeIndex}`
-                },
-                {
-                    screenshot: inactiveScreenshot,
-                    state: 'next1',
-                    key: `next1-${inactiveScreenshot.sortOrder}-${activeIndex}`
+                    screenshot,
+                    state: isActive ? 'hidden' : 'prev1',
+                    key: `side-${screenshot.sortOrder}-${index}`
                 }
             ];
-        })()
+        })
         : screenshots.map((screenshot, index) => ({
             screenshot,
             state: getFeaturedCardState(index, activeIndex, screenshots.length),
