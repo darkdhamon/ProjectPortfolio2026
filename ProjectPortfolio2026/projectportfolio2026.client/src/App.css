@@ -89,15 +89,22 @@
 }
 
 .site-brand strong {
-    display: inline-block;
+    display: inline-grid;
+    gap: 0.05rem;
     background: linear-gradient(90deg, #63deff 0%, #7ee9ff 34%, #ffd86f 72%, #f0b43c 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
     font-style: italic;
     font-weight: 800;
+    font-size: 1.08rem;
+    line-height: 1;
     letter-spacing: 0.02em;
     text-shadow: 0 0 18px rgba(99, 222, 255, 0.08);
+}
+
+.site-brand strong span {
+    display: block;
 }
 
 .brand-copy,

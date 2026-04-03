@@ -586,7 +586,10 @@ function SiteShell({
                         <img src={portfolioLogoIcon} alt="" />
                     </div>
                     <div>
-                        <strong>Project Portfolio</strong>
+                        <strong>
+                            <span>Project</span>
+                            <span>Portfolio</span>
+                        </strong>
                     </div>
                 </div>
 
