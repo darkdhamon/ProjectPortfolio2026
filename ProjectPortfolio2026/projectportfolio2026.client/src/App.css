@@ -195,7 +195,6 @@
 }
 
 .home-intro,
-.featured-panel,
 .hero-panel,
 .detail-hero {
     position: relative;
@@ -209,9 +208,22 @@
     color: #f5f1e8;
 }
 
-.home-intro,
-.featured-panel {
+.home-intro {
     padding: 1.6rem;
+}
+
+.featured-panel {
+    display: grid;
+    gap: 1rem;
+    padding: 0;
+    align-content: start;
+}
+
+.featured-carousel-block {
+    position: relative;
+    display: grid;
+    align-content: start;
+    padding-bottom: 1.5rem;
 }
 
 .hero-panel {
@@ -500,10 +512,7 @@
     position: relative;
     min-height: clamp(30rem, 42vw, 38rem);
     padding: 0.75rem 4rem 2rem;
-    border-radius: 1.5rem;
-    overflow: hidden;
-    background: linear-gradient(180deg, rgba(13, 24, 40, 0.98), rgba(11, 22, 36, 0.98));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    overflow: visible;
     outline: none;
 }
 
@@ -515,7 +524,7 @@
     display: grid;
     place-items: center;
     overflow: visible;
-    --carousel-center-y: -22.5%;
+    --carousel-center-y: -50%;
 }
 
 .carousel-slide {
@@ -644,11 +653,13 @@
     gap: 0.6rem;
     align-items: center;
     justify-content: center;
-    justify-self: center;
-    width: 100%;
-    position: relative;
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
     z-index: 2;
-    margin-top: 0.5rem;
+    width: fit-content;
+    margin: 0;
 }
 
 .carousel-indicator {

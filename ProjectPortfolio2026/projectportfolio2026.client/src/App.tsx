@@ -464,45 +464,47 @@ function HomePage({
                 ) : null}
 
                 {activeProject ? (
-                    <section
-                        className={`carousel-shell${isMobile ? ' mobile' : ''}`}
-                        aria-label="Featured project carousel"
-                        aria-roledescription="carousel"
-                        tabIndex={0}
-                        onKeyDown={handleCarouselKeyDown}
-                        onMouseEnter={() => setIsPaused(true)}
-                        onMouseLeave={() => setIsPaused(false)}
-                        onTouchStart={handleTouchStart}
-                        onTouchEnd={handleTouchEnd}>
-                        <div className="carousel-track">
-                            {projects.map((project, index) => (
-                                <FeaturedCarouselSlide
-                                    key={project.id}
-                                    project={project}
-                                    state={getFeaturedCardState(index, activeIndex, projects.length)}
-                                    onNavigate={onNavigate}
-                                />
-                            ))}
-                        </div>
+                    <div className="featured-carousel-block">
+                        <section
+                            className={`carousel-shell${isMobile ? ' mobile' : ''}`}
+                            aria-label="Featured project carousel"
+                            aria-roledescription="carousel"
+                            tabIndex={0}
+                            onKeyDown={handleCarouselKeyDown}
+                            onMouseEnter={() => setIsPaused(true)}
+                            onMouseLeave={() => setIsPaused(false)}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={handleTouchEnd}>
+                            <div className="carousel-track">
+                                {projects.map((project, index) => (
+                                    <FeaturedCarouselSlide
+                                        key={project.id}
+                                        project={project}
+                                        state={getFeaturedCardState(index, activeIndex, projects.length)}
+                                        onNavigate={onNavigate}
+                                    />
+                                ))}
+                            </div>
 
-                        {!isMobile && projects.length > 1 ? (
-                            <>
-                                <button
-                                    className="carousel-arrow carousel-arrow-left"
-                                    type="button"
-                                    onClick={showPreviousProject}
-                                    aria-label="Show previous featured project">
-                                    {'<'}
-                                </button>
-                                <button
-                                    className="carousel-arrow carousel-arrow-right"
-                                    type="button"
-                                    onClick={showNextProject}
-                                    aria-label="Show next featured project">
-                                    {'>'}
-                                </button>
-                            </>
-                        ) : null}
+                            {!isMobile && projects.length > 1 ? (
+                                <>
+                                    <button
+                                        className="carousel-arrow carousel-arrow-left"
+                                        type="button"
+                                        onClick={showPreviousProject}
+                                        aria-label="Show previous featured project">
+                                        {'<'}
+                                    </button>
+                                    <button
+                                        className="carousel-arrow carousel-arrow-right"
+                                        type="button"
+                                        onClick={showNextProject}
+                                        aria-label="Show next featured project">
+                                        {'>'}
+                                    </button>
+                                </>
+                            ) : null}
+                        </section>
 
                         <div className="carousel-indicators" aria-label="Featured project selection">
                             {projects.map((project, index) => (
@@ -516,7 +518,7 @@ function HomePage({
                                 />
                             ))}
                         </div>
-                    </section>
+                    </div>
                 ) : null}
             </section>
 
