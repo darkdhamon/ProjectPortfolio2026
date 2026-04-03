@@ -3,6 +3,7 @@ name: branch-promotion
 on:
   pull_request:
     branches:
+      - dev
       - main
       - stage
 
@@ -20,10 +21,26 @@ jobs:
 
           Write-Host "Validating pull request source branch '$headRef' for target '$baseRef'."
 
+          if ($headRef -eq "main") {
+              Write-Error "Pull requests cannot originate from 'main'."
+          }
+
           if ($baseRef -eq "main" -and $headRef -ne "stage") {
               Write-Error "Pull requests into 'main' must come from 'stage'."
           }
 
           if ($baseRef -eq "stage" -and $headRef -ne "dev") {
               Write-Error "Pull requests into 'stage' must come from 'dev'."
+          }
+
+          if ($headRef -eq "stage" -and $baseRef -ne "main") {
+              Write-Error "Pull requests from 'stage' must target 'main'."
+          }
+
+          if ($headRef -eq "dev" -and $baseRef -ne "stage") {
+              Write-Error "Pull requests from 'dev' must target 'stage'."
+          }
+
+          if ($baseRef -eq "dev" -and $headRef -in @("main", "stage")) {
+              Write-Error "Pull requests into 'dev' cannot come from 'main' or 'stage'."
           }
