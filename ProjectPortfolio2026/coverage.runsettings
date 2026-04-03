@@ -4,7 +4,7 @@
     <DataCollectors>
       <DataCollector friendlyName="XPlat code coverage">
         <Configuration>
-          <ExcludeByFile>**/Program.cs,**/*.generated.cs,**/obj/**/*.cs,**/Migrations/**/*.cs</ExcludeByFile>
+          <ExcludeByFile>**/Program.cs,**/*.generated.cs,**/obj/**/*.cs,**/Migrations/**/*.cs,**/SeedData/**/*.cs</ExcludeByFile>
         </Configuration>
       </DataCollector>
     </DataCollectors>

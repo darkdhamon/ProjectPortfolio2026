@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio2026.Server.Data;
+using ProjectPortfolio2026.Server.Data.SeedData;
 using ProjectPortfolio2026.Server.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +38,7 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<PortfolioDbContext>();
     dbContext.Database.Migrate();
+    await PortfolioSeedData.InitializeAsync(dbContext);
 }
 
 app.UseHttpsRedirection();
