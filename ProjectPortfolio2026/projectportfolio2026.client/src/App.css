@@ -24,6 +24,7 @@
 .site-sidebar {
     position: sticky;
     top: 0;
+    z-index: 20;
     display: grid;
     align-content: start;
     gap: 1.4rem;
