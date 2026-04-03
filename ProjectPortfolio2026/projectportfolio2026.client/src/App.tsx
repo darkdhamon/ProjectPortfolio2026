@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent, type TouchEvent } from 'react';
+import { Fragment, startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent, type TouchEvent } from 'react';
 import profilePlaceholder from './assets/Placeholders/Profile-Placeholder.png';
 import projectImageUnavailable from './assets/Placeholders/Project-Image-Unavailable.png';
 import screenshotMissing from './assets/Placeholders/Screenshot-Missing.png';
@@ -9,6 +9,7 @@ import {
     createRouteKey,
     formatFullDate,
     formatProjectDates,
+    getProjectYearSpacerLabel,
     mergeProjects,
     parseRoute,
     readLocation,
@@ -1269,49 +1270,67 @@ function ProjectListPage({
             {isEmpty ? <p className="status-banner">No published projects matched the current search and skill filters.</p> : null}
 
             <section className="project-list" aria-label="Project results">
-                {projects.map(project => (
-                    <article key={project.id} className={`project-card${project.isFeatured ? ' featured' : ''}`}>
-                        <div className="image-shell">
-                            <MediaFrame
-                                src={project.primaryImageUrl}
-                                alt={`${project.title} cover art`}
-                                fallbackLabel={project.title}
-                                fallbackSrc={projectImageUnavailable}
-                            />
-                            {project.isFeatured ? <span className="featured-pill">Featured</span> : null}
-                        </div>
+                {projects.map((project, index) => {
+                    const yearLabel = getProjectYearSpacerLabel(project.endDate);
+                    const previousYearLabel = index > 0
+                        ? getProjectYearSpacerLabel(projects[index - 1].endDate)
+                        : null;
+                    const shouldRenderSpacer = yearLabel !== previousYearLabel;
 
-                        <div className="card-copy">
-                            <div className="card-heading">
-                                <p className="project-dates">{formatProjectDates(project.startDate, project.endDate)}</p>
-                                <h2>{project.title}</h2>
-                            </div>
+                    return (
+                        <Fragment key={project.id}>
+                            {shouldRenderSpacer ? (
+                                <div className="project-year-spacer" aria-label={`Projects ending in ${yearLabel}`}>
+                                    <span className="project-year-rule" aria-hidden="true" />
+                                    <p className="eyebrow">{yearLabel}</p>
+                                    <span className="project-year-rule" aria-hidden="true" />
+                                </div>
+                            ) : null}
 
-                            <p className="project-summary">{project.shortDescription}</p>
+                            <article className={`project-card${project.isFeatured ? ' featured' : ''}`}>
+                                <div className="image-shell">
+                                    <MediaFrame
+                                        src={project.primaryImageUrl}
+                                        alt={`${project.title} cover art`}
+                                        fallbackLabel={project.title}
+                                        fallbackSrc={projectImageUnavailable}
+                                    />
+                                    {project.isFeatured ? <span className="featured-pill">Featured</span> : null}
+                                </div>
 
-                            <div className="tag-group" aria-label={`${project.title} skills`}>
-                                {project.skills.map(skill => (
-                                    <span key={skill} className="tag skill">{skill}</span>
-                                ))}
-                            </div>
+                                <div className="card-copy">
+                                    <div className="card-heading">
+                                        <p className="project-dates">{formatProjectDates(project.startDate, project.endDate)}</p>
+                                        <h2>{project.title}</h2>
+                                    </div>
 
-                            <div className="tag-group secondary" aria-label={`${project.title} technologies`}>
-                                {project.technologies.map(technology => (
-                                    <span key={technology} className="tag technology">{technology}</span>
-                                ))}
-                            </div>
+                                    <p className="project-summary">{project.shortDescription}</p>
 
-                            <div className="card-links">
-                                <InternalLink
-                                    className="primary-link"
-                                    href={buildDetailPath(project.id, listSearch)}
-                                    onNavigate={onNavigate}>
-                                    View Details
-                                </InternalLink>
-                            </div>
-                        </div>
-                    </article>
-                ))}
+                                    <div className="tag-group" aria-label={`${project.title} skills`}>
+                                        {project.skills.map(skill => (
+                                            <span key={skill} className="tag skill">{skill}</span>
+                                        ))}
+                                    </div>
+
+                                    <div className="tag-group secondary" aria-label={`${project.title} technologies`}>
+                                        {project.technologies.map(technology => (
+                                            <span key={technology} className="tag technology">{technology}</span>
+                                        ))}
+                                    </div>
+
+                                    <div className="card-links">
+                                        <InternalLink
+                                            className="primary-link"
+                                            href={buildDetailPath(project.id, listSearch)}
+                                            onNavigate={onNavigate}>
+                                            View Details
+                                        </InternalLink>
+                                    </div>
+                                </div>
+                            </article>
+                        </Fragment>
+                    );
+                })}
             </section>
 
             <div ref={sentinelRef} className="scroll-sentinel" aria-hidden="true" />

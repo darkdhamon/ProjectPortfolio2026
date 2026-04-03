@@ -517,6 +517,27 @@
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 29rem), 1fr));
 }
 
+.project-year-spacer {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.project-year-spacer .eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.24em;
+    text-align: center;
+}
+
+.project-year-rule {
+    height: 1px;
+    background: linear-gradient(90deg, rgba(77, 105, 141, 0), rgba(77, 105, 141, 0.6), rgba(77, 105, 141, 0));
+}
+
 .carousel-shell {
     position: relative;
     min-height: clamp(30rem, 42vw, 38rem);

@@ -8,6 +8,7 @@ import {
     createRouteKey,
     formatFullDate,
     formatProjectDates,
+    getProjectYearSpacerLabel,
     mergeProjects,
     parseListFilters,
     parseRoute,
@@ -180,11 +181,22 @@ describe('App', () => {
                     isFeatured: true,
                     skills: ['React'],
                     technologies: ['TypeScript']
+                },
+                {
+                    id: 43,
+                    title: 'Archive Cleanup',
+                    startDate: '2024-01-01',
+                    endDate: '2024-08-15',
+                    primaryImageUrl: null,
+                    shortDescription: 'Closed out a legacy migration.',
+                    isFeatured: false,
+                    skills: ['Testing'],
+                    technologies: ['SQL Server']
                 }
             ],
             page: 1,
             pageSize: 6,
-            totalCount: 1,
+            totalCount: 2,
             hasMore: false,
             availableSkills: ['React', 'Testing']
         }));
@@ -198,6 +210,8 @@ describe('App', () => {
         expect(screen.getByRole('button', { name: /Timeline/i })).toBeDisabled();
         expect(screen.getAllByText('Coming Soon').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'React' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByLabelText('Projects ending in Present')).toBeInTheDocument();
+        expect(screen.getByLabelText('Projects ending in 2024')).toBeInTheDocument();
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
     });
 
@@ -545,6 +559,8 @@ describe('App helpers', () => {
     it('formats dates and markdown paragraphs for display', () => {
         expect(formatProjectDates('2025-01-01', null)).toContain('Present');
         expect(formatFullDate('2025-04-02')).toContain('2025');
+        expect(getProjectYearSpacerLabel(null)).toBe('Present');
+        expect(getProjectYearSpacerLabel('2024-08-15')).toBe('2024');
 
         const paragraphs = renderMarkdownParagraphs('## Heading\n\nBody copy');
         expect(paragraphs).toHaveLength(2);

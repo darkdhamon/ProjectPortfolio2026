@@ -32,6 +32,9 @@ public sealed class PortfolioSeedDataTests
         Assert.That(projects.All(project => project.Technologies.Count > 0), Is.True);
         Assert.That(projects.All(project => project.Skills.Count > 0), Is.True);
         Assert.That(projects.All(project => project.Milestones.Count > 0), Is.True);
+        Assert.That(projects.Count(project => project.EndDate is null), Is.EqualTo(3));
+        Assert.That(projects.Min(project => project.StartDate.Year), Is.EqualTo(2015));
+        Assert.That(projects.Max(project => (project.EndDate ?? project.StartDate).Year), Is.EqualTo(2026));
         Assert.That(projects.Count(project => project.IsFeatured), Is.EqualTo(5));
     }
 
