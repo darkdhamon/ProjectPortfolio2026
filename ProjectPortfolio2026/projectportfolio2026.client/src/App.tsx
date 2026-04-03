@@ -707,6 +707,7 @@ function ScreenshotCarousel({
 }) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
+    const [transitionDirection, setTransitionDirection] = useState<'prev' | 'next'>('next');
     const touchStartXRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -737,12 +738,12 @@ function ScreenshotCarousel({
             return [
                 {
                     screenshot,
-                    state: isActive ? 'active' : 'next1',
+                    state: isActive ? 'active' : transitionDirection === 'next' ? 'next1' : 'prev1',
                     key: `center-${screenshot.sortOrder}-${index}`
                 },
                 {
                     screenshot,
-                    state: isActive ? 'hidden' : 'prev1',
+                    state: isActive ? 'hidden' : transitionDirection === 'next' ? 'prev1' : 'next1',
                     key: `side-${screenshot.sortOrder}-${index}`
                 }
             ];
@@ -754,6 +755,7 @@ function ScreenshotCarousel({
         }));
 
     function showRelativeScreenshot(step: number) {
+        setTransitionDirection(step < 0 ? 'prev' : 'next');
         setActiveIndex(currentIndex => {
             const nextIndex = currentIndex + step;
             return (nextIndex + screenshots.length) % screenshots.length;
