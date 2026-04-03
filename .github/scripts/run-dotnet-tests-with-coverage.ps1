@@ -19,6 +19,7 @@ function Fail-Check {
 
 $solutionRoot = Join-Path $PSScriptRoot "..\..\ProjectPortfolio2026"
 $resultsRoot = Join-Path $solutionRoot "TestResults"
+$coverageSettingsPath = Join-Path $solutionRoot "coverage.runsettings"
 $minimumCoverage = if ($env:MINIMUM_COVERAGE) { [double]$env:MINIMUM_COVERAGE } else { 70.0 }
 $enforceCoverageGate = $true
 
@@ -32,6 +33,10 @@ try {
     }
 
     New-Item -ItemType Directory -Path $resultsRoot | Out-Null
+
+    if (-not (Test-Path -LiteralPath $coverageSettingsPath)) {
+        Fail-Check "Coverage settings file was not found at '$coverageSettingsPath'."
+    }
 
     $testProjects = Get-ChildItem -Path $solutionRoot -Recurse -Filter *.csproj |
         Where-Object { $_.Name -match 'Tests?\.csproj$' -or $_.BaseName -match 'Tests?$' }
@@ -65,6 +70,7 @@ try {
             --configuration Release `
             --logger "trx" `
             --results-directory $resultsRoot `
+            --settings $coverageSettingsPath `
             --collect:"XPlat Code Coverage"
     }
 
