@@ -235,6 +235,133 @@ describe('App', () => {
         expect(screen.getByText('Skill filters will appear once published projects are available.')).toBeInTheDocument();
     });
 
+    it('updates search and skill filters from list interactions', async () => {
+        window.history.replaceState({}, '', '/projects');
+        fetchMock
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 42,
+                        title: 'Portfolio Refresh',
+                        startDate: '2025-01-01',
+                        endDate: null,
+                        primaryImageUrl: null,
+                        shortDescription: 'Rebuilt the public portfolio experience.',
+                        isFeatured: true,
+                        skills: ['React'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React', 'Testing']
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 43,
+                        title: 'React Search Result',
+                        startDate: '2024-01-01',
+                        endDate: null,
+                        primaryImageUrl: null,
+                        shortDescription: 'Filtered by search.',
+                        isFeatured: false,
+                        skills: ['React'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React', 'Testing']
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 43,
+                        title: 'React Search Result',
+                        startDate: '2024-01-01',
+                        endDate: null,
+                        primaryImageUrl: null,
+                        shortDescription: 'Filtered by search.',
+                        isFeatured: false,
+                        skills: ['React'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React', 'Testing']
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 44,
+                        title: 'Testing Skill Result',
+                        startDate: '2023-01-01',
+                        endDate: '2023-04-01',
+                        primaryImageUrl: null,
+                        shortDescription: 'Filtered by selected skill.',
+                        isFeatured: false,
+                        skills: ['Testing'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React', 'Testing']
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 44,
+                        title: 'Testing Skill Result',
+                        startDate: '2023-01-01',
+                        endDate: '2023-04-01',
+                        primaryImageUrl: null,
+                        shortDescription: 'Filtered by selected skill.',
+                        isFeatured: false,
+                        skills: ['Testing'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React', 'Testing']
+            }));
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Search projects' }), {
+            target: { value: 'React' }
+        });
+
+        expect(await screen.findByRole('heading', { name: 'React Search Result' })).toBeInTheDocument();
+        expect(window.location.search).toBe('?search=React');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Testing' }));
+
+        expect(await screen.findByRole('heading', { name: 'Testing Skill Result' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'true');
+        expect(window.location.search).toBe('?search=React&skills=Testing');
+    });
+
     it('renders the detail view and preserves list filters in the back link', async () => {
         window.history.replaceState({}, '', '/projects/42?search=react&skills=Testing');
         fetchMock.mockResolvedValueOnce(jsonResponse({

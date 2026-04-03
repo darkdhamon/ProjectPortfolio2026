@@ -1024,20 +1024,26 @@ function ProjectListPage({
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     const previousQueryKeyRef = useRef<string | null>(null);
     const routeKey = createRouteKey(filters);
+    const previousRouteKeyRef = useRef(routeKey);
     const currentQueryKey = createRouteKey({
         searchInput,
         selectedSkills
     });
-        const listSearch = buildListSearch({
+    const fetchQueryKey = createRouteKey({
+        searchInput: deferredSearch,
+        selectedSkills
+    });
+    const listSearch = buildListSearch({
         searchInput,
         selectedSkills
     });
 
     useEffect(() => {
-        if (routeKey === currentQueryKey) {
+        if (previousRouteKeyRef.current === routeKey) {
             return;
         }
 
+        previousRouteKeyRef.current = routeKey;
         setSearchInput(filters.searchInput);
         setSelectedSkills(filters.selectedSkills);
         setPage(1);
@@ -1047,7 +1053,7 @@ function ProjectListPage({
         setHasMore(false);
         setError(null);
         setIsInitialLoad(true);
-    }, [currentQueryKey, filters.searchInput, filters.selectedSkills, routeKey]);
+    }, [filters.searchInput, filters.selectedSkills, routeKey]);
 
     useEffect(() => {
         const nextPath = buildProjectsPath(listSearch);
@@ -1061,8 +1067,8 @@ function ProjectListPage({
     useEffect(() => {
         const requestId = crypto.randomUUID();
         const controller = new AbortController();
-        const isLoadingMore = page > 1 && previousQueryKeyRef.current === currentQueryKey;
-        const queryKeyChanged = previousQueryKeyRef.current !== currentQueryKey;
+        const isLoadingMore = page > 1 && previousQueryKeyRef.current === fetchQueryKey;
+        const queryKeyChanged = previousQueryKeyRef.current !== fetchQueryKey;
 
         latestRequestIdRef.current = requestId;
         setIsLoading(true);
@@ -1094,7 +1100,7 @@ function ProjectListPage({
                     setHasMore(latestResponse.hasMore);
                 });
 
-                previousQueryKeyRef.current = currentQueryKey;
+                previousQueryKeyRef.current = fetchQueryKey;
             } catch (caughtError) {
                 if ((caughtError as Error).name === 'AbortError' || latestRequestIdRef.current !== requestId) {
                     return;
@@ -1155,7 +1161,7 @@ function ProjectListPage({
 
             return listResponse;
         }
-    }, [currentQueryKey, deferredSearch, page, selectedSkills]);
+    }, [deferredSearch, fetchQueryKey, page, selectedSkills]);
 
     useEffect(() => {
         const sentinel = sentinelRef.current;
