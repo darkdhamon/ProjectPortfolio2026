@@ -75,18 +75,37 @@ try {
     }
 
     $coverageFiles = Get-ChildItem -Path $resultsRoot -Recurse -Filter coverage.cobertura.xml
+    $testResultFiles = Get-ChildItem -Path $resultsRoot -Recurse -Filter *.trx
 
     if (-not $coverageFiles) {
         Fail-Check "Coverage output was not generated. Ensure the test projects include a supported coverage collector."
     }
 
+    if (-not $testResultFiles) {
+        Fail-Check "Test result output was not generated. Ensure dotnet test completed successfully."
+    }
+
     [double]$coveredLines = 0
     [double]$validLines = 0
+    [int]$passedTests = 0
+    [int]$failedTests = 0
+    [int]$skippedTests = 0
+    [int]$totalTests = 0
 
     foreach ($file in $coverageFiles) {
         [xml]$coverageXml = Get-Content -LiteralPath $file.FullName
         $coveredLines += [double]$coverageXml.coverage.'lines-covered'
         $validLines += [double]$coverageXml.coverage.'lines-valid'
+    }
+
+    foreach ($file in $testResultFiles) {
+        [xml]$testResultsXml = Get-Content -LiteralPath $file.FullName
+        $resultSummary = $testResultsXml.TestRun.ResultSummary.Counters
+
+        $passedTests += [int]$resultSummary.passed
+        $failedTests += [int]$resultSummary.failed
+        $skippedTests += [int]$resultSummary.notExecuted
+        $totalTests += [int]$resultSummary.total
     }
 
     if ($validLines -le 0) {
@@ -95,8 +114,15 @@ try {
 
     $coveragePercent = [math]::Round(($coveredLines / $validLines) * 100, 2)
     Write-Host "Combined .NET line coverage: $coveragePercent%"
+    Write-Host ".NET test files: $($testResultFiles.Count)"
+    Write-Host ".NET test results: $passedTests passed, $failedTests failed, $skippedTests skipped, $totalTests total"
 
     if ($env:GITHUB_STEP_SUMMARY) {
+        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "## .NET Test Report"
+        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
+        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Test Files: $($testResultFiles.Count)"
+        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Test Results: $passedTests passed, $failedTests failed, $skippedTests skipped, $totalTests total"
+        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
         Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "## Coverage Check Result"
         Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
         Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Combined .NET line coverage: $coveragePercent%"
