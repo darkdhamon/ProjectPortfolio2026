@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type TouchEvent } from 'react';
+import { startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent, type TouchEvent } from 'react';
 import profilePlaceholder from './assets/Placeholders/Profile-Placeholder.png';
 import projectImageUnavailable from './assets/Placeholders/Project-Image-Unavailable.png';
 import screenshotMissing from './assets/Placeholders/Screenshot-Missing.png';
@@ -709,6 +709,7 @@ function ScreenshotCarousel({
     const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
     const [transitionDirection, setTransitionDirection] = useState<'prev' | 'next'>('next');
     const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
+    const [screenshotRatios, setScreenshotRatios] = useState<Record<number, number>>({});
     const touchStartXRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -815,6 +816,25 @@ function ScreenshotCarousel({
         setFullscreenIndex(nextIndex);
     }
 
+    function handleScreenshotLoad(index: number, event: SyntheticEvent<HTMLImageElement>) {
+        const { naturalWidth, naturalHeight } = event.currentTarget;
+        if (naturalWidth <= 0 || naturalHeight <= 0) {
+            return;
+        }
+
+        const ratio = naturalWidth / naturalHeight;
+        setScreenshotRatios(currentRatios => {
+            if (currentRatios[index] === ratio) {
+                return currentRatios;
+            }
+
+            return {
+                ...currentRatios,
+                [index]: ratio
+            };
+        });
+    }
+
     function handleScreenshotCarouselKeyDown(event: KeyboardEvent<HTMLElement>) {
         if (isMobile || screenshots.length <= 1) {
             return;
@@ -860,6 +880,7 @@ function ScreenshotCarousel({
 
     const activeScreenshot = screenshots[activeIndex] ?? null;
     const fullscreenScreenshot = fullscreenIndex === null ? null : screenshots[fullscreenIndex];
+    const activeAspectRatio = screenshotRatios[activeIndex] ?? (16 / 9);
 
     return (
         <>
@@ -869,6 +890,7 @@ function ScreenshotCarousel({
                 aria-label="Project screenshot carousel"
                 aria-roledescription="carousel"
                 tabIndex={0}
+                style={{ aspectRatio: `${activeAspectRatio}` }}
                 onKeyDown={handleScreenshotCarouselKeyDown}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}>
@@ -877,6 +899,7 @@ function ScreenshotCarousel({
                         <figure
                             key={key}
                             aria-hidden={state === 'hidden'}
+                            style={{ aspectRatio: `${screenshotRatios[index] ?? activeAspectRatio}` }}
                             className={`detail-carousel-slide ${state}`}>
                             <button
                                 className="detail-carousel-trigger"
@@ -889,6 +912,7 @@ function ScreenshotCarousel({
                                     fallbackLabel={screenshot.caption?.trim() || `${projectTitle} ${screenshot.sortOrder}`}
                                     fallbackSrc={screenshotMissing}
                                     className="detail-carousel-media"
+                                    onLoad={event => handleScreenshotLoad(index, event)}
                                 />
                             </button>
                         </figure>
@@ -1589,7 +1613,8 @@ function MediaFrame({
     fallbackLabel,
     fallbackSrc,
     className,
-    compact = false
+    compact = false,
+    onLoad
 }: {
     src?: string | null;
     alt: string;
@@ -1597,6 +1622,7 @@ function MediaFrame({
     fallbackSrc?: string;
     className?: string;
     compact?: boolean;
+    onLoad?: (event: SyntheticEvent<HTMLImageElement>) => void;
 }) {
     const [failedSource, setFailedSource] = useState<string | null>(null);
     const hasFailedPrimary = !!src && failedSource === src;
@@ -1619,6 +1645,7 @@ function MediaFrame({
             src={candidateSrc}
             alt={alt}
             loading="lazy"
+            onLoad={onLoad}
             onError={() => setFailedSource(candidateSrc)}
         />
     );
