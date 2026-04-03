@@ -1071,6 +1071,7 @@
     display: grid;
     gap: 1rem;
     align-content: start;
+    min-width: 0;
 }
 
 .detail-column-main {
@@ -1087,6 +1088,7 @@
 .detail-panel {
     display: grid;
     gap: 1rem;
+    min-width: 0;
     padding: 1.25rem;
     border: 1px solid rgba(111, 137, 171, 0.16);
     border-radius: 1.5rem;
@@ -1116,15 +1118,15 @@
 .detail-screenshot-block {
     display: grid;
     gap: 1rem;
+    min-width: 0;
 }
 
 .detail-carousel-shell {
     position: relative;
-    width: min(100%, 78rem);
-    max-width: 100%;
+    width: 100%;
     margin-inline: auto;
-    padding: 0.5rem 4rem;
-    overflow: visible;
+    padding: 0.5rem clamp(3rem, 10%, 4rem);
+    overflow: hidden;
     outline: none;
 }
 
@@ -1140,7 +1142,7 @@
     perspective: 1400px;
     display: grid;
     place-items: center;
-    overflow: visible;
+    overflow: hidden;
     --carousel-center-y: -50%;
 }
 
