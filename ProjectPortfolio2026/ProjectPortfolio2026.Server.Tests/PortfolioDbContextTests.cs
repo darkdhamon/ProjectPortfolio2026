@@ -52,6 +52,57 @@ public sealed class PortfolioDbContextTests
         });
     }
 
+    [Test]
+    public void LocalDbRecovery_ExtractsDatabaseNameAndAttachPath()
+    {
+        const string connectionString = "Server=(localdb)\\MSSQLLocalDB;AttachDbFilename=C:\\Temp\\ProjectPortfolio2026.Dev.mdf;Database=ProjectPortfolio2026Dev;Integrated Security=True";
+
+        var result = LocalDbDatabaseRecovery.TryGetRecoveryTarget(connectionString, out var target);
+
+        Assert.That(result, Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(target.DatabaseName, Is.EqualTo("ProjectPortfolio2026Dev"));
+            Assert.That(target.AttachDbFilePath, Is.EqualTo("C:\\Temp\\ProjectPortfolio2026.Dev.mdf"));
+        });
+    }
+
+    [Test]
+    public void LocalDbRecovery_DoesNotTargetNonLocalDbConnections()
+    {
+        const string connectionString = "Server=.\\SQLEXPRESS;AttachDbFilename=C:\\Temp\\ProjectPortfolio2026.Dev.mdf;Database=ProjectPortfolio2026Dev;Integrated Security=True";
+
+        var result = LocalDbDatabaseRecovery.TryGetRecoveryTarget(connectionString, out var target);
+
+        Assert.That(result, Is.False);
+        Assert.That(target, Is.EqualTo(default(LocalDbRecoveryTarget)));
+    }
+
+    [Test]
+    public void LocalDbRecovery_CanRecoverOnlyWhenAttachFileIsMissingAndErrorMatches()
+    {
+        var missingFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.mdf");
+        var existingFile = Path.GetTempFileName();
+
+        try
+        {
+            var missingConnectionString = $"Server=(localdb)\\MSSQLLocalDB;AttachDbFilename={missingFile};Database=ProjectPortfolio2026Dev;Integrated Security=True";
+            var existingConnectionString = $"Server=(localdb)\\MSSQLLocalDB;AttachDbFilename={existingFile};Database=ProjectPortfolio2026Dev;Integrated Security=True";
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(LocalDbDatabaseRecovery.CanRecover(missingConnectionString, 1801, "Database 'ProjectPortfolio2026Dev' already exists."), Is.True);
+                Assert.That(LocalDbDatabaseRecovery.CanRecover(existingConnectionString, 1801, "Database 'ProjectPortfolio2026Dev' already exists."), Is.False);
+                Assert.That(LocalDbDatabaseRecovery.CanRecover(missingConnectionString, 4060, "Cannot open database requested by the login."), Is.False);
+                Assert.That(LocalDbDatabaseRecovery.CanRecover($"Server=.\\SQLEXPRESS;AttachDbFilename={missingFile};Database=ProjectPortfolio2026Dev;Integrated Security=True", 1801, "Database 'ProjectPortfolio2026Dev' already exists."), Is.False);
+            });
+        }
+        finally
+        {
+            File.Delete(existingFile);
+        }
+    }
+
     private static PortfolioDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<PortfolioDbContext>()

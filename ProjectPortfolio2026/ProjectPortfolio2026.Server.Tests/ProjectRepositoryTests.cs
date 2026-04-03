@@ -97,6 +97,99 @@ public sealed class ProjectRepositoryTests
         });
     }
 
+    [Test]
+    public async Task ListAsync_ReturnsPublishedProjectsMatchingSearchAndSkillFilters()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = new ProjectRepository(dbContext);
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Portfolio Platform",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Searchable app platform.",
+            LongDescriptionMarkdown = "Builds polished project portfolios.",
+            IsPublished = true,
+            Skills =
+            [
+                new ProjectSkill { Name = "API Design" },
+                new ProjectSkill { Name = "React" }
+            ],
+            Technologies = [new ProjectTechnology { Name = "SQL Server" }]
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Internal Draft",
+            StartDate = new DateOnly(2026, 5, 1),
+            ShortDescription = "Should not appear in public list.",
+            LongDescriptionMarkdown = "Unpublished work.",
+            IsPublished = false,
+            Skills = [new ProjectSkill { Name = "React" }]
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Analytics Dashboard",
+            StartDate = new DateOnly(2026, 3, 1),
+            ShortDescription = "Visualization tools.",
+            LongDescriptionMarkdown = "Focused on insights.",
+            IsPublished = true,
+            Skills = [new ProjectSkill { Name = "Data Visualization" }]
+        });
+
+        var page = await repository.ListAsync(
+            "portfolio",
+            ["react", "api design"],
+            1,
+            6);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.TotalCount, Is.EqualTo(1));
+            Assert.That(page.Items, Has.Count.EqualTo(1));
+            Assert.That(page.Items[0].Title, Is.EqualTo("Portfolio Platform"));
+            Assert.That(page.Items[0].Skills, Is.EquivalentTo(new[] { "API Design", "React" }));
+            Assert.That(page.AvailableSkills, Is.EquivalentTo(new[] { "API Design", "Data Visualization", "React" }));
+        });
+    }
+
+    [Test]
+    public async Task ListAsync_AppliesPagingAndNormalizesInputs()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = new ProjectRepository(dbContext);
+
+        for (var index = 1; index <= 8; index++)
+        {
+            await repository.AddAsync(new Project
+            {
+                Title = $"Project {index:00}",
+                StartDate = new DateOnly(2026, index <= 6 ? index : 6, 1),
+                ShortDescription = $"Summary {index}",
+                LongDescriptionMarkdown = $"Markdown {index}",
+                IsPublished = true,
+                Skills = [new ProjectSkill { Name = index % 2 == 0 ? "React" : "C#" }]
+            });
+        }
+
+        var page = await repository.ListAsync(
+            "   ",
+            ["React", "react", ""],
+            0,
+            100);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.Page, Is.EqualTo(1));
+            Assert.That(page.PageSize, Is.EqualTo(50));
+            Assert.That(page.TotalCount, Is.EqualTo(4));
+            Assert.That(page.Items, Has.Count.EqualTo(4));
+            Assert.That(page.HasMore, Is.False);
+            Assert.That(page.Items.Select(item => item.Title), Is.EqualTo(new[] { "Project 06", "Project 08", "Project 04", "Project 02" }));
+        });
+    }
+
     private static PortfolioDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<PortfolioDbContext>()

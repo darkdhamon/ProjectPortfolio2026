@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio2026.Server.Data;
+using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Domain.Projects;
 
 namespace ProjectPortfolio2026.Server.Repositories;
@@ -19,12 +20,90 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
             .SingleOrDefaultAsync(project => project.Id == id, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Project>> ListAsync(CancellationToken cancellationToken = default)
+    public async Task<ProjectListPage> ListAsync(
+        string? search,
+        IReadOnlyCollection<string> skillFilters,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
-        return await CreateProjectQuery()
+        var normalizedPage = Math.Max(page, 1);
+        var normalizedPageSize = Math.Clamp(pageSize, 1, 50);
+        var normalizedSearch = search?.Trim();
+        var normalizedSkillFilters = skillFilters
+            .Where(skill => !string.IsNullOrWhiteSpace(skill))
+            .Select(skill => skill.Trim().ToUpperInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var query = CreateProjectQuery()
+            .Where(project => project.IsPublished);
+
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            query = query.Where(project =>
+                EF.Functions.Like(project.Title, $"%{normalizedSearch}%") ||
+                EF.Functions.Like(project.ShortDescription, $"%{normalizedSearch}%") ||
+                EF.Functions.Like(project.LongDescriptionMarkdown, $"%{normalizedSearch}%") ||
+                project.Technologies.Any(technology => EF.Functions.Like(technology.Name, $"%{normalizedSearch}%")) ||
+                project.Skills.Any(skill => EF.Functions.Like(skill.Name, $"%{normalizedSearch}%")));
+        }
+
+        if (normalizedSkillFilters.Count > 0)
+        {
+            foreach (var filter in normalizedSkillFilters)
+            {
+                var skillFilter = filter;
+                query = query.Where(project =>
+                    project.Skills.Any(skill => skill.Name.ToUpper() == skillFilter));
+            }
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
             .OrderByDescending(project => project.StartDate)
             .ThenBy(project => project.Title)
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .Select(project => new ProjectListItem
+            {
+                Id = project.Id,
+                Title = project.Title,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                PrimaryImageUrl = project.PrimaryImageUrl,
+                ShortDescription = project.ShortDescription,
+                GitHubUrl = project.GitHubUrl,
+                DemoUrl = project.DemoUrl,
+                IsFeatured = project.IsFeatured,
+                Skills = project.Skills
+                    .Select(skill => skill.Name)
+                    .OrderBy(skill => skill)
+                    .ToList(),
+                Technologies = project.Technologies
+                    .Select(technology => technology.Name)
+                    .OrderBy(technology => technology)
+                    .ToList()
+            })
             .ToListAsync(cancellationToken);
+
+        var availableSkills = await CreateProjectQuery()
+            .Where(project => project.IsPublished)
+            .SelectMany(project => project.Skills.Select(skill => skill.Name))
+            .Distinct()
+            .OrderBy(skill => skill)
+            .ToListAsync(cancellationToken);
+
+        return new ProjectListPage
+        {
+            Items = items,
+            Page = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalCount = totalCount,
+            HasMore = (normalizedPage * normalizedPageSize) < totalCount,
+            AvailableSkills = availableSkills
+        };
     }
 
     public async Task<Project?> UpdateAsync(Project project, CancellationToken cancellationToken = default)

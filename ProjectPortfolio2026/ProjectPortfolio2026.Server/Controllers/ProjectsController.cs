@@ -13,16 +13,29 @@ public sealed class ProjectsController(IProjectRepository projectRepository) : C
 {
     [HttpGet]
     [ProducesResponseType<ProjectListResponse>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<ProjectListResponse>> ListAsync(CancellationToken cancellationToken)
+    public async Task<ActionResult<ProjectListResponse>> ListAsync(
+        [FromQuery] ProjectListQueryRequest request,
+        CancellationToken cancellationToken)
     {
-        var projects = await projectRepository.ListAsync(cancellationToken);
+        var projects = await projectRepository.ListAsync(
+            request.Search,
+            ParseSkills(request.Skills),
+            request.Page,
+            request.PageSize,
+            cancellationToken);
         var requestId = HttpContext.Items[RequestIdContext.ItemKey] as string;
-        var items = projects.Select(project => project.ToResponse(requestId)).ToList();
 
         return Ok(new ProjectListResponse
         {
             RequestId = requestId,
-            Items = items
+            Items = projects.Items
+                .Select(project => project.ToResponse(requestId))
+                .ToList(),
+            Page = projects.Page,
+            PageSize = projects.PageSize,
+            TotalCount = projects.TotalCount,
+            HasMore = projects.HasMore,
+            AvailableSkills = projects.AvailableSkills.ToList()
         });
     }
 
@@ -71,5 +84,15 @@ public sealed class ProjectsController(IProjectRepository projectRepository) : C
         var updatedProject = await projectRepository.UpdateAsync(existingProject, cancellationToken);
 
         return Ok(updatedProject!.ToResponse(requestId));
+    }
+
+    private static IReadOnlyCollection<string> ParseSkills(string? skills)
+    {
+        return string.IsNullOrWhiteSpace(skills)
+            ? []
+            : skills
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
     }
 }

@@ -150,4 +150,23 @@ public static class ProjectContractMapper
                 .ToList()
         };
     }
+
+    public static ProjectSummaryResponse ToResponse(this ProjectListItem project, string? requestId = null)
+    {
+        return new ProjectSummaryResponse
+        {
+            RequestId = requestId,
+            Id = project.Id,
+            Title = project.Title,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate,
+            PrimaryImageUrl = project.PrimaryImageUrl,
+            ShortDescription = project.ShortDescription,
+            GitHubUrl = project.GitHubUrl,
+            DemoUrl = project.DemoUrl,
+            IsFeatured = project.IsFeatured,
+            Skills = project.Skills.OrderBy(skill => skill).ToList(),
+            Technologies = project.Technologies.OrderBy(technology => technology).ToList()
+        };
+    }
 }

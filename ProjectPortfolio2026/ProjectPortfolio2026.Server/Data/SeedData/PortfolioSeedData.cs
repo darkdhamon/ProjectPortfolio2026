@@ -19,8 +19,8 @@ public static class PortfolioSeedData
 
     private static List<Project> CreateProjects()
     {
-        return
-        [
+        var projects = new List<Project>
+        {
             CreateProject(
                 title: "Project Portfolio 2026",
                 startDate: new DateOnly(2026, 1, 10),
@@ -201,7 +201,57 @@ public static class PortfolioSeedData
                 [
                     CreateMilestone("Offline sync prototype", new DateOnly(2025, 12, 12), "Validated offline-first syncing.")
                 ])
-        ];
+        };
+
+        projects.AddRange(CreateGeneratedProjects());
+        return projects;
+    }
+
+    private static IEnumerable<Project> CreateGeneratedProjects()
+    {
+        var tracks = new[]
+        {
+            new SeedTrack("Analytics", "Analytics Studio", ["C#", ".NET", "SQL Server"], ["Data Modeling", "Reporting", "Observability"]),
+            new SeedTrack("Commerce", "Commerce Toolkit", ["React", "TypeScript", "Azure Functions"], ["UX Writing", "API Design", "Forms UX"]),
+            new SeedTrack("Operations", "Operations Console", [".NET", "React", "Redis"], ["Operational Tooling", "Incident Response", "Performance Tuning"]),
+            new SeedTrack("Education", "Learning Portal", ["Blazor", "SQL Server", "Azure App Service"], ["Accessibility", "Workflow Design", "Content Systems"]),
+            new SeedTrack("Community", "Community Hub", ["React", "Node.js", "PostgreSQL"], ["Community Platforms", "Matching Logic", "Dashboard Design"])
+        };
+
+        for (var index = 1; index <= 90; index++)
+        {
+            var track = tracks[(index - 1) % tracks.Length];
+            var year = 2023 + ((index - 1) % 4);
+            var month = ((index - 1) % 12) + 1;
+            var day = ((index - 1) % 25) + 1;
+            var title = $"{track.Category} Sprint {index:00}";
+            var projectNumber = index + 10;
+
+            yield return CreateProject(
+                title: title,
+                startDate: new DateOnly(year, month, day),
+                shortDescription: $"{track.Label} prototype #{projectNumber} focused on fast iteration and polished delivery.",
+                longDescriptionMarkdown: $"{track.Label} prototype #{projectNumber} explores scalable workflows, cleaner reporting, and user-friendly interfaces for portfolio seed data and browsing scenarios.",
+                githubUrl: $"https://github.com/example/{title.ToLowerInvariant().Replace(" ", "-")}",
+                demoUrl: index % 4 == 0 ? null : $"https://demo.example.test/{title.ToLowerInvariant().Replace(" ", "-")}",
+                developerRoles: ["Full Stack Engineer", index % 3 == 0 ? "Product Engineer" : "Backend Engineer"],
+                technologies: track.Technologies,
+                skills: track.Skills,
+                collaborators:
+                [
+                    CreateCollaborator(
+                        $"Seed Collaborator {projectNumber:000}",
+                        index % 2 == 0 ? $"https://github.com/seed-collaborator-{projectNumber:000}" : null,
+                        $"https://profiles.example.test/seed-collaborator-{projectNumber:000}",
+                        null,
+                        [index % 2 == 0 ? "QA Review" : "Design Review"])
+                ],
+                milestones:
+                [
+                    CreateMilestone("Prototype kickoff", new DateOnly(year, month, Math.Min(day, 20)), $"Started scoped discovery for generated project {projectNumber:000}."),
+                    CreateMilestone("Iteration review", new DateOnly(year, month, Math.Min(day + 5, 28)), $"Captured iteration notes for generated project {projectNumber:000}.")
+                ]);
+        }
     }
 
     private static Project CreateProject(
@@ -279,4 +329,10 @@ public static class PortfolioSeedData
             Description = description
         };
     }
+
+    private sealed record SeedTrack(
+        string Category,
+        string Label,
+        IReadOnlyList<string> Technologies,
+        IReadOnlyList<string> Skills);
 }
