@@ -708,6 +708,7 @@ function ScreenshotCarousel({
     const [activeIndex, setActiveIndex] = useState(0);
     const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
     const [transitionDirection, setTransitionDirection] = useState<'prev' | 'next'>('next');
+    const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
     const touchStartXRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -725,11 +726,27 @@ function ScreenshotCarousel({
         setActiveIndex(currentIndex => currentIndex >= screenshots.length ? 0 : currentIndex);
     }, [screenshots.length]);
 
+    useEffect(() => {
+        if (fullscreenIndex === null) {
+            return;
+        }
+
+        const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setFullscreenIndex(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [fullscreenIndex]);
+
     const displayScreenshots = screenshots.length === 1
         ? [{
             screenshot: screenshots[0],
             state: 'active',
-            key: `active-${screenshots[0]?.sortOrder ?? 0}`
+            key: `active-${screenshots[0]?.sortOrder ?? 0}`,
+            index: 0
         }]
         : screenshots.length === 2
         ? screenshots.flatMap((screenshot, index) => {
@@ -739,19 +756,22 @@ function ScreenshotCarousel({
                 {
                     screenshot,
                     state: isActive ? 'active' : transitionDirection === 'next' ? 'next1' : 'prev1',
-                    key: `center-${screenshot.sortOrder}-${index}`
+                    key: `center-${screenshot.sortOrder}-${index}`,
+                    index
                 },
                 {
                     screenshot,
                     state: isActive ? 'hidden' : transitionDirection === 'next' ? 'prev1' : 'next1',
-                    key: `side-${screenshot.sortOrder}-${index}`
+                    key: `side-${screenshot.sortOrder}-${index}`,
+                    index
                 }
             ];
         })
         : screenshots.map((screenshot, index) => ({
             screenshot,
             state: getFeaturedCardState(index, activeIndex, screenshots.length),
-            key: `${screenshot.sortOrder}-${screenshot.imageUrl}`
+            key: `${screenshot.sortOrder}-${screenshot.imageUrl}`,
+            index
         }));
 
     function showRelativeScreenshot(step: number) {
@@ -784,6 +804,15 @@ function ScreenshotCarousel({
         }
 
         setActiveIndex(nextIndex);
+    }
+
+    function openFullscreenScreenshot(nextIndex: number) {
+        if (nextIndex !== activeIndex) {
+            setTransitionDirection(nextIndex < activeIndex ? 'prev' : 'next');
+            setActiveIndex(nextIndex);
+        }
+
+        setFullscreenIndex(nextIndex);
     }
 
     function handleScreenshotCarouselKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -830,8 +859,10 @@ function ScreenshotCarousel({
     }
 
     const activeScreenshot = screenshots[activeIndex] ?? null;
+    const fullscreenScreenshot = fullscreenIndex === null ? null : screenshots[fullscreenIndex];
 
     return (
+        <>
         <div className="detail-screenshot-block">
             <section
                 className={`detail-carousel-shell${isMobile ? ' mobile' : ''}`}
@@ -842,17 +873,24 @@ function ScreenshotCarousel({
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}>
                 <div className="detail-carousel-track">
-                    {displayScreenshots.map(({ screenshot, state, key }) => (
+                    {displayScreenshots.map(({ screenshot, state, key, index }) => (
                         <figure
                             key={key}
+                            aria-hidden={state === 'hidden'}
                             className={`detail-carousel-slide ${state}`}>
-                            <MediaFrame
-                                src={screenshot.imageUrl}
-                                alt={screenshot.caption?.trim() || `${projectTitle} screenshot ${screenshot.sortOrder}`}
-                                fallbackLabel={screenshot.caption?.trim() || `${projectTitle} ${screenshot.sortOrder}`}
-                                fallbackSrc={screenshotMissing}
-                                className="detail-carousel-media"
-                            />
+                            <button
+                                className="detail-carousel-trigger"
+                                type="button"
+                                onClick={() => openFullscreenScreenshot(index)}
+                                aria-label={`Open screenshot ${index + 1} in fullscreen`}>
+                                <MediaFrame
+                                    src={screenshot.imageUrl}
+                                    alt={screenshot.caption?.trim() || `${projectTitle} screenshot ${screenshot.sortOrder}`}
+                                    fallbackLabel={screenshot.caption?.trim() || `${projectTitle} ${screenshot.sortOrder}`}
+                                    fallbackSrc={screenshotMissing}
+                                    className="detail-carousel-media"
+                                />
+                            </button>
                         </figure>
                     ))}
                 </div>
@@ -901,6 +939,30 @@ function ScreenshotCarousel({
                 </div>
             ) : null}
         </div>
+        {fullscreenScreenshot ? (
+            <div className="lightbox-backdrop" role="dialog" aria-modal="true" aria-label="Fullscreen screenshot viewer">
+                <div className="lightbox-shell">
+                    <button
+                        className="lightbox-close"
+                        type="button"
+                        onClick={() => setFullscreenIndex(null)}
+                        aria-label="Close image">
+                        Close
+                    </button>
+                    <MediaFrame
+                        src={fullscreenScreenshot.imageUrl}
+                        alt={fullscreenScreenshot.caption?.trim() || `${projectTitle} fullscreen screenshot ${fullscreenScreenshot.sortOrder}`}
+                        fallbackLabel={fullscreenScreenshot.caption?.trim() || `${projectTitle} ${fullscreenScreenshot.sortOrder}`}
+                        fallbackSrc={screenshotMissing}
+                        className="lightbox-image"
+                    />
+                    <p className="lightbox-caption">
+                        {fullscreenScreenshot.caption?.trim() || `${projectTitle} interface preview.`}
+                    </p>
+                </div>
+            </div>
+        ) : null}
+        </>
     );
 }
 

@@ -325,6 +325,17 @@ describe('App', () => {
         expect(screen.getByText('Screenshot 1 of 2')).toBeInTheDocument();
         expect(screen.getAllByAltText('Launch Control screenshot 2')).toHaveLength(2);
 
+        fireEvent.click(screen.getAllByRole('button', { name: 'Open screenshot 1 in fullscreen' })[0]);
+        expect(screen.getByRole('dialog', { name: 'Fullscreen screenshot viewer' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Close image' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Close image' }));
+        expect(screen.queryByRole('dialog', { name: 'Fullscreen screenshot viewer' })).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getAllByRole('button', { name: 'Open screenshot 1 in fullscreen' })[0]);
+        expect(screen.getByRole('dialog', { name: 'Fullscreen screenshot viewer' })).toBeInTheDocument();
+        fireEvent.keyDown(window, { key: 'Escape' });
+        expect(screen.queryByRole('dialog', { name: 'Fullscreen screenshot viewer' })).not.toBeInTheDocument();
+
         fireEvent.click(screen.getByRole('button', { name: 'Show next screenshot' }));
         expect(screen.getByText('Screenshot 2 of 2')).toBeInTheDocument();
         expect(screen.getByText('Launch Control interface preview.')).toBeInTheDocument();
