@@ -1,6 +1,8 @@
+using ProjectPortfolio2026.Server.Contracts;
+
 namespace ProjectPortfolio2026.Server.Contracts.Projects;
 
-public sealed class ProjectResponse
+public sealed class ProjectResponse : ApiResponseDto
 {
     public int Id { get; set; }
 

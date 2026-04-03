@@ -86,10 +86,11 @@ public static class ProjectContractMapper
         project.Milestones = updatedProject.Milestones;
     }
 
-    public static ProjectResponse ToResponse(this Project project)
+    public static ProjectResponse ToResponse(this Project project, string? requestId = null)
     {
         return new ProjectResponse
         {
+            RequestId = requestId,
             Id = project.Id,
             Title = project.Title,
             StartDate = project.StartDate,

@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 
+using ProjectPortfolio2026.Server.Contracts;
+
 namespace ProjectPortfolio2026.Server.Contracts.Projects;
 
-public sealed class ProjectRequest
+public sealed class ProjectRequest : ApiRequestDto
 {
     [Required]
     [MaxLength(200)]
