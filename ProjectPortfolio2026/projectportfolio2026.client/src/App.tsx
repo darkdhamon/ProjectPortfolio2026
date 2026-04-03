@@ -1483,93 +1483,96 @@ function ProjectDetailPage({
                         </section>
 
                         <section className="detail-grid">
-                            {project.longDescriptionMarkdown.trim().length > 0 ? (
-                                <section className="detail-panel detail-panel-wide">
-                                    <h2>Overview</h2>
-                                    <div className="detail-markdown">
-                                        {renderMarkdownParagraphs(project.longDescriptionMarkdown)}
-                                    </div>
-                                </section>
-                            ) : null}
+                            <div className="detail-column detail-column-main">
+                                {project.longDescriptionMarkdown.trim().length > 0 ? (
+                                    <section className="detail-panel">
+                                        <h2>Overview</h2>
+                                        <div className="detail-markdown">
+                                            {renderMarkdownParagraphs(project.longDescriptionMarkdown)}
+                                        </div>
+                                    </section>
+                                ) : null}
 
-                            {project.screenshots.length > 0 ? (
-                                <section className="detail-panel detail-panel-wide">
-                                    <h2>Screenshots</h2>
-                                    <ScreenshotCarousel
-                                        projectTitle={project.title}
-                                        screenshots={project.screenshots}
-                                    />
-                                </section>
-                            ) : null}
-
-                            {project.collaborators.length > 0 ? (
-                                <section className="detail-panel">
-                                    <h2>Collaborators</h2>
-                                    <div className="stack-list">
-                                        {project.collaborators.map(collaborator => (
-                                            <article key={collaborator.name} className="stack-card collaborator-card">
-                                                <div className="collaborator-header">
-                                                    <MediaFrame
-                                                        src={collaborator.photoUrl}
-                                                        alt={`${collaborator.name} profile`}
-                                                        fallbackLabel={collaborator.name}
-                                                        fallbackSrc={profilePlaceholder}
-                                                        className="collaborator-photo"
-                                                        compact
-                                                    />
-                                                    <div>
-                                                        <h3>{collaborator.name}</h3>
-                                                        {collaborator.roles.length > 0 ? (
-                                                            <p className="secondary-copy">{collaborator.roles.join(' | ')}</p>
-                                                        ) : null}
+                                {project.collaborators.length > 0 ? (
+                                    <section className="detail-panel">
+                                        <h2>Collaborators</h2>
+                                        <div className="stack-list">
+                                            {project.collaborators.map(collaborator => (
+                                                <article key={collaborator.name} className="stack-card collaborator-card">
+                                                    <div className="collaborator-header">
+                                                        <MediaFrame
+                                                            src={collaborator.photoUrl}
+                                                            alt={`${collaborator.name} profile`}
+                                                            fallbackLabel={collaborator.name}
+                                                            fallbackSrc={profilePlaceholder}
+                                                            className="collaborator-photo"
+                                                            compact
+                                                        />
+                                                        <div>
+                                                            <h3>{collaborator.name}</h3>
+                                                            {collaborator.roles.length > 0 ? (
+                                                                <p className="secondary-copy">{collaborator.roles.join(' | ')}</p>
+                                                            ) : null}
+                                                        </div>
                                                     </div>
-                                                </div>
 
-                                                {(collaborator.gitHubProfileUrl || collaborator.websiteUrl) ? (
-                                                    <div className="inline-links">
-                                                        {collaborator.gitHubProfileUrl ? (
-                                                            <a href={collaborator.gitHubProfileUrl} target="_blank" rel="noreferrer">
-                                                                GitHub
-                                                            </a>
-                                                        ) : null}
-                                                        {collaborator.websiteUrl ? (
-                                                            <a href={collaborator.websiteUrl} target="_blank" rel="noreferrer">
-                                                                Website
-                                                            </a>
-                                                        ) : null}
+                                                    {(collaborator.gitHubProfileUrl || collaborator.websiteUrl) ? (
+                                                        <div className="inline-links">
+                                                            {collaborator.gitHubProfileUrl ? (
+                                                                <a href={collaborator.gitHubProfileUrl} target="_blank" rel="noreferrer">
+                                                                    GitHub
+                                                                </a>
+                                                            ) : null}
+                                                            {collaborator.websiteUrl ? (
+                                                                <a href={collaborator.websiteUrl} target="_blank" rel="noreferrer">
+                                                                    Website
+                                                                </a>
+                                                            ) : null}
+                                                        </div>
+                                                    ) : null}
+                                                </article>
+                                            ))}
+                                        </div>
+                                    </section>
+                                ) : null}
+
+                                {project.milestones.length > 0 ? (
+                                    <section className="detail-panel">
+                                        <h2>Milestones</h2>
+                                        <div className="stack-list">
+                                            {project.milestones.map(milestone => (
+                                                <article key={`${milestone.title}-${milestone.targetDate}`} className="stack-card">
+                                                    <div className="milestone-heading">
+                                                        <div>
+                                                            <h3>{milestone.title}</h3>
+                                                            <p className="secondary-copy">
+                                                                Target: {formatFullDate(milestone.targetDate)}
+                                                                {milestone.completedOn ? ` | Completed ${formatFullDate(milestone.completedOn)}` : ''}
+                                                            </p>
+                                                        </div>
+                                                        <span className={`milestone-pill${milestone.completedOn ? ' completed' : ''}`}>
+                                                            {milestone.completedOn ? 'Completed' : 'Planned'}
+                                                        </span>
                                                     </div>
-                                                ) : null}
-                                            </article>
-                                        ))}
-                                    </div>
-                                </section>
-                            ) : null}
+                                                    {milestone.description?.trim() ? <p>{milestone.description}</p> : null}
+                                                </article>
+                                            ))}
+                                        </div>
+                                    </section>
+                                ) : null}
+                            </div>
 
-                            {project.milestones.length > 0 ? (
-                                <section className="detail-panel">
-                                    <h2>Milestones</h2>
-                                    <div className="stack-list">
-                                        {project.milestones.map(milestone => (
-                                            <article key={`${milestone.title}-${milestone.targetDate}`} className="stack-card">
-                                                <div className="milestone-heading">
-                                                    <div>
-                                                        <h3>{milestone.title}</h3>
-                                                        <p className="secondary-copy">
-                                                            Target: {formatFullDate(milestone.targetDate)}
-                                                            {milestone.completedOn ? ` | Completed ${formatFullDate(milestone.completedOn)}` : ''}
-                                                        </p>
-                                                    </div>
-                                                    <span className={`milestone-pill${milestone.completedOn ? ' completed' : ''}`}>
-                                                        {milestone.completedOn ? 'Completed' : 'Planned'}
-                                                    </span>
-                                                </div>
-                                                {milestone.description?.trim() ? <p>{milestone.description}</p> : null}
-                                            </article>
-                                        ))}
-                                    </div>
-                                </section>
-                            ) : null}
-
+                            <div className="detail-column detail-column-media">
+                                {project.screenshots.length > 0 ? (
+                                    <section className="detail-panel">
+                                        <h2>Screenshots</h2>
+                                        <ScreenshotCarousel
+                                            projectTitle={project.title}
+                                            screenshots={project.screenshots}
+                                        />
+                                    </section>
+                                ) : null}
+                            </div>
                         </section>
                     </>
                 ) : null}

@@ -989,6 +989,21 @@
 .detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
+    align-items: start;
+}
+
+.detail-column {
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+}
+
+.detail-column-main {
+    grid-column: 1;
+}
+
+.detail-column-media {
+    grid-column: 2;
 }
 
 .detail-panel {
@@ -1365,6 +1380,11 @@ h3 {
         grid-template-columns: 1fr;
     }
 
+    .detail-column-main,
+    .detail-column-media {
+        grid-column: auto;
+    }
+
     .carousel-shell {
         min-height: 22rem;
         padding-inline: 3.75rem;
@@ -1401,9 +1421,6 @@ h3 {
         opacity: 0;
     }
 
-    .detail-panel-wide {
-        grid-column: auto;
-    }
 }
 
 @media (max-width: 720px) {
