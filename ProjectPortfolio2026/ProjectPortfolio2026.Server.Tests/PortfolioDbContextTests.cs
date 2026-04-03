@@ -68,6 +68,17 @@ public sealed class PortfolioDbContextTests
     }
 
     [Test]
+    public void LocalDbRecovery_DoesNotTargetNonLocalDbConnections()
+    {
+        const string connectionString = "Server=.\\SQLEXPRESS;AttachDbFilename=C:\\Temp\\ProjectPortfolio2026.Dev.mdf;Database=ProjectPortfolio2026Dev;Integrated Security=True";
+
+        var result = LocalDbDatabaseRecovery.TryGetRecoveryTarget(connectionString, out var target);
+
+        Assert.That(result, Is.False);
+        Assert.That(target, Is.EqualTo(default(LocalDbRecoveryTarget)));
+    }
+
+    [Test]
     public void LocalDbRecovery_CanRecoverOnlyWhenAttachFileIsMissingAndErrorMatches()
     {
         var missingFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.mdf");
@@ -83,6 +94,7 @@ public sealed class PortfolioDbContextTests
                 Assert.That(LocalDbDatabaseRecovery.CanRecover(missingConnectionString, 1801, "Database 'ProjectPortfolio2026Dev' already exists."), Is.True);
                 Assert.That(LocalDbDatabaseRecovery.CanRecover(existingConnectionString, 1801, "Database 'ProjectPortfolio2026Dev' already exists."), Is.False);
                 Assert.That(LocalDbDatabaseRecovery.CanRecover(missingConnectionString, 4060, "Cannot open database requested by the login."), Is.False);
+                Assert.That(LocalDbDatabaseRecovery.CanRecover($"Server=.\\SQLEXPRESS;AttachDbFilename={missingFile};Database=ProjectPortfolio2026Dev;Integrated Security=True", 1801, "Database 'ProjectPortfolio2026Dev' already exists."), Is.False);
             });
         }
         finally

@@ -61,6 +61,12 @@ public static class LocalDbDatabaseRecovery
     public static bool TryGetRecoveryTarget(string connectionString, out LocalDbRecoveryTarget recoveryTarget)
     {
         var builder = new SqlConnectionStringBuilder(connectionString);
+        if (!IsLocalDbConnection(builder))
+        {
+            recoveryTarget = default;
+            return false;
+        }
+
         var databaseName = builder.InitialCatalog;
         var attachDbFilePath = builder.AttachDBFilename;
 
@@ -72,6 +78,11 @@ public static class LocalDbDatabaseRecovery
 
         recoveryTarget = new LocalDbRecoveryTarget(databaseName, attachDbFilePath);
         return true;
+    }
+
+    private static bool IsLocalDbConnection(SqlConnectionStringBuilder builder)
+    {
+        return builder.DataSource.Contains("(localdb)", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string EscapeIdentifier(string value)
