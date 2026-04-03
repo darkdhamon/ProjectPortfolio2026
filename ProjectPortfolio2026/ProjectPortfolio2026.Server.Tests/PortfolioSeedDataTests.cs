@@ -26,7 +26,8 @@ public sealed class PortfolioSeedDataTests
             .ToListAsync();
 
         Assert.That(projects, Has.Count.EqualTo(100));
-        Assert.That(projects.All(project => project.Screenshots.Count == 2), Is.True);
+        Assert.That(projects.All(project => project.Screenshots.Count >= 2), Is.True);
+        Assert.That(projects.Single(project => project.Title == "Project Portfolio 2026").Screenshots, Has.Count.EqualTo(6));
         Assert.That(projects.All(project => project.DeveloperRoles.Count > 0), Is.True);
         Assert.That(projects.All(project => project.Technologies.Count > 0), Is.True);
         Assert.That(projects.All(project => project.Skills.Count > 0), Is.True);

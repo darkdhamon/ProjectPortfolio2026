@@ -285,22 +285,70 @@ public static class PortfolioSeedData
             Skills = skills.Select(skill => new ProjectSkill { Name = skill }).ToList(),
             Collaborators = collaborators.ToList(),
             Milestones = milestones.ToList(),
-            Screenshots =
+            Screenshots = CreateScreenshots(title, slug)
+        };
+    }
+
+    private static List<ProjectScreenshot> CreateScreenshots(string title, string slug)
+    {
+        if (title == "Project Portfolio 2026")
+        {
+            return
             [
                 new ProjectScreenshot
                 {
                     ImageUrl = $"https://images.example.test/projects/{slug}/screen-1.png",
-                    Caption = "Primary workflow",
+                    Caption = "Homepage hero and featured project carousel",
                     SortOrder = 1
                 },
                 new ProjectScreenshot
                 {
                     ImageUrl = $"https://images.example.test/projects/{slug}/screen-2.png",
-                    Caption = "Detail view",
+                    Caption = "Project list search and filtering experience",
                     SortOrder = 2
+                },
+                new ProjectScreenshot
+                {
+                    ImageUrl = $"https://images.example.test/projects/{slug}/screen-3.png",
+                    Caption = "Project detail overview with screenshot rail",
+                    SortOrder = 3
+                },
+                new ProjectScreenshot
+                {
+                    ImageUrl = $"https://images.example.test/projects/{slug}/screen-4.png",
+                    Caption = "Fullscreen screenshot viewer",
+                    SortOrder = 4
+                },
+                new ProjectScreenshot
+                {
+                    ImageUrl = $"https://images.example.test/projects/{slug}/screen-5.png",
+                    Caption = "Responsive mobile detail layout",
+                    SortOrder = 5
+                },
+                new ProjectScreenshot
+                {
+                    ImageUrl = $"https://images.example.test/projects/{slug}/screen-6.png",
+                    Caption = "Dark theme audit across public pages",
+                    SortOrder = 6
                 }
-            ]
-        };
+            ];
+        }
+
+        return
+        [
+            new ProjectScreenshot
+            {
+                ImageUrl = $"https://images.example.test/projects/{slug}/screen-1.png",
+                Caption = "Primary workflow",
+                SortOrder = 1
+            },
+            new ProjectScreenshot
+            {
+                ImageUrl = $"https://images.example.test/projects/{slug}/screen-2.png",
+                Caption = "Detail view",
+                SortOrder = 2
+            }
+        ];
     }
 
     private static ProjectCollaborator CreateCollaborator(
