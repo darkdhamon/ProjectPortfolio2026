@@ -9,7 +9,7 @@ namespace ProjectPortfolio2026.Server.Tests;
 public sealed class PortfolioSeedDataTests
 {
     [Test]
-    public async Task InitializeAsync_AddsTenProjects_WhenDatabaseIsEmpty()
+    public async Task InitializeAsync_AddsOneHundredProjects_WhenDatabaseIsEmpty()
     {
         await using var dbContext = CreateDbContext();
 
@@ -25,7 +25,7 @@ public sealed class PortfolioSeedDataTests
             .Include(project => project.Milestones)
             .ToListAsync();
 
-        Assert.That(projects, Has.Count.EqualTo(10));
+        Assert.That(projects, Has.Count.EqualTo(100));
         Assert.That(projects.All(project => project.Screenshots.Count == 2), Is.True);
         Assert.That(projects.All(project => project.DeveloperRoles.Count > 0), Is.True);
         Assert.That(projects.All(project => project.Technologies.Count > 0), Is.True);
@@ -42,7 +42,7 @@ public sealed class PortfolioSeedDataTests
         await PortfolioSeedData.InitializeAsync(dbContext);
         await PortfolioSeedData.InitializeAsync(dbContext);
 
-        Assert.That(await dbContext.Projects.CountAsync(), Is.EqualTo(10));
+        Assert.That(await dbContext.Projects.CountAsync(), Is.EqualTo(100));
     }
 
     private static PortfolioDbContext CreateDbContext()
