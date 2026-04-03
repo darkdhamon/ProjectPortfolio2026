@@ -11,6 +11,24 @@ namespace ProjectPortfolio2026.Server.Controllers;
 [Route("api/[controller]")]
 public sealed class ProjectsController(IProjectRepository projectRepository) : ControllerBase
 {
+    [HttpGet("featured")]
+    [ProducesResponseType<FeaturedProjectsResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<FeaturedProjectsResponse>> ListFeaturedAsync(
+        [FromQuery] int limit = 5,
+        CancellationToken cancellationToken = default)
+    {
+        var projects = await projectRepository.ListFeaturedAsync(limit, cancellationToken);
+        var requestId = HttpContext.Items[RequestIdContext.ItemKey] as string;
+
+        return Ok(new FeaturedProjectsResponse
+        {
+            RequestId = requestId,
+            Items = projects
+                .Select(project => project.ToResponse(requestId))
+                .ToList()
+        });
+    }
+
     [HttpGet]
     [ProducesResponseType<ProjectListResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ProjectListResponse>> ListAsync(
