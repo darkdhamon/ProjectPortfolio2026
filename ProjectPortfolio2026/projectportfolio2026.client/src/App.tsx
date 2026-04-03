@@ -195,56 +195,58 @@ function App() {
                 </div>
             </section>
 
-            <section className="toolbar" aria-label="Project filters">
-                <label className="search-panel" htmlFor="project-search">
-                    <span className="search-label">Search projects</span>
-                    <input
-                        id="project-search"
-                        name="project-search"
-                        type="search"
-                        value={searchInput}
-                        onChange={event => handleSearchChange(event.target.value)}
-                        placeholder="Search by title, summary, technology, or skill"
-                    />
-                </label>
+            <section className="sticky-filters">
+                <div className="toolbar" aria-label="Project filters">
+                    <label className="search-panel" htmlFor="project-search">
+                        <span className="search-label">Search projects</span>
+                        <input
+                            id="project-search"
+                            name="project-search"
+                            type="search"
+                            value={searchInput}
+                            onChange={event => handleSearchChange(event.target.value)}
+                            placeholder="Search by title, summary, technology, or skill"
+                        />
+                    </label>
 
-                <button
-                    className="clear-button"
-                    type="button"
-                    onClick={clearFilters}
-                    disabled={searchInput.length === 0 && selectedSkills.length === 0}>
-                    Reset filters
-                </button>
-            </section>
+                    <button
+                        className="clear-button"
+                        type="button"
+                        onClick={clearFilters}
+                        disabled={searchInput.length === 0 && selectedSkills.length === 0}>
+                        Reset filters
+                    </button>
+                </div>
 
-            <section className="skill-strip" aria-label="Skill filters">
-                {availableSkills.length === 0 && isInitialLoad ? (
-                    <p className="helper-copy">Loading skill filters...</p>
-                ) : availableSkills.length === 0 ? (
-                    <p className="helper-copy">Skill filters will appear once published projects are available.</p>
-                ) : (
-                    availableSkills.map(skill => {
-                        const isSelected = selectedSkills.includes(skill);
+                <section className="skill-strip" aria-label="Skill filters">
+                    {availableSkills.length === 0 && isInitialLoad ? (
+                        <p className="helper-copy">Loading skill filters...</p>
+                    ) : availableSkills.length === 0 ? (
+                        <p className="helper-copy">Skill filters will appear once published projects are available.</p>
+                    ) : (
+                        availableSkills.map(skill => {
+                            const isSelected = selectedSkills.includes(skill);
 
-                        return (
-                            <button
-                                key={skill}
-                                className={`skill-chip${isSelected ? ' selected' : ''}`}
-                                type="button"
-                                onClick={() => toggleSkill(skill)}
-                                aria-pressed={isSelected}>
-                                {skill}
-                            </button>
-                        );
-                    })
-                )}
+                            return (
+                                <button
+                                    key={skill}
+                                    className={`skill-chip${isSelected ? ' selected' : ''}`}
+                                    type="button"
+                                    onClick={() => toggleSkill(skill)}
+                                    aria-pressed={isSelected}>
+                                    {skill}
+                                </button>
+                            );
+                        })
+                    )}
+                </section>
             </section>
 
             {error ? <p className="status-banner error">{error}</p> : null}
             {!error && isLoading && projects.length === 0 ? <p className="status-banner">Loading published projects...</p> : null}
             {isEmpty ? <p className="status-banner">No published projects matched the current search and skill filters.</p> : null}
 
-            <section className="project-grid" aria-label="Project results">
+            <section className="project-list" aria-label="Project results">
                 {projects.map(project => (
                     <article key={project.id} className={`project-card${project.isFeatured ? ' featured' : ''}`}>
                         <div className="image-shell">
