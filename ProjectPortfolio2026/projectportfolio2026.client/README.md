@@ -1,3 +1,18 @@
+# ProjectPortfolio2026 Client
+
+## Commands
+
+- `npm run dev` starts the Vite dev server
+- `npm run build` builds the client bundle
+- `npm run lint` runs the client lint rules
+- `npm run test` runs the client unit test suite once
+- `npm run test:watch` runs client tests in watch mode
+- `npm run test:coverage` runs client tests with coverage output written to `../CoverageResults/client`
+
+## Coverage Policy
+
+The client test suite follows the same project minimum coverage requirement as the server-side tests. Pull requests targeting protected promotion branches fail in CI when client line coverage drops below `70%`.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
