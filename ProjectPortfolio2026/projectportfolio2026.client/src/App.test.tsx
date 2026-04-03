@@ -486,12 +486,85 @@ describe('App', () => {
         expect(fetchMock).toHaveBeenCalledTimes(2);
     }, 7000);
 
+    it('retries the project list request when startup returns invalid JSON', async () => {
+        window.history.replaceState({}, '', '/projects');
+        fetchMock
+            .mockResolvedValueOnce(new Response('<!doctype html><html><body>Starting up</body></html>', {
+                status: 503,
+                headers: {
+                    'Content-Type': 'text/html'
+                }
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 42,
+                        title: 'Portfolio Refresh',
+                        startDate: '2025-01-01',
+                        endDate: null,
+                        primaryImageUrl: null,
+                        shortDescription: 'Rebuilt the public portfolio experience.',
+                        isFeatured: true,
+                        skills: ['React'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React']
+            }));
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' }, { timeout: 5000 })).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    }, 7000);
+
+    it('retries the project detail request when startup returns invalid JSON', async () => {
+        window.history.replaceState({}, '', '/projects/42');
+        fetchMock
+            .mockResolvedValueOnce(new Response('<!doctype html><html><body>Starting up</body></html>', {
+                status: 503,
+                headers: {
+                    'Content-Type': 'text/html'
+                }
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                id: 42,
+                title: 'Portfolio Refresh',
+                startDate: '2025-01-01',
+                endDate: null,
+                primaryImageUrl: null,
+                shortDescription: 'Rebuilt the public portfolio experience.',
+                longDescriptionMarkdown: 'Overview copy',
+                gitHubUrl: null,
+                demoUrl: null,
+                isPublished: true,
+                isFeatured: true,
+                screenshots: [],
+                developerRoles: ['Frontend Engineer'],
+                technologies: ['TypeScript'],
+                skills: ['React'],
+                collaborators: [],
+                milestones: []
+            }));
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' }, { timeout: 5000 })).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    }, 7000);
+
     it('surfaces detail API failures', async () => {
         window.history.replaceState({}, '', '/projects/404');
         fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
             message: 'The project detail endpoint is unavailable.'
         }), {
-            status: 500,
+            status: 400,
             headers: {
                 'Content-Type': 'application/json'
             }

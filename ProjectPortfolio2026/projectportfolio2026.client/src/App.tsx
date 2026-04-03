@@ -175,6 +175,21 @@ async function fetchJsonWithStartupRetry<TPayload>(
     init: RequestInit & { signal: AbortSignal },
     fallbackMessage: string
 ) {
+    const { payload } = await fetchResponsePayloadWithStartupRetry<TPayload>(input, init, fallbackMessage);
+
+    if (payload === null) {
+        throw new RetryableApiError(startupRetryMessage);
+    }
+
+    return payload as TPayload;
+}
+
+async function fetchResponsePayloadWithStartupRetry<TPayload>(
+    input: string,
+    init: RequestInit & { signal: AbortSignal },
+    fallbackMessage: string,
+    acceptedErrorStatuses: number[] = []
+) {
     let attempt = 0;
 
     while (true) {
@@ -182,7 +197,7 @@ async function fetchJsonWithStartupRetry<TPayload>(
             const response = await fetch(input, init);
             const payload = await readResponsePayload<TPayload>(response);
 
-            if (!response.ok) {
+            if (!response.ok && !acceptedErrorStatuses.includes(response.status)) {
                 const apiMessage = isApiErrorResponse(payload) ? payload.message : undefined;
 
                 if (response.status >= 500) {
@@ -192,11 +207,7 @@ async function fetchJsonWithStartupRetry<TPayload>(
                 throw new Error(apiMessage ?? fallbackMessage);
             }
 
-            if (payload === null) {
-                throw new RetryableApiError(startupRetryMessage);
-            }
-
-            return payload as TPayload;
+            return { response, payload };
         } catch (caughtError) {
             if ((caughtError as Error).name === 'AbortError') {
                 throw caughtError;
@@ -1130,17 +1141,13 @@ function ProjectListPage({
                 query.set('skills', selectedSkills.join(','));
             }
 
-            const response = await fetch(`/api/projects?${query.toString()}`, {
-                signal: controller.signal
-            });
-            const payload = await response.json() as ProjectListResponse | ApiErrorResponse;
-
-            if (!response.ok) {
-                const errorResponse = payload as ApiErrorResponse;
-                throw new Error(errorResponse.message ?? 'Unable to load projects right now.');
-            }
-
-            const listResponse = payload as ProjectListResponse;
+            const listResponse = await fetchJsonWithStartupRetry<ProjectListResponse>(
+                `/api/projects?${query.toString()}`,
+                {
+                    signal: controller.signal
+                },
+                'Unable to load projects right now.'
+            );
 
             if (listResponse.requestId !== requestId) {
                 throw new DOMException('Stale response.', 'AbortError');
@@ -1370,9 +1377,14 @@ function ProjectDetailPage({
         async function loadProject() {
             try {
                 const query = new URLSearchParams({ requestId });
-                const response = await fetch(`/api/projects/${projectId}?${query.toString()}`, {
-                    signal: controller.signal
-                });
+                const { response, payload } = await fetchResponsePayloadWithStartupRetry<ProjectDetail>(
+                    `/api/projects/${projectId}?${query.toString()}`,
+                    {
+                        signal: controller.signal
+                    },
+                    'Unable to load this project right now.',
+                    [404]
+                );
 
                 if (response.status === 404) {
                     setIsMissing(true);
@@ -1380,11 +1392,8 @@ function ProjectDetailPage({
                     return;
                 }
 
-                const payload = await response.json() as ProjectDetail | ApiErrorResponse;
-
-                if (!response.ok) {
-                    const errorResponse = payload as ApiErrorResponse;
-                    throw new Error(errorResponse.message ?? 'Unable to load this project right now.');
+                if (payload === null) {
+                    throw new RetryableApiError(startupRetryMessage);
                 }
 
                 const projectResponse = payload as ProjectDetail;
