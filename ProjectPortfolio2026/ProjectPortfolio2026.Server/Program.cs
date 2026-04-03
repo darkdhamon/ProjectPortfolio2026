@@ -39,16 +39,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<PortfolioDbContext>();
-    dbContext.Database.Migrate();
-
-    if (app.Environment.IsDevelopment())
-    {
-        await PortfolioSeedData.InitializeAsync(dbContext);
-    }
-}
+await EnsureDatabaseReadyAsync(app.Services, resolvedConnectionString, app.Environment.IsDevelopment());
 
 app.UseHttpsRedirection();
 
@@ -59,3 +50,34 @@ app.MapControllers();
 app.MapFallbackToFile("/index.html");
 
 app.Run();
+
+static async Task EnsureDatabaseReadyAsync(IServiceProvider services, string connectionString, bool isDevelopment)
+{
+    try
+    {
+        await MigrateAndSeedAsync(services, isDevelopment);
+    }
+    catch (Microsoft.Data.SqlClient.SqlException exception)
+        when (LocalDbDatabaseRecovery.CanRecover(connectionString, exception.Number, exception.Message))
+    {
+        var recovered = await LocalDbDatabaseRecovery.TryRecoverAsync(connectionString);
+        if (!recovered)
+        {
+            throw;
+        }
+
+        await MigrateAndSeedAsync(services, isDevelopment);
+    }
+}
+
+static async Task MigrateAndSeedAsync(IServiceProvider services, bool isDevelopment)
+{
+    await using var scope = services.CreateAsyncScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<PortfolioDbContext>();
+    await dbContext.Database.MigrateAsync();
+
+    if (isDevelopment)
+    {
+        await PortfolioSeedData.InitializeAsync(dbContext);
+    }
+}
