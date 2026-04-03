@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import {
@@ -25,6 +25,7 @@ describe('App', () => {
     });
 
     afterEach(() => {
+        cleanup();
         window.history.replaceState({}, '', '/');
         vi.unstubAllGlobals();
         vi.clearAllMocks();
@@ -62,6 +63,25 @@ describe('App', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
     });
 
+    it('shows loading and empty states for the list view', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            requestId: 'request-1',
+            items: [],
+            page: 1,
+            pageSize: 6,
+            totalCount: 0,
+            hasMore: false,
+            availableSkills: []
+        }));
+
+        render(<App />);
+
+        expect(screen.getByText('Loading skill filters...')).toBeInTheDocument();
+        expect(screen.getByText('Loading published projects...')).toBeInTheDocument();
+        expect(await screen.findByText('No published projects matched the current search and skill filters.')).toBeInTheDocument();
+        expect(screen.getByText('Skill filters will appear once published projects are available.')).toBeInTheDocument();
+    });
+
     it('renders the detail view and preserves list filters in the back link', async () => {
         window.history.replaceState({}, '', '/projects/42?search=react&skills=Testing');
         fetchMock.mockResolvedValueOnce(jsonResponse({
@@ -91,6 +111,113 @@ describe('App', () => {
         expect(screen.getByRole('link', { name: 'Back to project list' })).toHaveAttribute('href', '/?search=react&skills=Testing');
     });
 
+    it('renders rich project detail sections and media fallbacks', async () => {
+        window.history.replaceState({}, '', '/projects/77');
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            requestId: 'request-1',
+            id: 77,
+            title: 'Launch Control',
+            startDate: '2024-01-01',
+            endDate: '2024-05-01',
+            primaryImageUrl: 'https://cdn.example.com/primary.png',
+            shortDescription: 'Mission dashboard for release management.',
+            longDescriptionMarkdown: '## Outcome\n\nShipped coordinated releases.',
+            gitHubUrl: 'https://github.com/example/launch-control',
+            demoUrl: 'https://example.com/launch-control',
+            isPublished: true,
+            isFeatured: true,
+            screenshots: [
+                {
+                    imageUrl: 'https://cdn.example.com/shot-1.png',
+                    caption: 'Overview dashboard',
+                    sortOrder: 1
+                },
+                {
+                    imageUrl: 'https://cdn.example.com/shot-2.png',
+                    caption: null,
+                    sortOrder: 2
+                }
+            ],
+            developerRoles: ['Lead Engineer'],
+            technologies: ['React', 'ASP.NET Core'],
+            skills: ['Testing', 'Accessibility'],
+            collaborators: [
+                {
+                    name: 'Taylor Dev',
+                    gitHubProfileUrl: 'https://github.com/taylor',
+                    websiteUrl: 'https://taylor.example.com',
+                    photoUrl: 'https://cdn.example.com/taylor.png',
+                    roles: ['Designer', 'QA']
+                }
+            ],
+            milestones: [
+                {
+                    title: 'Public beta',
+                    targetDate: '2024-03-15',
+                    completedOn: '2024-03-10',
+                    description: 'Enabled early access testing.'
+                },
+                {
+                    title: 'General availability',
+                    targetDate: '2024-05-01',
+                    completedOn: null,
+                    description: null
+                }
+            ]
+        }));
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Launch Control' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Screenshots' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Collaborators' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Milestones' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Gallery Rail' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Live Demo' })).toHaveAttribute('href', 'https://example.com/launch-control');
+        expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute('href', 'https://github.com/example/launch-control');
+        expect(screen.getByText('Completed')).toBeInTheDocument();
+        expect(screen.getByText('Planned')).toBeInTheDocument();
+        expect(screen.getByText('Taylor Dev')).toBeInTheDocument();
+        expect(screen.getByText('Designer | QA')).toBeInTheDocument();
+        expect(screen.getByText('Overview dashboard')).toBeInTheDocument();
+
+        const collaboratorImage = screen.getByAltText('Taylor Dev profile');
+        fireEvent.error(collaboratorImage);
+        expect(screen.getByAltText('Taylor Dev profile')).toHaveAttribute('src', expect.stringContaining('Profile-Placeholder'));
+    });
+
+    it('lets the detail back link navigate to the list route without scrolling reset', async () => {
+        window.history.replaceState({}, '', '/projects/42?search=react');
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            requestId: 'request-1',
+            id: 42,
+            title: 'Portfolio Refresh',
+            startDate: '2025-01-01',
+            endDate: null,
+            primaryImageUrl: null,
+            shortDescription: 'Rebuilt the public portfolio experience.',
+            longDescriptionMarkdown: '## Overview\n\nAdded filtering and detail routing.',
+            gitHubUrl: null,
+            demoUrl: null,
+            isPublished: true,
+            isFeatured: false,
+            screenshots: [],
+            developerRoles: [],
+            technologies: [],
+            skills: [],
+            collaborators: [],
+            milestones: []
+        }));
+
+        render(<App />);
+
+        fireEvent.click(await screen.findByRole('link', { name: 'Back to project list' }));
+
+        expect(window.location.pathname).toBe('/');
+        expect(window.location.search).toBe('?search=react');
+    });
+
     it('shows a not found message when the project detail endpoint returns 404', async () => {
         window.history.replaceState({}, '', '/projects/999');
         fetchMock.mockResolvedValueOnce(new Response(null, { status: 404 }));
@@ -113,6 +240,22 @@ describe('App', () => {
         render(<App />);
 
         expect(await screen.findByText('Projects are temporarily unavailable.')).toBeInTheDocument();
+    });
+
+    it('surfaces detail API failures', async () => {
+        window.history.replaceState({}, '', '/projects/404');
+        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+            message: 'The project detail endpoint is unavailable.'
+        }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }));
+
+        render(<App />);
+
+        expect(await screen.findByText('The project detail endpoint is unavailable.')).toBeInTheDocument();
     });
 });
 
