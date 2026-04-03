@@ -1122,11 +1122,12 @@
 }
 
 .detail-carousel-shell {
+    --detail-carousel-side-space: clamp(4.5rem, 18%, 7rem);
     position: relative;
     width: 100%;
     margin-inline: auto;
-    padding: 0.5rem clamp(3rem, 10%, 4rem);
-    overflow: hidden;
+    padding: 0.5rem 0;
+    overflow: visible;
     outline: none;
 }
 
@@ -1137,12 +1138,14 @@
 
 .detail-carousel-track {
     position: relative;
-    width: 100%;
+    width: calc(100% - var(--detail-carousel-side-space));
+    max-width: 100%;
+    margin-inline: auto;
     height: 100%;
     perspective: 1400px;
     display: grid;
     place-items: center;
-    overflow: hidden;
+    overflow: visible;
     --carousel-center-y: -50%;
 }
 
