@@ -1,0 +1,29 @@
+name: branch-promotion
+
+on:
+  pull_request:
+    branches:
+      - main
+      - stage
+
+jobs:
+  validate-branch-promotion:
+    name: validate-branch-promotion
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate allowed source branch
+        shell: pwsh
+        run: |
+          $baseRef = "${{ github.base_ref }}"
+          $headRef = "${{ github.head_ref }}"
+
+          Write-Host "Validating pull request source branch '$headRef' for target '$baseRef'."
+
+          if ($baseRef -eq "main" -and $headRef -ne "stage") {
+              Write-Error "Pull requests into 'main' must come from 'stage'."
+          }
+
+          if ($baseRef -eq "stage" -and $headRef -ne "dev") {
+              Write-Error "Pull requests into 'stage' must come from 'dev'."
+          }
