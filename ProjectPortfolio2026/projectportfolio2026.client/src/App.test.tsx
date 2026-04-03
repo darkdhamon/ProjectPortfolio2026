@@ -8,6 +8,7 @@ import {
     createRouteKey,
     formatFullDate,
     formatProjectDates,
+    getProjectYearSpacerLabel,
     mergeProjects,
     parseListFilters,
     parseRoute,
@@ -180,11 +181,22 @@ describe('App', () => {
                     isFeatured: true,
                     skills: ['React'],
                     technologies: ['TypeScript']
+                },
+                {
+                    id: 43,
+                    title: 'Archive Cleanup',
+                    startDate: '2024-01-01',
+                    endDate: '2024-08-15',
+                    primaryImageUrl: null,
+                    shortDescription: 'Closed out a legacy migration.',
+                    isFeatured: false,
+                    skills: ['Testing'],
+                    technologies: ['SQL Server']
                 }
             ],
             page: 1,
             pageSize: 6,
-            totalCount: 1,
+            totalCount: 2,
             hasMore: false,
             availableSkills: ['React', 'Testing']
         }));
@@ -198,6 +210,8 @@ describe('App', () => {
         expect(screen.getByRole('button', { name: /Timeline/i })).toBeDisabled();
         expect(screen.getAllByText('Coming Soon').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'React' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByLabelText('Projects ending in Present')).toBeInTheDocument();
+        expect(screen.getByLabelText('Projects ending in 2024')).toBeInTheDocument();
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
     });
 
@@ -219,6 +233,133 @@ describe('App', () => {
         expect(screen.getByText('Loading published projects...')).toBeInTheDocument();
         expect(await screen.findByText('No published projects matched the current search and skill filters.')).toBeInTheDocument();
         expect(screen.getByText('Skill filters will appear once published projects are available.')).toBeInTheDocument();
+    });
+
+    it('updates search and skill filters from list interactions', async () => {
+        window.history.replaceState({}, '', '/projects');
+        fetchMock
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 42,
+                        title: 'Portfolio Refresh',
+                        startDate: '2025-01-01',
+                        endDate: null,
+                        primaryImageUrl: null,
+                        shortDescription: 'Rebuilt the public portfolio experience.',
+                        isFeatured: true,
+                        skills: ['React'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React', 'Testing']
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 43,
+                        title: 'React Search Result',
+                        startDate: '2024-01-01',
+                        endDate: null,
+                        primaryImageUrl: null,
+                        shortDescription: 'Filtered by search.',
+                        isFeatured: false,
+                        skills: ['React'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React', 'Testing']
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 43,
+                        title: 'React Search Result',
+                        startDate: '2024-01-01',
+                        endDate: null,
+                        primaryImageUrl: null,
+                        shortDescription: 'Filtered by search.',
+                        isFeatured: false,
+                        skills: ['React'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React', 'Testing']
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 44,
+                        title: 'Testing Skill Result',
+                        startDate: '2023-01-01',
+                        endDate: '2023-04-01',
+                        primaryImageUrl: null,
+                        shortDescription: 'Filtered by selected skill.',
+                        isFeatured: false,
+                        skills: ['Testing'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React', 'Testing']
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 44,
+                        title: 'Testing Skill Result',
+                        startDate: '2023-01-01',
+                        endDate: '2023-04-01',
+                        primaryImageUrl: null,
+                        shortDescription: 'Filtered by selected skill.',
+                        isFeatured: false,
+                        skills: ['Testing'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React', 'Testing']
+            }));
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Search projects' }), {
+            target: { value: 'React' }
+        });
+
+        expect(await screen.findByRole('heading', { name: 'React Search Result' })).toBeInTheDocument();
+        expect(window.location.search).toBe('?search=React');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Testing' }));
+
+        expect(await screen.findByRole('heading', { name: 'Testing Skill Result' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'true');
+        expect(window.location.search).toBe('?search=React&skills=Testing');
     });
 
     it('renders the detail view and preserves list filters in the back link', async () => {
@@ -313,7 +454,8 @@ describe('App', () => {
         expect(screen.getByRole('heading', { name: 'Screenshots' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Collaborators' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Milestones' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Gallery Rail' })).toBeInTheDocument();
+        expect(screen.getByRole('region', { name: 'Project screenshot carousel' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Show next screenshot' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Live Demo' })).toHaveAttribute('href', 'https://example.com/launch-control');
         expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute('href', 'https://github.com/example/launch-control');
         expect(screen.getByText('Completed')).toBeInTheDocument();
@@ -321,10 +463,66 @@ describe('App', () => {
         expect(screen.getByText('Taylor Dev')).toBeInTheDocument();
         expect(screen.getByText('Designer | QA')).toBeInTheDocument();
         expect(screen.getByText('Overview dashboard')).toBeInTheDocument();
+        expect(screen.getByText('Screenshot 1 of 2')).toBeInTheDocument();
+        expect(screen.getAllByAltText('Launch Control screenshot 2')).toHaveLength(2);
+
+        fireEvent.click(screen.getAllByRole('button', { name: 'Open screenshot 1 in fullscreen' })[0]);
+        expect(screen.getByRole('dialog', { name: 'Fullscreen screenshot viewer' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Close image' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Close image' }));
+        expect(screen.queryByRole('dialog', { name: 'Fullscreen screenshot viewer' })).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getAllByRole('button', { name: 'Open screenshot 1 in fullscreen' })[0]);
+        expect(screen.getByRole('dialog', { name: 'Fullscreen screenshot viewer' })).toBeInTheDocument();
+        fireEvent.keyDown(window, { key: 'Escape' });
+        expect(screen.queryByRole('dialog', { name: 'Fullscreen screenshot viewer' })).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Show next screenshot' }));
+        expect(screen.getByText('Screenshot 2 of 2')).toBeInTheDocument();
+        expect(screen.getByText('Launch Control interface preview.')).toBeInTheDocument();
+        expect(screen.getAllByAltText('Overview dashboard')).toHaveLength(2);
 
         const collaboratorImage = screen.getByAltText('Taylor Dev profile');
         fireEvent.error(collaboratorImage);
         expect(screen.getByAltText('Taylor Dev profile')).toHaveAttribute('src', expect.stringContaining('Profile-Placeholder'));
+    });
+
+    it('shows only a single slide when the detail view has one screenshot', async () => {
+        window.history.replaceState({}, '', '/projects/88');
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            requestId: 'request-1',
+            id: 88,
+            title: 'Single Shot',
+            startDate: '2024-01-01',
+            endDate: null,
+            primaryImageUrl: 'https://cdn.example.com/primary.png',
+            shortDescription: 'Single screenshot project.',
+            longDescriptionMarkdown: 'Only one screenshot is available.',
+            gitHubUrl: null,
+            demoUrl: null,
+            isPublished: true,
+            isFeatured: false,
+            screenshots: [
+                {
+                    imageUrl: 'https://cdn.example.com/single-shot.png',
+                    caption: 'Single view',
+                    sortOrder: 1
+                }
+            ],
+            developerRoles: [],
+            technologies: [],
+            skills: [],
+            collaborators: [],
+            milestones: []
+        }));
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Single Shot' })).toBeInTheDocument();
+        expect(screen.getByText('Screenshot 1 of 1')).toBeInTheDocument();
+        expect(screen.getAllByAltText('Single view')).toHaveLength(1);
+        expect(screen.queryByRole('button', { name: 'Show next screenshot' })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Project screenshot selection')).not.toBeInTheDocument();
     });
 
     it('lets the detail back link navigate to the list route without scrolling reset', async () => {
@@ -415,12 +613,85 @@ describe('App', () => {
         expect(fetchMock).toHaveBeenCalledTimes(2);
     }, 7000);
 
+    it('retries the project list request when startup returns invalid JSON', async () => {
+        window.history.replaceState({}, '', '/projects');
+        fetchMock
+            .mockResolvedValueOnce(new Response('<!doctype html><html><body>Starting up</body></html>', {
+                status: 503,
+                headers: {
+                    'Content-Type': 'text/html'
+                }
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 42,
+                        title: 'Portfolio Refresh',
+                        startDate: '2025-01-01',
+                        endDate: null,
+                        primaryImageUrl: null,
+                        shortDescription: 'Rebuilt the public portfolio experience.',
+                        isFeatured: true,
+                        skills: ['React'],
+                        technologies: ['TypeScript']
+                    }
+                ],
+                page: 1,
+                pageSize: 6,
+                totalCount: 1,
+                hasMore: false,
+                availableSkills: ['React']
+            }));
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' }, { timeout: 5000 })).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    }, 7000);
+
+    it('retries the project detail request when startup returns invalid JSON', async () => {
+        window.history.replaceState({}, '', '/projects/42');
+        fetchMock
+            .mockResolvedValueOnce(new Response('<!doctype html><html><body>Starting up</body></html>', {
+                status: 503,
+                headers: {
+                    'Content-Type': 'text/html'
+                }
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                id: 42,
+                title: 'Portfolio Refresh',
+                startDate: '2025-01-01',
+                endDate: null,
+                primaryImageUrl: null,
+                shortDescription: 'Rebuilt the public portfolio experience.',
+                longDescriptionMarkdown: 'Overview copy',
+                gitHubUrl: null,
+                demoUrl: null,
+                isPublished: true,
+                isFeatured: true,
+                screenshots: [],
+                developerRoles: ['Frontend Engineer'],
+                technologies: ['TypeScript'],
+                skills: ['React'],
+                collaborators: [],
+                milestones: []
+            }));
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' }, { timeout: 5000 })).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    }, 7000);
+
     it('surfaces detail API failures', async () => {
         window.history.replaceState({}, '', '/projects/404');
         fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
             message: 'The project detail endpoint is unavailable.'
         }), {
-            status: 500,
+            status: 400,
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -488,6 +759,8 @@ describe('App helpers', () => {
     it('formats dates and markdown paragraphs for display', () => {
         expect(formatProjectDates('2025-01-01', null)).toContain('Present');
         expect(formatFullDate('2025-04-02')).toContain('2025');
+        expect(getProjectYearSpacerLabel(null)).toBe('Present');
+        expect(getProjectYearSpacerLabel('2024-08-15')).toBe('2024');
 
         const paragraphs = renderMarkdownParagraphs('## Heading\n\nBody copy');
         expect(paragraphs).toHaveLength(2);
