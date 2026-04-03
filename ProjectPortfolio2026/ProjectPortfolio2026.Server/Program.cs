@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Data.SeedData;
+using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,10 +20,14 @@ var resolvedConnectionString = connectionString.Replace(
     dataDirectory,
     StringComparison.OrdinalIgnoreCase);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<RequestTrackingFilter>();
+});
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<PortfolioDbContext>(options => options.UseSqlServer(resolvedConnectionString));
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<RequestTrackingFilter>();
 
 var app = builder.Build();
 

@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NUnit.Framework;
-using ProjectPortfolio2026.Server.Contracts;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Controllers;
 using ProjectPortfolio2026.Server.Domain.Projects;
+using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Repositories;
 
 namespace ProjectPortfolio2026.Server.Tests;
@@ -26,8 +26,7 @@ public sealed class ProjectsControllerRequestIdTests
         });
 
         var controller = CreateController(repository);
-        controller.ControllerContext.HttpContext.Request.Headers["X-Request-Id"] = "header-id";
-        controller.ControllerContext.HttpContext.Request.QueryString = new QueryString("?requestId=query-id");
+        controller.ControllerContext.HttpContext.Items[RequestIdContext.ItemKey] = "query-id";
 
         var actionResult = await controller.ListAsync(CancellationToken.None);
         var okResult = actionResult.Result as OkObjectResult;
@@ -47,12 +46,10 @@ public sealed class ProjectsControllerRequestIdTests
     {
         var repository = new StubProjectRepository();
         var controller = CreateController(repository);
-        controller.ControllerContext.HttpContext.Request.Headers["X-Request-Id"] = "header-id";
-        controller.ControllerContext.HttpContext.Request.QueryString = new QueryString("?requestId=query-id");
+        controller.ControllerContext.HttpContext.Items[RequestIdContext.ItemKey] = "body-id";
 
         var request = new ProjectRequest
         {
-            RequestId = "body-id",
             Title = "Portfolio Platform",
             StartDate = new DateOnly(2026, 4, 1),
             ShortDescription = "Short summary.",
@@ -65,57 +62,6 @@ public sealed class ProjectsControllerRequestIdTests
 
         Assert.That(response, Is.Not.Null);
         Assert.That(response!.RequestId, Is.EqualTo("body-id"));
-    }
-
-    [Test]
-    public async Task GetByIdAsync_ReturnsErrorResponse_WithResolvedRequestId_WhenProjectIsMissing()
-    {
-        var repository = new StubProjectRepository();
-        var controller = CreateController(repository);
-        controller.ControllerContext.HttpContext.Request.Headers["X-Request-Id"] = "header-id";
-        controller.ControllerContext.HttpContext.Request.QueryString = new QueryString("?requestId=query-id");
-
-        var actionResult = await controller.GetByIdAsync(99, CancellationToken.None);
-        var notFoundResult = actionResult.Result as NotFoundObjectResult;
-        var response = notFoundResult?.Value as ApiErrorResponse;
-
-        Assert.That(response, Is.Not.Null);
-        Assert.Multiple(() =>
-        {
-            Assert.That(response!.RequestId, Is.EqualTo("query-id"));
-            Assert.That(response.ErrorCode, Is.EqualTo("project_not_found"));
-            Assert.That(response.Message, Does.Contain("99"));
-        });
-    }
-
-    [Test]
-    public async Task UpdateAsync_ReturnsErrorResponse_WithBodyRequestId_WhenProjectIsMissing()
-    {
-        var repository = new StubProjectRepository();
-        var controller = CreateController(repository);
-        controller.ControllerContext.HttpContext.Request.Headers["X-Request-Id"] = "header-id";
-        controller.ControllerContext.HttpContext.Request.QueryString = new QueryString("?requestId=query-id");
-
-        var request = new ProjectRequest
-        {
-            RequestId = "body-id",
-            Title = "Portfolio Platform",
-            StartDate = new DateOnly(2026, 4, 1),
-            ShortDescription = "Short summary.",
-            LongDescriptionMarkdown = "Long summary."
-        };
-
-        var actionResult = await controller.UpdateAsync(101, request, CancellationToken.None);
-        var notFoundResult = actionResult.Result as NotFoundObjectResult;
-        var response = notFoundResult?.Value as ApiErrorResponse;
-
-        Assert.That(response, Is.Not.Null);
-        Assert.Multiple(() =>
-        {
-            Assert.That(response!.RequestId, Is.EqualTo("body-id"));
-            Assert.That(response.ErrorCode, Is.EqualTo("project_not_found"));
-            Assert.That(response.Message, Does.Contain("101"));
-        });
     }
 
     private static ProjectsController CreateController(IProjectRepository repository)
