@@ -88,8 +88,20 @@ interface ApiErrorResponse {
     message?: string;
 }
 
+interface SiteShellContent {
+    kicker: string;
+    title: string;
+    summary: string;
+}
+
+interface NavItem {
+    label: string;
+    description: string;
+    href?: string;
+}
+
 const pageSize = 6;
-const navItems = [
+const navItems: readonly NavItem[] = [
     { label: 'Projects', href: '/', description: 'Browse shipped work and project detail stories.' },
     { label: 'Home', description: 'Featured highlights and introduction.' },
     { label: 'Timeline', description: 'Career milestones, education, and certifications.' },
@@ -113,6 +125,17 @@ function App() {
 
     const route = useMemo(() => parseRoute(location), [location]);
     const activeNavLabel = route.kind === 'detail' || route.kind === 'list' ? 'Projects' : '';
+    const shellContent = route.kind === 'detail'
+        ? {
+            kicker: 'Project Portfolio',
+            title: 'Project Detail',
+            summary: 'Review the project story, supporting media, collaborators, and milestone context.'
+        } satisfies SiteShellContent
+        : {
+            kicker: 'Project Portfolio',
+            title: 'Projects',
+            summary: 'Browse shipped work, search the portfolio, and move into individual project case studies.'
+        } satisfies SiteShellContent;
 
     function navigate(nextPath: string, options?: { replace?: boolean; preserveScroll?: boolean }) {
         const method = options?.replace ? 'replaceState' : 'pushState';
@@ -127,6 +150,7 @@ function App() {
     return (
         <SiteShell
             activeNavLabel={activeNavLabel}
+            content={shellContent}
             onNavigate={navigate}>
             {route.kind === 'detail' ? (
                 <ProjectDetailPage
@@ -144,10 +168,12 @@ function App() {
 
 function SiteShell({
     activeNavLabel,
+    content,
     onNavigate,
     children
 }: {
     activeNavLabel: string;
+    content: SiteShellContent;
     onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
     children: ReactNode;
 }) {
@@ -193,12 +219,10 @@ function SiteShell({
             <div className="site-main">
                 <header className="site-header">
                     <div>
-                        <p className="header-kicker">Public Portfolio</p>
-                        <h1 className="site-title">Navigation Preview</h1>
+                        <p className="header-kicker">{content.kicker}</p>
+                        <p className="site-title">{content.title}</p>
                     </div>
-                    <p className="site-header-copy">
-                        Projects are live now. Planned sections are visible to establish the long-term site structure.
-                    </p>
+                    <p className="site-header-copy">{content.summary}</p>
                 </header>
 
                 {children}
