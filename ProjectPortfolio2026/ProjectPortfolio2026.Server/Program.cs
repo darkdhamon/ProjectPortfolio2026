@@ -38,7 +38,11 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<PortfolioDbContext>();
     dbContext.Database.Migrate();
-    await PortfolioSeedData.InitializeAsync(dbContext);
+
+    if (app.Environment.IsDevelopment())
+    {
+        await PortfolioSeedData.InitializeAsync(dbContext);
+    }
 }
 
 app.UseHttpsRedirection();
