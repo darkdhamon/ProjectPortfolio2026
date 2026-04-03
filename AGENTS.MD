@@ -33,3 +33,4 @@
 - When `gh api` payloads become fragile in PowerShell because of quoting, prefer direct `gh` commands or write JSON to a temporary file before calling the API.
 - Avoid running `dotnet build` and `dotnet test` in parallel against the same solution or projects on Windows, because file locks in `bin/obj` can cause build failures.
 - If `dotnet ef` is unavailable when generating Entity Framework migrations, install the matching `dotnet-ef` tool version first before retrying the migration command.
+- When the .NET coverage collector writes empty Cobertura files under a `TestResults` directory on Windows, switch the coverage script to a different results folder name such as `CoverageResults`.

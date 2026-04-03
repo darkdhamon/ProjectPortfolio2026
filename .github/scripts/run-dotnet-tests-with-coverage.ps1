@@ -18,7 +18,7 @@ function Fail-Check {
 }
 
 $solutionRoot = Join-Path $PSScriptRoot "..\..\ProjectPortfolio2026"
-$resultsRoot = Join-Path $solutionRoot "TestResults"
+$resultsRoot = Join-Path $solutionRoot "CoverageResults"
 $coverageSettingsPath = Join-Path $solutionRoot "coverage.runsettings"
 $minimumCoverage = if ($env:MINIMUM_COVERAGE) { [double]$env:MINIMUM_COVERAGE } else { 70.0 }
 $enforceCoverageGate = $true

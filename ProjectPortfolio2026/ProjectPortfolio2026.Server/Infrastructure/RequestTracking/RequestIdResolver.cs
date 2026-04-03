@@ -17,17 +17,22 @@ public static class RequestIdResolver
             return bodyRequestId.Trim();
         }
 
-        var queryRequestId = httpContext.Request.Query["requestId"].FirstOrDefault()
-            ?? httpContext.Request.Query["RequestId"].FirstOrDefault()
-            ?? httpContext.Request.Query["x-request-id"].FirstOrDefault()
-            ?? httpContext.Request.Query["X-Request-Id"].FirstOrDefault();
+        var queryRequestId = FindValueCaseInsensitive(httpContext.Request.Query, "requestId")
+            ?? FindValueCaseInsensitive(httpContext.Request.Query, "x-request-id");
 
         if (!string.IsNullOrWhiteSpace(queryRequestId))
         {
             return queryRequestId.Trim();
         }
 
-        var headerRequestId = httpContext.Request.Headers["X-Request-Id"].FirstOrDefault();
+        var headerRequestId = FindValueCaseInsensitive(httpContext.Request.Headers, "x-request-id");
         return string.IsNullOrWhiteSpace(headerRequestId) ? null : headerRequestId.Trim();
+    }
+
+    private static string? FindValueCaseInsensitive(IEnumerable<KeyValuePair<string, Microsoft.Extensions.Primitives.StringValues>> values, string key)
+    {
+        return values.FirstOrDefault(pair => string.Equals(pair.Key, key, StringComparison.OrdinalIgnoreCase))
+            .Value
+            .FirstOrDefault();
     }
 }
