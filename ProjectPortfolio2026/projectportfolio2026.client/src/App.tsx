@@ -740,9 +740,7 @@ function ScreenshotCarousel({
         return () => mediaQuery.removeEventListener('change', updateIsMobile);
     }, []);
 
-    useEffect(() => {
-        setActiveIndex(currentIndex => currentIndex >= screenshots.length ? 0 : currentIndex);
-    }, [screenshots.length]);
+    const activeScreenshotIndex = activeIndex >= screenshots.length ? 0 : activeIndex;
 
     useEffect(() => {
         if (fullscreenIndex === null) {
@@ -768,7 +766,7 @@ function ScreenshotCarousel({
         }]
         : screenshots.length === 2
         ? screenshots.flatMap((screenshot, index) => {
-            const isActive = index === activeIndex;
+            const isActive = index === activeScreenshotIndex;
 
             return [
                 {
@@ -787,7 +785,7 @@ function ScreenshotCarousel({
         })
         : screenshots.map((screenshot, index) => ({
             screenshot,
-            state: getFeaturedCardState(index, activeIndex, screenshots.length),
+            state: getFeaturedCardState(index, activeScreenshotIndex, screenshots.length),
             key: `${screenshot.sortOrder}-${screenshot.imageUrl}`,
             index
         }));
@@ -817,7 +815,7 @@ function ScreenshotCarousel({
     }
 
     function showScreenshot(nextIndex: number) {
-        if (nextIndex === activeIndex) {
+        if (nextIndex === activeScreenshotIndex) {
             return;
         }
 
@@ -825,8 +823,8 @@ function ScreenshotCarousel({
     }
 
     function openFullscreenScreenshot(nextIndex: number) {
-        if (nextIndex !== activeIndex) {
-            setTransitionDirection(nextIndex < activeIndex ? 'prev' : 'next');
+        if (nextIndex !== activeScreenshotIndex) {
+            setTransitionDirection(nextIndex < activeScreenshotIndex ? 'prev' : 'next');
             setActiveIndex(nextIndex);
         }
 
@@ -895,9 +893,9 @@ function ScreenshotCarousel({
         showPreviousScreenshot();
     }
 
-    const activeScreenshot = screenshots[activeIndex] ?? null;
+    const activeScreenshot = screenshots[activeScreenshotIndex] ?? null;
     const fullscreenScreenshot = fullscreenIndex === null ? null : screenshots[fullscreenIndex];
-    const activeAspectRatio = screenshotRatios[activeIndex] ?? (16 / 9);
+    const activeAspectRatio = screenshotRatios[activeScreenshotIndex] ?? (16 / 9);
 
     return (
         <>
@@ -961,11 +959,11 @@ function ScreenshotCarousel({
                     {screenshots.map((screenshot, index) => (
                         <button
                             key={`${screenshot.sortOrder}-${screenshot.imageUrl}-indicator`}
-                            className={`carousel-indicator${index === activeIndex ? ' active' : ''}`}
+                            className={`carousel-indicator${index === activeScreenshotIndex ? ' active' : ''}`}
                             type="button"
                             onClick={() => showScreenshot(index)}
                             aria-label={`Show screenshot ${index + 1}`}
-                            aria-pressed={index === activeIndex}
+                            aria-pressed={index === activeScreenshotIndex}
                         />
                     ))}
                 </div>
@@ -973,7 +971,7 @@ function ScreenshotCarousel({
 
             {activeScreenshot ? (
                 <div className="detail-carousel-caption">
-                    <p className="eyebrow">Screenshot {activeIndex + 1} of {screenshots.length}</p>
+                    <p className="eyebrow">Screenshot {activeScreenshotIndex + 1} of {screenshots.length}</p>
                     <p>
                         {activeScreenshot.caption?.trim() || `${projectTitle} interface preview.`}
                     </p>
@@ -1030,10 +1028,6 @@ function ProjectListPage({
     const previousQueryKeyRef = useRef<string | null>(null);
     const routeKey = createRouteKey(filters);
     const previousRouteKeyRef = useRef(routeKey);
-    const currentQueryKey = createRouteKey({
-        searchInput,
-        selectedSkills
-    });
     const fetchQueryKey = createRouteKey({
         searchInput: deferredSearch,
         selectedSkills
