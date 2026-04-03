@@ -19,6 +19,7 @@ function Fail-Check {
 
 $solutionRoot = Join-Path $PSScriptRoot "..\..\ProjectPortfolio2026"
 $resultsRoot = Join-Path $solutionRoot "CoverageResults\dotnet"
+$summaryRoot = Join-Path $solutionRoot "CoverageResults\summary"
 $coverageSettingsPath = Join-Path $solutionRoot "coverage.runsettings"
 $minimumCoverage = if ($env:MINIMUM_COVERAGE) { [double]$env:MINIMUM_COVERAGE } else { 70.0 }
 $enforceCoverageGate = $true
@@ -33,6 +34,7 @@ try {
     }
 
     New-Item -ItemType Directory -Path $resultsRoot | Out-Null
+    New-Item -ItemType Directory -Path $summaryRoot -Force | Out-Null
 
     if (-not (Test-Path -LiteralPath $coverageSettingsPath)) {
         Fail-Check "Coverage settings file was not found at '$coverageSettingsPath'."
@@ -127,6 +129,18 @@ try {
         Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
         Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Combined .NET line coverage: $coveragePercent%"
     }
+
+    $dotnetSummary = @{
+        suite = '.NET'
+        testFiles = $testResultFiles.Count
+        passedTests = $passedTests
+        failedTests = $failedTests
+        skippedTests = $skippedTests
+        totalTests = $totalTests
+        lineCoverage = $coveragePercent
+    } | ConvertTo-Json
+
+    Set-Content -LiteralPath (Join-Path $summaryRoot 'dotnet-summary.json') -Value $dotnetSummary
 
     if ($coveragePercent -lt $minimumCoverage -and $enforceCoverageGate) {
         Fail-Check "Coverage check failed. Required: $minimumCoverage%. Actual: $coveragePercent%."
