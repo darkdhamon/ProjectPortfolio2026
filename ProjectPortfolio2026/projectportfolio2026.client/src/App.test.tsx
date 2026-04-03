@@ -4,6 +4,7 @@ import App from './App';
 import {
     buildDetailPath,
     buildListSearch,
+    buildProjectsPath,
     createRouteKey,
     formatFullDate,
     formatProjectDates,
@@ -15,6 +16,7 @@ import {
 } from './appSupport';
 
 const fetchMock = vi.fn<typeof fetch>();
+let isMobileViewport = false;
 
 describe('App', () => {
     beforeEach(() => {
@@ -22,16 +24,149 @@ describe('App', () => {
         vi.stubGlobal('crypto', {
             randomUUID: vi.fn(() => 'request-1')
         });
+        vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+            matches: query === '(max-width: 720px)' ? isMobileViewport : false,
+            media: query,
+            onchange: null,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            dispatchEvent: vi.fn()
+        })));
     });
 
     afterEach(() => {
         cleanup();
         window.history.replaceState({}, '', '/');
+        isMobileViewport = false;
+        vi.useRealTimers();
         vi.unstubAllGlobals();
         vi.clearAllMocks();
     });
 
+    it('renders the homepage carousel from the featured projects endpoint', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                },
+                {
+                    id: 64,
+                    title: 'Launch Control',
+                    startDate: '2024-06-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Release orchestration workspace.',
+                    isFeatured: true,
+                    skills: ['Accessibility'],
+                    technologies: ['ASP.NET Core']
+                }
+            ]
+        }));
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects');
+        expect(screen.getByRole('button', { name: 'Show next featured project' })).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledWith('/api/projects/featured?limit=5&requestId=request-1', expect.any(Object));
+    });
+
+    it('supports desktop keyboard navigation for the homepage carousel', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                },
+                {
+                    id: 64,
+                    title: 'Launch Control',
+                    startDate: '2024-06-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Release orchestration workspace.',
+                    isFeatured: true,
+                    skills: ['Accessibility'],
+                    technologies: ['ASP.NET Core']
+                }
+            ]
+        }));
+
+        render(<App />);
+
+        const carousel = await screen.findByRole('region', { name: 'Featured project carousel' });
+        fireEvent.keyDown(carousel, { key: 'ArrowRight' });
+
+        expect(await screen.findByRole('heading', { name: 'Launch Control' })).toBeInTheDocument();
+    });
+
+    it('uses swipe-only mobile carousel behavior without visible arrows', async () => {
+        isMobileViewport = true;
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                },
+                {
+                    id: 64,
+                    title: 'Launch Control',
+                    startDate: '2024-06-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Release orchestration workspace.',
+                    isFeatured: true,
+                    skills: ['Accessibility'],
+                    technologies: ['ASP.NET Core']
+                }
+            ]
+        }));
+
+        render(<App />);
+
+        const carousel = await screen.findByRole('region', { name: 'Featured project carousel' });
+        expect(screen.queryByRole('button', { name: 'Show next featured project' })).not.toBeInTheDocument();
+
+        fireEvent.touchStart(carousel, {
+            changedTouches: [{ clientX: 220 }]
+        });
+        fireEvent.touchEnd(carousel, {
+            changedTouches: [{ clientX: 80 }]
+        });
+
+        expect(await screen.findByRole('heading', { name: 'Launch Control' })).toBeInTheDocument();
+    });
+
     it('renders published projects and summary counts for the list view', async () => {
+        window.history.replaceState({}, '', '/projects');
         fetchMock.mockResolvedValueOnce(jsonResponse({
             requestId: 'request-1',
             items: [
@@ -60,13 +195,14 @@ describe('App', () => {
         expect(screen.getByText('Published Projects')).toBeInTheDocument();
         expect(screen.getByText('Visible Cards')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('button', { name: /Home/i })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Timeline/i })).toBeDisabled();
         expect(screen.getAllByText('Coming Soon').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'React' })).toHaveAttribute('aria-pressed', 'false');
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
     });
 
     it('shows loading and empty states for the list view', async () => {
+        window.history.replaceState({}, '', '/projects');
         fetchMock.mockResolvedValueOnce(jsonResponse({
             requestId: 'request-1',
             items: [],
@@ -112,7 +248,7 @@ describe('App', () => {
 
         expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('link', { name: 'Back to project list' })).toHaveAttribute('href', '/?search=react&skills=Testing');
+        expect(screen.getByRole('link', { name: 'Back to project list' })).toHaveAttribute('href', '/projects?search=react&skills=Testing');
     });
 
     it('renders rich project detail sections and media fallbacks', async () => {
@@ -218,7 +354,7 @@ describe('App', () => {
 
         fireEvent.click(await screen.findByRole('link', { name: 'Back to project list' }));
 
-        expect(window.location.pathname).toBe('/');
+        expect(window.location.pathname).toBe('/projects');
         expect(window.location.search).toBe('?search=react');
     });
 
@@ -231,11 +367,11 @@ describe('App', () => {
         expect(await screen.findByText('That project could not be found or is no longer public.')).toBeInTheDocument();
     });
 
-    it('surfaces API failures for the list view', async () => {
+    it('surfaces API failures for the homepage', async () => {
         fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
-            message: 'Projects are temporarily unavailable.'
+            message: 'Featured projects are temporarily unavailable.'
         }), {
-            status: 503,
+            status: 400,
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -243,8 +379,41 @@ describe('App', () => {
 
         render(<App />);
 
-        expect(await screen.findByText('Projects are temporarily unavailable.')).toBeInTheDocument();
+        expect(await screen.findByText('Featured projects are temporarily unavailable.')).toBeInTheDocument();
     });
+
+    it('retries the homepage request when the API is still starting up', async () => {
+        fetchMock
+            .mockResolvedValueOnce(new Response('<!doctype html><html><body>Starting up</body></html>', {
+                status: 503,
+                headers: {
+                    'Content-Type': 'text/html'
+                }
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                requestId: 'request-1',
+                items: [
+                    {
+                        id: 42,
+                        title: 'Portfolio Refresh',
+                        startDate: '2025-01-01',
+                        endDate: null,
+                        primaryImageUrl: null,
+                        shortDescription: 'Rebuilt the public portfolio experience.',
+                        isFeatured: true,
+                        skills: ['React'],
+                        technologies: ['TypeScript']
+                    }
+                ]
+            }));
+
+        render(<App />);
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' }, { timeout: 5000 })).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    }, 7000);
 
     it('surfaces detail API failures', async () => {
         window.history.replaceState({}, '', '/projects/404');
@@ -271,8 +440,12 @@ describe('App helpers', () => {
         });
     });
 
-    it('parses list and detail routes', () => {
+    it('parses home, list, and detail routes', () => {
         expect(parseRoute({ pathname: '/', search: '?search=react' })).toEqual({
+            kind: 'home'
+        });
+
+        expect(parseRoute({ pathname: '/projects', search: '?search=react' })).toEqual({
             kind: 'list',
             filters: {
                 searchInput: 'react',
@@ -293,6 +466,7 @@ describe('App helpers', () => {
             selectedSkills: ['Testing', 'React']
         })).toBe('?search=React&skills=Testing%2CReact');
 
+        expect(buildProjectsPath('?search=React')).toBe('/projects?search=React');
         expect(buildDetailPath(42, '?search=React')).toBe('/projects/42?search=React');
         expect(createRouteKey({
             searchInput: ' React ',

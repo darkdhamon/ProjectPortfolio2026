@@ -190,6 +190,109 @@ public sealed class ProjectRepositoryTests
         });
     }
 
+    [Test]
+    public async Task ListFeaturedAsync_ReturnsAtMostFiveFeaturedProjects_WhenEnoughFeaturedProjectsExist()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = new ProjectRepository(dbContext);
+
+        for (var index = 1; index <= 7; index += 1)
+        {
+            await repository.AddAsync(new Project
+            {
+                Title = $"Featured Project {index}",
+                StartDate = new DateOnly(2026, index, 1),
+                ShortDescription = $"Featured summary {index}",
+                LongDescriptionMarkdown = $"Featured markdown {index}",
+                IsPublished = true,
+                IsFeatured = true
+            });
+        }
+
+        var projects = await repository.ListFeaturedAsync(5);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(projects, Has.Count.EqualTo(5));
+            Assert.That(projects.All(project => project.IsFeatured), Is.True);
+            Assert.That(projects.Select(project => project.Id).Distinct().Count(), Is.EqualTo(5));
+        });
+    }
+
+    [Test]
+    public async Task ListFeaturedAsync_FillsRemainingSlotsWithMostRecentPublishedProjects_WhenFeaturedProjectsAreLimited()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = new ProjectRepository(dbContext);
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Featured Alpha",
+            StartDate = new DateOnly(2026, 1, 1),
+            ShortDescription = "Featured summary",
+            LongDescriptionMarkdown = "Featured markdown",
+            IsPublished = true,
+            IsFeatured = true
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Recent Gamma",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Recent summary",
+            LongDescriptionMarkdown = "Recent markdown",
+            IsPublished = true
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Recent Beta",
+            StartDate = new DateOnly(2026, 3, 1),
+            ShortDescription = "Recent summary",
+            LongDescriptionMarkdown = "Recent markdown",
+            IsPublished = true
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Recent Delta",
+            StartDate = new DateOnly(2026, 2, 1),
+            ShortDescription = "Recent summary",
+            LongDescriptionMarkdown = "Recent markdown",
+            IsPublished = true
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Recent Epsilon",
+            StartDate = new DateOnly(2025, 12, 1),
+            ShortDescription = "Recent summary",
+            LongDescriptionMarkdown = "Recent markdown",
+            IsPublished = true
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Hidden Draft",
+            StartDate = new DateOnly(2026, 5, 1),
+            ShortDescription = "Draft summary",
+            LongDescriptionMarkdown = "Draft markdown",
+            IsPublished = false,
+            IsFeatured = true
+        });
+
+        var projects = await repository.ListFeaturedAsync(5);
+
+        Assert.That(projects.Select(project => project.Title), Is.EqualTo(new[]
+        {
+            "Featured Alpha",
+            "Recent Gamma",
+            "Recent Beta",
+            "Recent Delta",
+            "Recent Epsilon"
+        }));
+    }
+
     private static PortfolioDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<PortfolioDbContext>()
