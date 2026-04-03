@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Microsoft Edge",
+      "type": "msedge",
+      "request": "launch",
+      "url": "https://localhost:54307",
+      "webRoot": "${workspaceFolder}"
+    }
+  ]
+}

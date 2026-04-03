@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import profilePlaceholder from './assets/Placeholders/Profile-Placeholder.png';
 import projectImageUnavailable from './assets/Placeholders/Project-Image-Unavailable.png';
 import screenshotMissing from './assets/Placeholders/Screenshot-Missing.png';
@@ -89,6 +89,15 @@ interface ApiErrorResponse {
 }
 
 const pageSize = 6;
+const navItems = [
+    { label: 'Projects', href: '/', description: 'Browse shipped work and project detail stories.' },
+    { label: 'Home', description: 'Featured highlights and introduction.' },
+    { label: 'Timeline', description: 'Career milestones, education, and certifications.' },
+    { label: 'About', description: 'Background, strengths, and developer story.' },
+    { label: 'Resume', description: 'Resume hub and downloadable materials.' },
+    { label: 'Contact', description: 'Direct outreach paths and social links.' },
+    { label: 'Blog', description: 'Writing, updates, and thought pieces.' }
+] as const;
 
 function App() {
     const [location, setLocation] = useState<AppLocation>(() => readLocation());
@@ -103,6 +112,7 @@ function App() {
     }, []);
 
     const route = useMemo(() => parseRoute(location), [location]);
+    const activeNavLabel = route.kind === 'detail' || route.kind === 'list' ? 'Projects' : '';
 
     function navigate(nextPath: string, options?: { replace?: boolean; preserveScroll?: boolean }) {
         const method = options?.replace ? 'replaceState' : 'pushState';
@@ -114,19 +124,86 @@ function App() {
         }
     }
 
-    if (route.kind === 'detail') {
-        return (
-            <ProjectDetailPage
-                projectId={route.projectId}
-                listSearch={route.listSearch}
-                onNavigate={navigate} />
-        );
-    }
-
     return (
-        <ProjectListPage
-            filters={route.filters}
-            onNavigate={navigate} />
+        <SiteShell
+            activeNavLabel={activeNavLabel}
+            onNavigate={navigate}>
+            {route.kind === 'detail' ? (
+                <ProjectDetailPage
+                    projectId={route.projectId}
+                    listSearch={route.listSearch}
+                    onNavigate={navigate} />
+            ) : (
+                <ProjectListPage
+                    filters={route.filters}
+                    onNavigate={navigate} />
+            )}
+        </SiteShell>
+    );
+}
+
+function SiteShell({
+    activeNavLabel,
+    onNavigate,
+    children
+}: {
+    activeNavLabel: string;
+    onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
+    children: ReactNode;
+}) {
+    return (
+        <div className="site-shell">
+            <aside className="site-sidebar" aria-label="Primary">
+                <div className="site-brand">
+                    <p className="brand-mark">PP26</p>
+                    <div>
+                        <strong>Project Portfolio</strong>
+                        <p className="brand-copy">Built to scale as new public sections come online.</p>
+                    </div>
+                </div>
+
+                <nav className="site-nav" aria-label="Primary site navigation">
+                    {navItems.map(item => item.href ? (
+                        <InternalLink
+                            key={item.label}
+                            className={`nav-link${activeNavLabel === item.label ? ' active' : ''}`}
+                            href={item.href}
+                            ariaCurrent={activeNavLabel === item.label ? 'page' : undefined}
+                            onNavigate={onNavigate}>
+                            {item.label}
+                        </InternalLink>
+                    ) : (
+                        <button
+                            key={item.label}
+                            className="nav-link nav-link-disabled"
+                            type="button"
+                            disabled
+                            aria-disabled="true">
+                            <span>{item.label}</span>
+                            <span className="coming-soon-pill">Coming Soon</span>
+                        </button>
+                    ))}
+                </nav>
+
+                <p className="sidebar-footnote">
+                    Resume will eventually include the Work History subsection.
+                </p>
+            </aside>
+
+            <div className="site-main">
+                <header className="site-header">
+                    <div>
+                        <p className="header-kicker">Public Portfolio</p>
+                        <h1 className="site-title">Navigation Preview</h1>
+                    </div>
+                    <p className="site-header-copy">
+                        Projects are live now. Planned sections are visible to establish the long-term site structure.
+                    </p>
+                </header>
+
+                {children}
+            </div>
+        </div>
     );
 }
 
@@ -752,12 +829,14 @@ function ProjectDetailPage({
 function InternalLink({
     className,
     href,
+    ariaCurrent,
     onNavigate,
     children,
     preserveScroll
 }: {
     className?: string;
     href: string;
+    ariaCurrent?: 'page';
     onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
     children: string;
     preserveScroll?: boolean;
@@ -766,6 +845,7 @@ function InternalLink({
         <a
             className={className}
             href={href}
+            aria-current={ariaCurrent}
             onClick={event => {
                 event.preventDefault();
                 onNavigate(href, { preserveScroll });
