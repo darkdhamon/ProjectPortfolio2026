@@ -106,6 +106,59 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
         };
     }
 
+    public async Task<IReadOnlyList<ProjectListItem>> ListFeaturedAsync(
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedLimit = Math.Clamp(limit, 1, 5);
+        var publishedProjects = await CreateProjectQuery()
+            .Where(project => project.IsPublished)
+            .OrderByDescending(project => project.StartDate)
+            .ThenBy(project => project.Title)
+            .Select(project => new ProjectListItem
+            {
+                Id = project.Id,
+                Title = project.Title,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                PrimaryImageUrl = project.PrimaryImageUrl,
+                ShortDescription = project.ShortDescription,
+                GitHubUrl = project.GitHubUrl,
+                DemoUrl = project.DemoUrl,
+                IsFeatured = project.IsFeatured,
+                Skills = project.Skills
+                    .Select(skill => skill.Name)
+                    .OrderBy(skill => skill)
+                    .ToList(),
+                Technologies = project.Technologies
+                    .Select(technology => technology.Name)
+                    .OrderBy(technology => technology)
+                    .ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        var featuredProjects = publishedProjects
+            .Where(project => project.IsFeatured)
+            .ToList();
+        var selectedProjects = featuredProjects.Count > normalizedLimit
+            ? Shuffle(featuredProjects).Take(normalizedLimit).ToList()
+            : featuredProjects.Take(normalizedLimit).ToList();
+
+        if (selectedProjects.Count < normalizedLimit)
+        {
+            var selectedIds = selectedProjects
+                .Select(project => project.Id)
+                .ToHashSet();
+            var fallbackProjects = publishedProjects
+                .Where(project => !selectedIds.Contains(project.Id))
+                .Take(normalizedLimit - selectedProjects.Count);
+
+            selectedProjects.AddRange(fallbackProjects);
+        }
+
+        return selectedProjects;
+    }
+
     public async Task<Project?> UpdateAsync(Project project, CancellationToken cancellationToken = default)
     {
         var existingProject = await dbContext.Projects
@@ -175,5 +228,18 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
             collaborator.Roles ??= [];
             target.Add(collaborator);
         }
+    }
+
+    private static IEnumerable<TItem> Shuffle<TItem>(IReadOnlyList<TItem> items)
+    {
+        var shuffledItems = items.ToList();
+
+        for (var index = shuffledItems.Count - 1; index > 0; index -= 1)
+        {
+            var swapIndex = Random.Shared.Next(index + 1);
+            (shuffledItems[index], shuffledItems[swapIndex]) = (shuffledItems[swapIndex], shuffledItems[index]);
+        }
+
+        return shuffledItems;
     }
 }

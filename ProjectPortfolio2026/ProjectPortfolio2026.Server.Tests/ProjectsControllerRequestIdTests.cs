@@ -70,6 +70,38 @@ public sealed class ProjectsControllerRequestIdTests
     }
 
     [Test]
+    public async Task ListFeaturedAsync_UsesRequestIdForFeaturedProjectSummaries()
+    {
+        var repository = new StubProjectRepository();
+        repository.FeaturedResult =
+        [
+            new ProjectListItem
+            {
+                Id = 8,
+                Title = "Featured Portfolio",
+                StartDate = new DateOnly(2026, 4, 1),
+                ShortDescription = "Featured summary.",
+                IsFeatured = true
+            }
+        ];
+
+        var controller = CreateController(repository);
+        controller.ControllerContext.HttpContext.Items[RequestIdContext.ItemKey] = "featured-id";
+
+        var actionResult = await controller.ListFeaturedAsync(5, CancellationToken.None);
+        var okResult = actionResult.Result as OkObjectResult;
+        var response = okResult?.Value as FeaturedProjectsResponse;
+
+        Assert.That(response, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(response!.RequestId, Is.EqualTo("featured-id"));
+            Assert.That(response.Items, Has.Count.EqualTo(1));
+            Assert.That(response.Items[0].RequestId, Is.EqualTo("featured-id"));
+        });
+    }
+
+    [Test]
     public async Task CreateAsync_UsesBodyRequestId_OverQueryStringAndHeader()
     {
         var repository = new StubProjectRepository();
@@ -162,6 +194,8 @@ public sealed class ProjectsControllerRequestIdTests
 
         public ProjectListPage ListResult { get; set; } = new();
 
+        public IReadOnlyList<ProjectListItem> FeaturedResult { get; set; } = [];
+
         public string? LastListSearch { get; private set; }
 
         public IReadOnlyCollection<string> LastListSkills { get; private set; } = [];
@@ -194,6 +228,13 @@ public sealed class ProjectsControllerRequestIdTests
             LastListPage = page;
             LastListPageSize = pageSize;
             return Task.FromResult(ListResult);
+        }
+
+        public Task<IReadOnlyList<ProjectListItem>> ListFeaturedAsync(
+            int limit,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(FeaturedResult);
         }
 
         public Task<Project?> UpdateAsync(Project project, CancellationToken cancellationToken = default)

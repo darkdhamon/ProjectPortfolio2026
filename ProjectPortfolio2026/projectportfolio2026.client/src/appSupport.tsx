@@ -8,9 +8,17 @@ export interface AppLocation {
     search: string;
 }
 
+const homeRoutePattern = /^\/?$/;
+const listRoutePattern = /^\/projects\/?$/;
 const detailRoutePattern = /^\/projects\/(?<id>\d+)\/?$/;
 
 export function parseRoute(location: AppLocation) {
+    if (homeRoutePattern.test(location.pathname)) {
+        return {
+            kind: 'home' as const
+        };
+    }
+
     const match = detailRoutePattern.exec(location.pathname);
     if (match?.groups?.id) {
         return {
@@ -20,9 +28,15 @@ export function parseRoute(location: AppLocation) {
         };
     }
 
+    if (listRoutePattern.test(location.pathname)) {
+        return {
+            kind: 'list' as const,
+            filters: parseListFilters(location.search)
+        };
+    }
+
     return {
-        kind: 'list' as const,
-        filters: parseListFilters(location.search)
+        kind: 'home' as const
     };
 }
 
@@ -48,6 +62,10 @@ export function buildListSearch(filters: ListFilters) {
 
     const search = params.toString();
     return search.length > 0 ? `?${search}` : '';
+}
+
+export function buildProjectsPath(listSearch: string) {
+    return `/projects${listSearch}`;
 }
 
 export function buildDetailPath(projectId: number, listSearch: string) {
