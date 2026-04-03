@@ -59,6 +59,9 @@ describe('App', () => {
         expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
         expect(screen.getByText('Published Projects')).toBeInTheDocument();
         expect(screen.getByText('Visible Cards')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByRole('button', { name: /Home/i })).toBeDisabled();
+        expect(screen.getAllByText('Coming Soon').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'React' })).toHaveAttribute('aria-pressed', 'false');
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
     });
@@ -108,6 +111,7 @@ describe('App', () => {
         render(<App />);
 
         expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
         expect(screen.getByRole('link', { name: 'Back to project list' })).toHaveAttribute('href', '/?search=react&skills=Testing');
     });
 

@@ -1,3 +1,163 @@
+.site-shell {
+    display: grid;
+    grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at bottom left, rgba(111, 24, 79, 0.24), transparent 18%),
+        linear-gradient(180deg, #091321 0%, #0d1828 100%);
+}
+
+.site-sidebar {
+    position: sticky;
+    top: 0;
+    display: grid;
+    align-content: start;
+    gap: 1.4rem;
+    min-height: 100vh;
+    padding: 1.25rem 1rem;
+    border-right: 1px solid rgba(111, 137, 171, 0.16);
+    background:
+        linear-gradient(180deg, rgba(9, 19, 33, 0.98), rgba(8, 17, 31, 0.94)),
+        radial-gradient(circle at top left, rgba(72, 113, 184, 0.2), transparent 35%);
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+.site-brand,
+.site-nav,
+.site-header {
+    display: grid;
+}
+
+.site-brand {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.9rem;
+    align-items: start;
+    padding: 0.95rem 1rem;
+    border: 1px solid rgba(111, 137, 171, 0.16);
+    border-radius: 1.2rem;
+    background: rgba(15, 31, 54, 0.78);
+}
+
+.brand-mark,
+.brand-copy,
+.sidebar-footnote,
+.header-kicker,
+.site-header-copy {
+    margin: 0;
+}
+
+.brand-mark {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    aspect-ratio: 1;
+    border-radius: 1rem;
+    background:
+        radial-gradient(circle at top left, rgba(245, 183, 48, 0.3), transparent 55%),
+        linear-gradient(145deg, rgba(26, 66, 118, 0.96), rgba(17, 36, 62, 0.96));
+    color: #f4f8fe;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.site-brand strong,
+.site-title {
+    color: #f4f8fe;
+}
+
+.brand-copy,
+.sidebar-footnote,
+.site-header-copy {
+    color: rgba(213, 224, 239, 0.76);
+    line-height: 1.6;
+}
+
+.site-nav {
+    gap: 0.65rem;
+}
+
+.nav-link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+    min-height: 3rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(111, 137, 171, 0.14);
+    border-radius: 1rem;
+    background: rgba(11, 26, 45, 0.72);
+    color: #dce7f5;
+    font-weight: 600;
+    text-align: left;
+    text-decoration: none;
+}
+
+.nav-link.active {
+    border-color: rgba(245, 183, 48, 0.55);
+    background:
+        linear-gradient(135deg, rgba(25, 56, 99, 0.96), rgba(16, 34, 58, 0.96));
+    color: #fff7e8;
+    box-shadow: 0 16px 30px rgba(6, 14, 27, 0.34);
+}
+
+.nav-link-disabled {
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.nav-link-disabled:disabled {
+    color: rgba(220, 231, 245, 0.82);
+}
+
+.coming-soon-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(245, 183, 48, 0.16);
+    color: #ffd77d;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.sidebar-footnote {
+    padding: 0 0.2rem;
+    font-size: 0.9rem;
+}
+
+.site-main {
+    display: grid;
+    align-content: start;
+    gap: 1.25rem;
+    min-width: 0;
+    padding-right: 2rem;
+}
+
+.site-header {
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 30rem);
+    gap: 1rem;
+    align-items: center;
+    padding: 1.4rem 2rem 0;
+}
+
+.header-kicker {
+    color: #ffd77d;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+}
+
+.site-title {
+    margin: 0.15rem 0 0;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+}
+
 .portfolio-page {
     display: grid;
     gap: 1.5rem;
@@ -201,7 +361,8 @@
 .skill-chip:hover,
 .card-links a:hover,
 .back-link:hover,
-.inline-links a:hover {
+.inline-links a:hover,
+.nav-link:hover {
     transform: translateY(-1px);
 }
 
@@ -620,6 +781,23 @@ h3 {
 }
 
 @media (max-width: 900px) {
+    .site-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .site-sidebar {
+        position: static;
+        min-height: auto;
+        padding-bottom: 1rem;
+        border-right: 0;
+        border-bottom: 1px solid rgba(111, 137, 171, 0.16);
+    }
+
+    .site-header {
+        grid-template-columns: 1fr;
+        padding-top: 1rem;
+    }
+
     .detail-hero,
     .project-card,
     .detail-grid {
@@ -632,8 +810,18 @@ h3 {
 }
 
 @media (max-width: 720px) {
+    .site-sidebar,
+    .site-header,
     .portfolio-page {
         padding: 1rem;
+    }
+
+    .site-main {
+        padding-right: 0;
+    }
+
+    .site-nav {
+        grid-template-columns: 1fr;
     }
 
     .sticky-filters {
@@ -659,6 +847,10 @@ h3 {
 
     .clear-button {
         width: 100%;
+    }
+
+    .nav-link {
+        grid-template-columns: 1fr auto;
     }
 
     .image-shell,

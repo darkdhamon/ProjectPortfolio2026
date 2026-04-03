@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import profilePlaceholder from './assets/Placeholders/Profile-Placeholder.png';
 import projectImageUnavailable from './assets/Placeholders/Project-Image-Unavailable.png';
 import screenshotMissing from './assets/Placeholders/Screenshot-Missing.png';
@@ -88,7 +88,28 @@ interface ApiErrorResponse {
     message?: string;
 }
 
+interface SiteShellContent {
+    kicker: string;
+    title: string;
+    summary: string;
+}
+
+interface NavItem {
+    label: string;
+    description: string;
+    href?: string;
+}
+
 const pageSize = 6;
+const navItems: readonly NavItem[] = [
+    { label: 'Projects', href: '/', description: 'Browse shipped work and project detail stories.' },
+    { label: 'Home', description: 'Featured highlights and introduction.' },
+    { label: 'Timeline', description: 'Career milestones, education, and certifications.' },
+    { label: 'About', description: 'Background, strengths, and developer story.' },
+    { label: 'Resume', description: 'Resume hub and downloadable materials.' },
+    { label: 'Contact', description: 'Direct outreach paths and social links.' },
+    { label: 'Blog', description: 'Writing, updates, and thought pieces.' }
+] as const;
 
 function App() {
     const [location, setLocation] = useState<AppLocation>(() => readLocation());
@@ -103,6 +124,18 @@ function App() {
     }, []);
 
     const route = useMemo(() => parseRoute(location), [location]);
+    const activeNavLabel = route.kind === 'detail' || route.kind === 'list' ? 'Projects' : '';
+    const shellContent = route.kind === 'detail'
+        ? {
+            kicker: 'Project Portfolio',
+            title: 'Project Detail',
+            summary: 'Review the project story, supporting media, collaborators, and milestone context.'
+        } satisfies SiteShellContent
+        : {
+            kicker: 'Project Portfolio',
+            title: 'Projects',
+            summary: 'Browse shipped work, search the portfolio, and move into individual project case studies.'
+        } satisfies SiteShellContent;
 
     function navigate(nextPath: string, options?: { replace?: boolean; preserveScroll?: boolean }) {
         const method = options?.replace ? 'replaceState' : 'pushState';
@@ -114,19 +147,87 @@ function App() {
         }
     }
 
-    if (route.kind === 'detail') {
-        return (
-            <ProjectDetailPage
-                projectId={route.projectId}
-                listSearch={route.listSearch}
-                onNavigate={navigate} />
-        );
-    }
-
     return (
-        <ProjectListPage
-            filters={route.filters}
-            onNavigate={navigate} />
+        <SiteShell
+            activeNavLabel={activeNavLabel}
+            content={shellContent}
+            onNavigate={navigate}>
+            {route.kind === 'detail' ? (
+                <ProjectDetailPage
+                    projectId={route.projectId}
+                    listSearch={route.listSearch}
+                    onNavigate={navigate} />
+            ) : (
+                <ProjectListPage
+                    filters={route.filters}
+                    onNavigate={navigate} />
+            )}
+        </SiteShell>
+    );
+}
+
+function SiteShell({
+    activeNavLabel,
+    content,
+    onNavigate,
+    children
+}: {
+    activeNavLabel: string;
+    content: SiteShellContent;
+    onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
+    children: ReactNode;
+}) {
+    return (
+        <div className="site-shell">
+            <aside className="site-sidebar" aria-label="Primary">
+                <div className="site-brand">
+                    <p className="brand-mark">PP26</p>
+                    <div>
+                        <strong>Project Portfolio</strong>
+                        <p className="brand-copy">Built to scale as new public sections come online.</p>
+                    </div>
+                </div>
+
+                <nav className="site-nav" aria-label="Primary site navigation">
+                    {navItems.map(item => item.href ? (
+                        <InternalLink
+                            key={item.label}
+                            className={`nav-link${activeNavLabel === item.label ? ' active' : ''}`}
+                            href={item.href}
+                            ariaCurrent={activeNavLabel === item.label ? 'page' : undefined}
+                            onNavigate={onNavigate}>
+                            {item.label}
+                        </InternalLink>
+                    ) : (
+                        <button
+                            key={item.label}
+                            className="nav-link nav-link-disabled"
+                            type="button"
+                            disabled
+                            aria-disabled="true">
+                            <span>{item.label}</span>
+                            <span className="coming-soon-pill">Coming Soon</span>
+                        </button>
+                    ))}
+                </nav>
+
+                <p className="sidebar-footnote">
+                    Resume will eventually include the Work History subsection.
+                </p>
+            </aside>
+
+            <div className="site-main">
+                <header className="site-header">
+                    <div>
+                        <p className="header-kicker">{content.kicker}</p>
+                        <p className="site-title">{content.title}</p>
+                    </div>
+                    <p className="site-header-copy">{content.summary}</p>
+                </header>
+
+                {children}
+            </div>
+        </div>
     );
 }
 
@@ -752,12 +853,14 @@ function ProjectDetailPage({
 function InternalLink({
     className,
     href,
+    ariaCurrent,
     onNavigate,
     children,
     preserveScroll
 }: {
     className?: string;
     href: string;
+    ariaCurrent?: 'page';
     onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
     children: string;
     preserveScroll?: boolean;
@@ -766,6 +869,7 @@ function InternalLink({
         <a
             className={className}
             href={href}
+            aria-current={ariaCurrent}
             onClick={event => {
                 event.preventDefault();
                 onNavigate(href, { preserveScroll });
