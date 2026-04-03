@@ -1,4 +1,5 @@
 import { Fragment, startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent, type TouchEvent } from 'react';
+import portfolioLogoIcon from './assets/Logo/Portfolio-Logo-Icon.png';
 import profilePlaceholder from './assets/Placeholders/Profile-Placeholder.png';
 import projectImageUnavailable from './assets/Placeholders/Project-Image-Unavailable.png';
 import screenshotMissing from './assets/Placeholders/Screenshot-Missing.png';
@@ -581,7 +582,9 @@ function SiteShell({
         <div className="site-shell">
             <aside className="site-sidebar" aria-label="Primary">
                 <div className="site-brand">
-                    <p className="brand-mark">PP26</p>
+                    <div className="brand-mark" aria-hidden="true">
+                        <img src={portfolioLogoIcon} alt="" />
+                    </div>
                     <div>
                         <strong>Project Portfolio</strong>
                         <p className="brand-copy">Built to scale as new public sections come online.</p>

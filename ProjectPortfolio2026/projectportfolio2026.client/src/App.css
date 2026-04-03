@@ -1,10 +1,25 @@
 .site-shell {
+    position: relative;
+    isolation: isolate;
     display: grid;
     grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
     min-height: 100vh;
     background:
         radial-gradient(circle at bottom left, rgba(111, 24, 79, 0.24), transparent 18%),
         linear-gradient(180deg, #091321 0%, #0d1828 100%);
+}
+
+.site-shell::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.2;
+    background:
+        linear-gradient(180deg, rgba(9, 19, 33, 0.2), rgba(9, 19, 33, 0.52)),
+        url('./assets/Logo/Portfolio-Logo-Full.png') center 5rem / min(72rem, calc(100vw - 4rem)) no-repeat;
+    mix-blend-mode: screen;
 }
 
 .site-sidebar {
@@ -54,13 +69,20 @@
     width: 3rem;
     aspect-ratio: 1;
     border-radius: 1rem;
+    padding: 0.2rem;
     background:
-        radial-gradient(circle at top left, rgba(245, 183, 48, 0.3), transparent 55%),
-        linear-gradient(145deg, rgba(26, 66, 118, 0.96), rgba(17, 36, 62, 0.96));
-    color: #f4f8fe;
-    font-size: 0.95rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
+        radial-gradient(circle at top left, rgba(99, 222, 255, 0.2), transparent 55%),
+        linear-gradient(145deg, rgba(19, 43, 78, 0.96), rgba(11, 27, 49, 0.96));
+    box-shadow:
+        inset 0 0 0 1px rgba(126, 233, 255, 0.1),
+        0 10px 22px rgba(7, 16, 30, 0.3);
+}
+
+.brand-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 18px rgba(99, 222, 255, 0.2));
 }
 
 .site-title {
@@ -1477,6 +1499,11 @@ h3 {
 }
 
 @media (max-width: 720px) {
+    .site-shell::before {
+        background-size: min(34rem, calc(100vw - 2rem));
+        background-position: center 6rem;
+    }
+
     .site-sidebar,
     .site-header,
     .home-page,
