@@ -35,3 +35,4 @@
 - If `dotnet ef` is unavailable when generating Entity Framework migrations, install the matching `dotnet-ef` tool version first before retrying the migration command.
 - When the .NET coverage collector writes empty Cobertura files under a `TestResults` directory on Windows, switch the coverage script to a different results folder name such as `CoverageResults`.
 - If PowerShell cannot resolve `node` or `npm` on Windows, verify that the Node.js toolchain is installed before attempting frontend dependency changes or client build verification.
+- If Visual Studio deployment for the `.esproj` fails with `Value cannot be null. Parameter name: source` while referencing `launch.json`, restore or recreate `projectportfolio2026.client/.vscode/launch.json`; the JavaScript project template expects that debug profile to exist.
