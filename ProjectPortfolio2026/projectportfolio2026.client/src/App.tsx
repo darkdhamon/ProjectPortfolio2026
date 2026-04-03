@@ -1,4 +1,5 @@
-import { startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type TouchEvent } from 'react';
+import { Fragment, startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent, type TouchEvent } from 'react';
+import portfolioLogoIcon from './assets/Logo/Portfolio-Logo-Icon.png';
 import profilePlaceholder from './assets/Placeholders/Profile-Placeholder.png';
 import projectImageUnavailable from './assets/Placeholders/Project-Image-Unavailable.png';
 import screenshotMissing from './assets/Placeholders/Screenshot-Missing.png';
@@ -9,6 +10,7 @@ import {
     createRouteKey,
     formatFullDate,
     formatProjectDates,
+    getProjectYearSpacerLabel,
     mergeProjects,
     parseRoute,
     readLocation,
@@ -174,6 +176,21 @@ async function fetchJsonWithStartupRetry<TPayload>(
     init: RequestInit & { signal: AbortSignal },
     fallbackMessage: string
 ) {
+    const { payload } = await fetchResponsePayloadWithStartupRetry<TPayload>(input, init, fallbackMessage);
+
+    if (payload === null) {
+        throw new RetryableApiError(startupRetryMessage);
+    }
+
+    return payload as TPayload;
+}
+
+async function fetchResponsePayloadWithStartupRetry<TPayload>(
+    input: string,
+    init: RequestInit & { signal: AbortSignal },
+    fallbackMessage: string,
+    acceptedErrorStatuses: number[] = []
+) {
     let attempt = 0;
 
     while (true) {
@@ -181,7 +198,7 @@ async function fetchJsonWithStartupRetry<TPayload>(
             const response = await fetch(input, init);
             const payload = await readResponsePayload<TPayload>(response);
 
-            if (!response.ok) {
+            if (!response.ok && !acceptedErrorStatuses.includes(response.status)) {
                 const apiMessage = isApiErrorResponse(payload) ? payload.message : undefined;
 
                 if (response.status >= 500) {
@@ -191,11 +208,7 @@ async function fetchJsonWithStartupRetry<TPayload>(
                 throw new Error(apiMessage ?? fallbackMessage);
             }
 
-            if (payload === null) {
-                throw new RetryableApiError(startupRetryMessage);
-            }
-
-            return payload as TPayload;
+            return { response, payload };
         } catch (caughtError) {
             if ((caughtError as Error).name === 'AbortError') {
                 throw caughtError;
@@ -569,10 +582,14 @@ function SiteShell({
         <div className="site-shell">
             <aside className="site-sidebar" aria-label="Primary">
                 <div className="site-brand">
-                    <p className="brand-mark">PP26</p>
+                    <div className="brand-mark" aria-hidden="true">
+                        <img src={portfolioLogoIcon} alt="" />
+                    </div>
                     <div>
-                        <strong>Project Portfolio</strong>
-                        <p className="brand-copy">Built to scale as new public sections come online.</p>
+                        <strong>
+                            <span>Project</span>
+                            <span>Portfolio</span>
+                        </strong>
                     </div>
                 </div>
 
@@ -698,6 +715,296 @@ function getFeaturedCardState(index: number, activeIndex: number, total: number)
     return 'hidden';
 }
 
+function ScreenshotCarousel({
+    projectTitle,
+    screenshots
+}: {
+    projectTitle: string;
+    screenshots: ProjectScreenshot[];
+}) {
+    const [activeIndex, setActiveIndex] = useState(0);
+    const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
+    const [transitionDirection, setTransitionDirection] = useState<'prev' | 'next'>('next');
+    const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
+    const [screenshotRatios, setScreenshotRatios] = useState<Record<number, number>>({});
+    const touchStartXRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(max-width: 720px)');
+        const updateIsMobile = (event?: MediaQueryListEvent) => {
+            setIsMobile(event?.matches ?? mediaQuery.matches);
+        };
+
+        updateIsMobile();
+        mediaQuery.addEventListener('change', updateIsMobile);
+        return () => mediaQuery.removeEventListener('change', updateIsMobile);
+    }, []);
+
+    const activeScreenshotIndex = activeIndex >= screenshots.length ? 0 : activeIndex;
+
+    useEffect(() => {
+        if (fullscreenIndex === null) {
+            return;
+        }
+
+        const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setFullscreenIndex(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [fullscreenIndex]);
+
+    const displayScreenshots = screenshots.length === 1
+        ? [{
+            screenshot: screenshots[0],
+            state: 'active',
+            key: `active-${screenshots[0]?.sortOrder ?? 0}`,
+            index: 0
+        }]
+        : screenshots.length === 2
+        ? screenshots.flatMap((screenshot, index) => {
+            const isActive = index === activeScreenshotIndex;
+
+            return [
+                {
+                    screenshot,
+                    state: isActive ? 'active' : transitionDirection === 'next' ? 'next1' : 'prev1',
+                    key: `center-${screenshot.sortOrder}-${index}`,
+                    index
+                },
+                {
+                    screenshot,
+                    state: isActive ? 'hidden' : transitionDirection === 'next' ? 'prev1' : 'next1',
+                    key: `side-${screenshot.sortOrder}-${index}`,
+                    index
+                }
+            ];
+        })
+        : screenshots.map((screenshot, index) => ({
+            screenshot,
+            state: getFeaturedCardState(index, activeScreenshotIndex, screenshots.length),
+            key: `${screenshot.sortOrder}-${screenshot.imageUrl}`,
+            index
+        }));
+
+    function showRelativeScreenshot(step: number) {
+        setTransitionDirection(step < 0 ? 'prev' : 'next');
+        setActiveIndex(currentIndex => {
+            const nextIndex = currentIndex + step;
+            return (nextIndex + screenshots.length) % screenshots.length;
+        });
+    }
+
+    function showPreviousScreenshot() {
+        if (screenshots.length <= 1) {
+            return;
+        }
+
+        showRelativeScreenshot(-1);
+    }
+
+    function showNextScreenshot() {
+        if (screenshots.length <= 1) {
+            return;
+        }
+
+        showRelativeScreenshot(1);
+    }
+
+    function showScreenshot(nextIndex: number) {
+        if (nextIndex === activeScreenshotIndex) {
+            return;
+        }
+
+        setActiveIndex(nextIndex);
+    }
+
+    function openFullscreenScreenshot(nextIndex: number) {
+        if (nextIndex !== activeScreenshotIndex) {
+            setTransitionDirection(nextIndex < activeScreenshotIndex ? 'prev' : 'next');
+            setActiveIndex(nextIndex);
+        }
+
+        setFullscreenIndex(nextIndex);
+    }
+
+    function handleScreenshotLoad(index: number, event: SyntheticEvent<HTMLImageElement>) {
+        const { naturalWidth, naturalHeight } = event.currentTarget;
+        if (naturalWidth <= 0 || naturalHeight <= 0) {
+            return;
+        }
+
+        const ratio = naturalWidth / naturalHeight;
+        setScreenshotRatios(currentRatios => {
+            if (currentRatios[index] === ratio) {
+                return currentRatios;
+            }
+
+            return {
+                ...currentRatios,
+                [index]: ratio
+            };
+        });
+    }
+
+    function handleScreenshotCarouselKeyDown(event: KeyboardEvent<HTMLElement>) {
+        if (isMobile || screenshots.length <= 1) {
+            return;
+        }
+
+        if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            showPreviousScreenshot();
+        }
+
+        if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            showNextScreenshot();
+        }
+    }
+
+    function handleTouchStart(event: TouchEvent<HTMLElement>) {
+        touchStartXRef.current = event.changedTouches[0]?.clientX ?? null;
+    }
+
+    function handleTouchEnd(event: TouchEvent<HTMLElement>) {
+        const touchStartX = touchStartXRef.current;
+        const touchEndX = event.changedTouches[0]?.clientX ?? null;
+
+        touchStartXRef.current = null;
+
+        if (touchStartX === null || touchEndX === null) {
+            return;
+        }
+
+        const swipeDelta = touchStartX - touchEndX;
+        if (Math.abs(swipeDelta) < 40 || screenshots.length <= 1) {
+            return;
+        }
+
+        if (swipeDelta > 0) {
+            showNextScreenshot();
+            return;
+        }
+
+        showPreviousScreenshot();
+    }
+
+    const activeScreenshot = screenshots[activeScreenshotIndex] ?? null;
+    const fullscreenScreenshot = fullscreenIndex === null ? null : screenshots[fullscreenIndex];
+    const activeAspectRatio = screenshotRatios[activeScreenshotIndex] ?? (16 / 9);
+
+    return (
+        <>
+        <div className="detail-screenshot-block">
+            <section
+                className={`detail-carousel-shell${isMobile ? ' mobile' : ''}`}
+                aria-label="Project screenshot carousel"
+                aria-roledescription="carousel"
+                tabIndex={0}
+                style={{ aspectRatio: `${activeAspectRatio}` }}
+                onKeyDown={handleScreenshotCarouselKeyDown}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}>
+                <div className="detail-carousel-track">
+                    {displayScreenshots.map(({ screenshot, state, key, index }) => (
+                        <figure
+                            key={key}
+                            aria-hidden={state === 'hidden'}
+                            style={{ aspectRatio: `${screenshotRatios[index] ?? activeAspectRatio}` }}
+                            className={`detail-carousel-slide ${state}`}>
+                            <button
+                                className="detail-carousel-trigger"
+                                type="button"
+                                onClick={() => openFullscreenScreenshot(index)}
+                                aria-label={`Open screenshot ${index + 1} in fullscreen`}>
+                                <MediaFrame
+                                    src={screenshot.imageUrl}
+                                    alt={screenshot.caption?.trim() || `${projectTitle} screenshot ${screenshot.sortOrder}`}
+                                    fallbackLabel={screenshot.caption?.trim() || `${projectTitle} ${screenshot.sortOrder}`}
+                                    fallbackSrc={screenshotMissing}
+                                    className="detail-carousel-media"
+                                    onLoad={event => handleScreenshotLoad(index, event)}
+                                />
+                            </button>
+                        </figure>
+                    ))}
+                </div>
+
+                {!isMobile && screenshots.length > 1 ? (
+                    <>
+                        <button
+                            className="carousel-arrow carousel-arrow-left"
+                            type="button"
+                            onClick={showPreviousScreenshot}
+                            aria-label="Show previous screenshot">
+                            {'<'}
+                        </button>
+                        <button
+                            className="carousel-arrow carousel-arrow-right"
+                            type="button"
+                            onClick={showNextScreenshot}
+                            aria-label="Show next screenshot">
+                            {'>'}
+                        </button>
+                    </>
+                ) : null}
+            </section>
+
+            {screenshots.length > 1 ? (
+                <div className="detail-carousel-indicators" aria-label="Project screenshot selection">
+                    {screenshots.map((screenshot, index) => (
+                        <button
+                            key={`${screenshot.sortOrder}-${screenshot.imageUrl}-indicator`}
+                            className={`carousel-indicator${index === activeScreenshotIndex ? ' active' : ''}`}
+                            type="button"
+                            onClick={() => showScreenshot(index)}
+                            aria-label={`Show screenshot ${index + 1}`}
+                            aria-pressed={index === activeScreenshotIndex}
+                        />
+                    ))}
+                </div>
+            ) : null}
+
+            {activeScreenshot ? (
+                <div className="detail-carousel-caption">
+                    <p className="eyebrow">Screenshot {activeScreenshotIndex + 1} of {screenshots.length}</p>
+                    <p>
+                        {activeScreenshot.caption?.trim() || `${projectTitle} interface preview.`}
+                    </p>
+                </div>
+            ) : null}
+        </div>
+        {fullscreenScreenshot ? (
+            <div className="lightbox-backdrop" role="dialog" aria-modal="true" aria-label="Fullscreen screenshot viewer">
+                <div className="lightbox-shell">
+                    <button
+                        className="lightbox-close"
+                        type="button"
+                        onClick={() => setFullscreenIndex(null)}
+                        aria-label="Close image">
+                        Close
+                    </button>
+                    <MediaFrame
+                        src={fullscreenScreenshot.imageUrl}
+                        alt={fullscreenScreenshot.caption?.trim() || `${projectTitle} fullscreen screenshot ${fullscreenScreenshot.sortOrder}`}
+                        fallbackLabel={fullscreenScreenshot.caption?.trim() || `${projectTitle} ${fullscreenScreenshot.sortOrder}`}
+                        fallbackSrc={screenshotMissing}
+                        className="lightbox-image"
+                    />
+                    <p className="lightbox-caption">
+                        {fullscreenScreenshot.caption?.trim() || `${projectTitle} interface preview.`}
+                    </p>
+                </div>
+            </div>
+        ) : null}
+        </>
+    );
+}
+
 function ProjectListPage({
     filters,
     onNavigate
@@ -720,20 +1027,22 @@ function ProjectListPage({
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     const previousQueryKeyRef = useRef<string | null>(null);
     const routeKey = createRouteKey(filters);
-    const currentQueryKey = createRouteKey({
-        searchInput,
+    const previousRouteKeyRef = useRef(routeKey);
+    const fetchQueryKey = createRouteKey({
+        searchInput: deferredSearch,
         selectedSkills
     });
-        const listSearch = buildListSearch({
+    const listSearch = buildListSearch({
         searchInput,
         selectedSkills
     });
 
     useEffect(() => {
-        if (routeKey === currentQueryKey) {
+        if (previousRouteKeyRef.current === routeKey) {
             return;
         }
 
+        previousRouteKeyRef.current = routeKey;
         setSearchInput(filters.searchInput);
         setSelectedSkills(filters.selectedSkills);
         setPage(1);
@@ -743,7 +1052,7 @@ function ProjectListPage({
         setHasMore(false);
         setError(null);
         setIsInitialLoad(true);
-    }, [currentQueryKey, filters.searchInput, filters.selectedSkills, routeKey]);
+    }, [filters.searchInput, filters.selectedSkills, routeKey]);
 
     useEffect(() => {
         const nextPath = buildProjectsPath(listSearch);
@@ -757,8 +1066,8 @@ function ProjectListPage({
     useEffect(() => {
         const requestId = crypto.randomUUID();
         const controller = new AbortController();
-        const isLoadingMore = page > 1 && previousQueryKeyRef.current === currentQueryKey;
-        const queryKeyChanged = previousQueryKeyRef.current !== currentQueryKey;
+        const isLoadingMore = page > 1 && previousQueryKeyRef.current === fetchQueryKey;
+        const queryKeyChanged = previousQueryKeyRef.current !== fetchQueryKey;
 
         latestRequestIdRef.current = requestId;
         setIsLoading(true);
@@ -790,7 +1099,7 @@ function ProjectListPage({
                     setHasMore(latestResponse.hasMore);
                 });
 
-                previousQueryKeyRef.current = currentQueryKey;
+                previousQueryKeyRef.current = fetchQueryKey;
             } catch (caughtError) {
                 if ((caughtError as Error).name === 'AbortError' || latestRequestIdRef.current !== requestId) {
                     return;
@@ -837,17 +1146,13 @@ function ProjectListPage({
                 query.set('skills', selectedSkills.join(','));
             }
 
-            const response = await fetch(`/api/projects?${query.toString()}`, {
-                signal: controller.signal
-            });
-            const payload = await response.json() as ProjectListResponse | ApiErrorResponse;
-
-            if (!response.ok) {
-                const errorResponse = payload as ApiErrorResponse;
-                throw new Error(errorResponse.message ?? 'Unable to load projects right now.');
-            }
-
-            const listResponse = payload as ProjectListResponse;
+            const listResponse = await fetchJsonWithStartupRetry<ProjectListResponse>(
+                `/api/projects?${query.toString()}`,
+                {
+                    signal: controller.signal
+                },
+                'Unable to load projects right now.'
+            );
 
             if (listResponse.requestId !== requestId) {
                 throw new DOMException('Stale response.', 'AbortError');
@@ -855,7 +1160,7 @@ function ProjectListPage({
 
             return listResponse;
         }
-    }, [currentQueryKey, deferredSearch, page, selectedSkills]);
+    }, [deferredSearch, fetchQueryKey, page, selectedSkills]);
 
     useEffect(() => {
         const sentinel = sentinelRef.current;
@@ -977,49 +1282,67 @@ function ProjectListPage({
             {isEmpty ? <p className="status-banner">No published projects matched the current search and skill filters.</p> : null}
 
             <section className="project-list" aria-label="Project results">
-                {projects.map(project => (
-                    <article key={project.id} className={`project-card${project.isFeatured ? ' featured' : ''}`}>
-                        <div className="image-shell">
-                            <MediaFrame
-                                src={project.primaryImageUrl}
-                                alt={`${project.title} cover art`}
-                                fallbackLabel={project.title}
-                                fallbackSrc={projectImageUnavailable}
-                            />
-                            {project.isFeatured ? <span className="featured-pill">Featured</span> : null}
-                        </div>
+                {projects.map((project, index) => {
+                    const yearLabel = getProjectYearSpacerLabel(project.endDate);
+                    const previousYearLabel = index > 0
+                        ? getProjectYearSpacerLabel(projects[index - 1].endDate)
+                        : null;
+                    const shouldRenderSpacer = yearLabel !== previousYearLabel;
 
-                        <div className="card-copy">
-                            <div className="card-heading">
-                                <p className="project-dates">{formatProjectDates(project.startDate, project.endDate)}</p>
-                                <h2>{project.title}</h2>
-                            </div>
+                    return (
+                        <Fragment key={project.id}>
+                            {shouldRenderSpacer ? (
+                                <div className="project-year-spacer" aria-label={`Projects ending in ${yearLabel}`}>
+                                    <span className="project-year-rule" aria-hidden="true" />
+                                    <p className="eyebrow">{yearLabel}</p>
+                                    <span className="project-year-rule" aria-hidden="true" />
+                                </div>
+                            ) : null}
 
-                            <p className="project-summary">{project.shortDescription}</p>
+                            <article className={`project-card${project.isFeatured ? ' featured' : ''}`}>
+                                <div className="image-shell">
+                                    <MediaFrame
+                                        src={project.primaryImageUrl}
+                                        alt={`${project.title} cover art`}
+                                        fallbackLabel={project.title}
+                                        fallbackSrc={projectImageUnavailable}
+                                    />
+                                    {project.isFeatured ? <span className="featured-pill">Featured</span> : null}
+                                </div>
 
-                            <div className="tag-group" aria-label={`${project.title} skills`}>
-                                {project.skills.map(skill => (
-                                    <span key={skill} className="tag skill">{skill}</span>
-                                ))}
-                            </div>
+                                <div className="card-copy">
+                                    <div className="card-heading">
+                                        <p className="project-dates">{formatProjectDates(project.startDate, project.endDate)}</p>
+                                        <h2>{project.title}</h2>
+                                    </div>
 
-                            <div className="tag-group secondary" aria-label={`${project.title} technologies`}>
-                                {project.technologies.map(technology => (
-                                    <span key={technology} className="tag technology">{technology}</span>
-                                ))}
-                            </div>
+                                    <p className="project-summary">{project.shortDescription}</p>
 
-                            <div className="card-links">
-                                <InternalLink
-                                    className="primary-link"
-                                    href={buildDetailPath(project.id, listSearch)}
-                                    onNavigate={onNavigate}>
-                                    View Details
-                                </InternalLink>
-                            </div>
-                        </div>
-                    </article>
-                ))}
+                                    <div className="tag-group" aria-label={`${project.title} skills`}>
+                                        {project.skills.map(skill => (
+                                            <span key={skill} className="tag skill">{skill}</span>
+                                        ))}
+                                    </div>
+
+                                    <div className="tag-group secondary" aria-label={`${project.title} technologies`}>
+                                        {project.technologies.map(technology => (
+                                            <span key={technology} className="tag technology">{technology}</span>
+                                        ))}
+                                    </div>
+
+                                    <div className="card-links">
+                                        <InternalLink
+                                            className="primary-link"
+                                            href={buildDetailPath(project.id, listSearch)}
+                                            onNavigate={onNavigate}>
+                                            View Details
+                                        </InternalLink>
+                                    </div>
+                                </div>
+                            </article>
+                        </Fragment>
+                    );
+                })}
             </section>
 
             <div ref={sentinelRef} className="scroll-sentinel" aria-hidden="true" />
@@ -1059,9 +1382,14 @@ function ProjectDetailPage({
         async function loadProject() {
             try {
                 const query = new URLSearchParams({ requestId });
-                const response = await fetch(`/api/projects/${projectId}?${query.toString()}`, {
-                    signal: controller.signal
-                });
+                const { response, payload } = await fetchResponsePayloadWithStartupRetry<ProjectDetail>(
+                    `/api/projects/${projectId}?${query.toString()}`,
+                    {
+                        signal: controller.signal
+                    },
+                    'Unable to load this project right now.',
+                    [404]
+                );
 
                 if (response.status === 404) {
                     setIsMissing(true);
@@ -1069,11 +1397,8 @@ function ProjectDetailPage({
                     return;
                 }
 
-                const payload = await response.json() as ProjectDetail | ApiErrorResponse;
-
-                if (!response.ok) {
-                    const errorResponse = payload as ApiErrorResponse;
-                    throw new Error(errorResponse.message ?? 'Unable to load this project right now.');
+                if (payload === null) {
+                    throw new RetryableApiError(startupRetryMessage);
                 }
 
                 const projectResponse = payload as ProjectDetail;
@@ -1097,10 +1422,6 @@ function ProjectDetailPage({
     }, [projectId]);
 
     const backPath = buildProjectsPath(listSearch);
-    const screenshotGallery = project
-        ? [project.primaryImageUrl, ...project.screenshots.map(screenshot => screenshot.imageUrl)]
-            .filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index)
-        : [];
 
     return (
         <main className="portfolio-page detail-page">
@@ -1195,120 +1516,96 @@ function ProjectDetailPage({
                         </section>
 
                         <section className="detail-grid">
-                            {project.longDescriptionMarkdown.trim().length > 0 ? (
-                                <section className="detail-panel detail-panel-wide">
-                                    <h2>Overview</h2>
-                                    <div className="detail-markdown">
-                                        {renderMarkdownParagraphs(project.longDescriptionMarkdown)}
-                                    </div>
-                                </section>
-                            ) : null}
+                            <div className="detail-column detail-column-main">
+                                {project.longDescriptionMarkdown.trim().length > 0 ? (
+                                    <section className="detail-panel">
+                                        <h2>Overview</h2>
+                                        <div className="detail-markdown">
+                                            {renderMarkdownParagraphs(project.longDescriptionMarkdown)}
+                                        </div>
+                                    </section>
+                                ) : null}
 
-                            {project.screenshots.length > 0 ? (
-                                <section className="detail-panel detail-panel-wide">
-                                    <h2>Screenshots</h2>
-                                    <div className="screenshot-grid">
-                                        {project.screenshots.map(screenshot => (
-                                            <figure key={`${screenshot.sortOrder}-${screenshot.imageUrl}`} className="shot-card">
-                                                <MediaFrame
-                                                    src={screenshot.imageUrl}
-                                                    alt={screenshot.caption?.trim() || `${project.title} screenshot ${screenshot.sortOrder}`}
-                                                    fallbackLabel={screenshot.caption?.trim() || `${project.title} ${screenshot.sortOrder}`}
-                                                    fallbackSrc={screenshotMissing}
-                                                    className="shot-media"
-                                                />
-                                                {screenshot.caption?.trim() ? <figcaption>{screenshot.caption}</figcaption> : null}
-                                            </figure>
-                                        ))}
-                                    </div>
-                                </section>
-                            ) : null}
-
-                            {project.collaborators.length > 0 ? (
-                                <section className="detail-panel">
-                                    <h2>Collaborators</h2>
-                                    <div className="stack-list">
-                                        {project.collaborators.map(collaborator => (
-                                            <article key={collaborator.name} className="stack-card collaborator-card">
-                                                <div className="collaborator-header">
-                                                    <MediaFrame
-                                                        src={collaborator.photoUrl}
-                                                        alt={`${collaborator.name} profile`}
-                                                        fallbackLabel={collaborator.name}
-                                                        fallbackSrc={profilePlaceholder}
-                                                        className="collaborator-photo"
-                                                        compact
-                                                    />
-                                                    <div>
-                                                        <h3>{collaborator.name}</h3>
-                                                        {collaborator.roles.length > 0 ? (
-                                                            <p className="secondary-copy">{collaborator.roles.join(' | ')}</p>
-                                                        ) : null}
+                                {project.collaborators.length > 0 ? (
+                                    <section className="detail-panel">
+                                        <h2>Collaborators</h2>
+                                        <div className="stack-list">
+                                            {project.collaborators.map(collaborator => (
+                                                <article key={collaborator.name} className="stack-card collaborator-card">
+                                                    <div className="collaborator-header">
+                                                        <MediaFrame
+                                                            src={collaborator.photoUrl}
+                                                            alt={`${collaborator.name} profile`}
+                                                            fallbackLabel={collaborator.name}
+                                                            fallbackSrc={profilePlaceholder}
+                                                            className="collaborator-photo"
+                                                            compact
+                                                        />
+                                                        <div>
+                                                            <h3>{collaborator.name}</h3>
+                                                            {collaborator.roles.length > 0 ? (
+                                                                <p className="secondary-copy">{collaborator.roles.join(' | ')}</p>
+                                                            ) : null}
+                                                        </div>
                                                     </div>
-                                                </div>
 
-                                                {(collaborator.gitHubProfileUrl || collaborator.websiteUrl) ? (
-                                                    <div className="inline-links">
-                                                        {collaborator.gitHubProfileUrl ? (
-                                                            <a href={collaborator.gitHubProfileUrl} target="_blank" rel="noreferrer">
-                                                                GitHub
-                                                            </a>
-                                                        ) : null}
-                                                        {collaborator.websiteUrl ? (
-                                                            <a href={collaborator.websiteUrl} target="_blank" rel="noreferrer">
-                                                                Website
-                                                            </a>
-                                                        ) : null}
+                                                    {(collaborator.gitHubProfileUrl || collaborator.websiteUrl) ? (
+                                                        <div className="inline-links">
+                                                            {collaborator.gitHubProfileUrl ? (
+                                                                <a href={collaborator.gitHubProfileUrl} target="_blank" rel="noreferrer">
+                                                                    GitHub
+                                                                </a>
+                                                            ) : null}
+                                                            {collaborator.websiteUrl ? (
+                                                                <a href={collaborator.websiteUrl} target="_blank" rel="noreferrer">
+                                                                    Website
+                                                                </a>
+                                                            ) : null}
+                                                        </div>
+                                                    ) : null}
+                                                </article>
+                                            ))}
+                                        </div>
+                                    </section>
+                                ) : null}
+
+                                {project.milestones.length > 0 ? (
+                                    <section className="detail-panel">
+                                        <h2>Milestones</h2>
+                                        <div className="stack-list">
+                                            {project.milestones.map(milestone => (
+                                                <article key={`${milestone.title}-${milestone.targetDate}`} className="stack-card">
+                                                    <div className="milestone-heading">
+                                                        <div>
+                                                            <h3>{milestone.title}</h3>
+                                                            <p className="secondary-copy">
+                                                                Target: {formatFullDate(milestone.targetDate)}
+                                                                {milestone.completedOn ? ` | Completed ${formatFullDate(milestone.completedOn)}` : ''}
+                                                            </p>
+                                                        </div>
+                                                        <span className={`milestone-pill${milestone.completedOn ? ' completed' : ''}`}>
+                                                            {milestone.completedOn ? 'Completed' : 'Planned'}
+                                                        </span>
                                                     </div>
-                                                ) : null}
-                                            </article>
-                                        ))}
-                                    </div>
-                                </section>
-                            ) : null}
+                                                    {milestone.description?.trim() ? <p>{milestone.description}</p> : null}
+                                                </article>
+                                            ))}
+                                        </div>
+                                    </section>
+                                ) : null}
+                            </div>
 
-                            {project.milestones.length > 0 ? (
-                                <section className="detail-panel">
-                                    <h2>Milestones</h2>
-                                    <div className="stack-list">
-                                        {project.milestones.map(milestone => (
-                                            <article key={`${milestone.title}-${milestone.targetDate}`} className="stack-card">
-                                                <div className="milestone-heading">
-                                                    <div>
-                                                        <h3>{milestone.title}</h3>
-                                                        <p className="secondary-copy">
-                                                            Target: {formatFullDate(milestone.targetDate)}
-                                                            {milestone.completedOn ? ` | Completed ${formatFullDate(milestone.completedOn)}` : ''}
-                                                        </p>
-                                                    </div>
-                                                    <span className={`milestone-pill${milestone.completedOn ? ' completed' : ''}`}>
-                                                        {milestone.completedOn ? 'Completed' : 'Planned'}
-                                                    </span>
-                                                </div>
-                                                {milestone.description?.trim() ? <p>{milestone.description}</p> : null}
-                                            </article>
-                                        ))}
-                                    </div>
-                                </section>
-                            ) : null}
-
-                            {screenshotGallery.length > 0 ? (
-                                <section className="detail-panel detail-panel-wide">
-                                    <h2>Gallery Rail</h2>
-                                    <div className="gallery-rail" aria-label={`${project.title} image gallery`}>
-                                        {screenshotGallery.map(imageUrl => (
-                                            <MediaFrame
-                                                key={imageUrl}
-                                                src={imageUrl}
-                                                alt={`${project.title} gallery image`}
-                                                fallbackLabel={project.title}
-                                                fallbackSrc={screenshotMissing}
-                                                className="gallery-media"
-                                            />
-                                        ))}
-                                    </div>
-                                </section>
-                            ) : null}
+                            <div className="detail-column detail-column-media">
+                                {project.screenshots.length > 0 ? (
+                                    <section className="detail-panel">
+                                        <h2>Screenshots</h2>
+                                        <ScreenshotCarousel
+                                            projectTitle={project.title}
+                                            screenshots={project.screenshots}
+                                        />
+                                    </section>
+                                ) : null}
+                            </div>
                         </section>
                     </>
                 ) : null}
@@ -1352,7 +1649,8 @@ function MediaFrame({
     fallbackLabel,
     fallbackSrc,
     className,
-    compact = false
+    compact = false,
+    onLoad
 }: {
     src?: string | null;
     alt: string;
@@ -1360,6 +1658,7 @@ function MediaFrame({
     fallbackSrc?: string;
     className?: string;
     compact?: boolean;
+    onLoad?: (event: SyntheticEvent<HTMLImageElement>) => void;
 }) {
     const [failedSource, setFailedSource] = useState<string | null>(null);
     const hasFailedPrimary = !!src && failedSource === src;
@@ -1382,6 +1681,7 @@ function MediaFrame({
             src={candidateSrc}
             alt={alt}
             loading="lazy"
+            onLoad={onLoad}
             onError={() => setFailedSource(candidateSrc)}
         />
     );

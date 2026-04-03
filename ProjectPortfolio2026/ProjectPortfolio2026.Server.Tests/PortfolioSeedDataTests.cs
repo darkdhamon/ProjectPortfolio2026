@@ -26,11 +26,15 @@ public sealed class PortfolioSeedDataTests
             .ToListAsync();
 
         Assert.That(projects, Has.Count.EqualTo(100));
-        Assert.That(projects.All(project => project.Screenshots.Count == 2), Is.True);
+        Assert.That(projects.All(project => project.Screenshots.Count >= 2), Is.True);
+        Assert.That(projects.Single(project => project.Title == "Project Portfolio 2026").Screenshots, Has.Count.EqualTo(6));
         Assert.That(projects.All(project => project.DeveloperRoles.Count > 0), Is.True);
         Assert.That(projects.All(project => project.Technologies.Count > 0), Is.True);
         Assert.That(projects.All(project => project.Skills.Count > 0), Is.True);
         Assert.That(projects.All(project => project.Milestones.Count > 0), Is.True);
+        Assert.That(projects.Count(project => project.EndDate is null), Is.EqualTo(3));
+        Assert.That(projects.Min(project => project.StartDate.Year), Is.EqualTo(2015));
+        Assert.That(projects.Max(project => (project.EndDate ?? project.StartDate).Year), Is.EqualTo(2026));
         Assert.That(projects.Count(project => project.IsFeatured), Is.EqualTo(5));
     }
 
