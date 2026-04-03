@@ -514,6 +514,7 @@
 .project-list {
     display: grid;
     gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 29rem), 1fr));
 }
 
 .carousel-shell {
@@ -684,9 +685,9 @@
 }
 
 .project-card {
-    grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr);
-    gap: 1.2rem;
-    align-items: stretch;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    align-items: start;
     padding: 1.1rem;
     border: 1px solid rgba(111, 137, 171, 0.16);
     border-radius: 1.5rem;
@@ -713,7 +714,8 @@
 }
 
 .image-shell {
-    aspect-ratio: 2047 / 768;
+    aspect-ratio: 16 / 9;
+    width: 100%;
     align-self: start;
 }
 
@@ -801,7 +803,8 @@
 
 .card-copy {
     gap: 1rem;
-    align-content: center;
+    align-content: start;
+    min-height: 100%;
 }
 
 .card-heading,
@@ -978,6 +981,10 @@
     background: rgba(245, 183, 48, 0.92);
     color: #11243d;
     border-color: rgba(245, 183, 48, 0.92);
+}
+
+.project-card .card-links {
+    margin-top: auto;
 }
 
 .detail-links a {
