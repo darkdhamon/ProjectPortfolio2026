@@ -587,7 +587,6 @@ function SiteShell({
                     </div>
                     <div>
                         <strong>Project Portfolio</strong>
-                        <p className="brand-copy">Built to scale as new public sections come online.</p>
                     </div>
                 </div>
 

@@ -17,9 +17,8 @@
     pointer-events: none;
     opacity: 0.2;
     background:
-        linear-gradient(180deg, rgba(9, 19, 33, 0.2), rgba(9, 19, 33, 0.52)),
-        url('./assets/Logo/Portfolio-Logo-Full.png') center 5rem / min(72rem, calc(100vw - 4rem)) no-repeat;
-    mix-blend-mode: screen;
+        linear-gradient(180deg, rgba(9, 19, 33, 0.34), rgba(9, 19, 33, 0.66)),
+        url('./assets/Logo/Portfolio-Logo-Full.png') center center / cover no-repeat;
 }
 
 .site-sidebar {
@@ -1499,11 +1498,6 @@ h3 {
 }
 
 @media (max-width: 720px) {
-    .site-shell::before {
-        background-size: min(34rem, calc(100vw - 2rem));
-        background-position: center 6rem;
-    }
-
     .site-sidebar,
     .site-header,
     .home-page,
