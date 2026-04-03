@@ -1,74 +1,26 @@
 import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent, type TouchEvent } from 'react';
 import projectImageUnavailable from '../../assets/Placeholders/Project-Image-Unavailable.png';
-import { fetchJsonWithStartupRetry } from '../../app/api';
 import type { NavigateFn } from '../../app/navigation';
-import type { FeaturedProjectsResponse, ProjectSummary } from '../../app/types';
+import type { ProjectSummary } from '../../app/types';
 import { buildDetailPath, formatProjectDates } from '../../appSupport';
 import { InternalLink } from '../../components/common/InternalLink';
 import { MediaFrame } from '../../components/common/MediaFrame';
+import { useFeaturedProjects } from '../../hooks/useFeaturedProjects';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 interface HomePageProps {
     onNavigate: NavigateFn;
 }
 
 export function HomePage({ onNavigate }: HomePageProps) {
-    const [projects, setProjects] = useState<ProjectSummary[]>([]);
+    const { projects, isLoading, error } = useFeaturedProjects();
     const [activeIndex, setActiveIndex] = useState(0);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isPaused, setIsPaused] = useState(false);
-    const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
+    const isMobile = useMediaQuery('(max-width: 720px)');
     const touchStartXRef = useRef<number | null>(null);
-
-    useEffect(() => {
-        const mediaQuery = window.matchMedia('(max-width: 720px)');
-        const updateIsMobile = (event?: MediaQueryListEvent) => {
-            setIsMobile(event?.matches ?? mediaQuery.matches);
-        };
-
-        updateIsMobile();
-        mediaQuery.addEventListener('change', updateIsMobile);
-        return () => mediaQuery.removeEventListener('change', updateIsMobile);
-    }, []);
-
-    useEffect(() => {
-        const requestId = crypto.randomUUID();
-        const controller = new AbortController();
-
-        setIsLoading(true);
-        setError(null);
-
-        void loadFeaturedProjects();
-
-        return () => controller.abort();
-
-        async function loadFeaturedProjects() {
-            try {
-                const featuredResponse = await fetchJsonWithStartupRetry<FeaturedProjectsResponse>(
-                    `/api/projects/featured?limit=5&requestId=${requestId}`,
-                    {
-                        signal: controller.signal
-                    },
-                    'Unable to load featured projects right now.'
-                );
-                if (featuredResponse.requestId !== requestId) {
-                    return;
-                }
-
-                setProjects(featuredResponse.items);
-                setActiveIndex(0);
-            } catch (caughtError) {
-                if ((caughtError as Error).name === 'AbortError') {
-                    return;
-                }
-
-                setError(caughtError instanceof Error ? caughtError.message : 'Unable to load featured projects right now.');
-                setProjects([]);
-            } finally {
-                setIsLoading(false);
-            }
-        }
-    }, []);
+    const handleAutoplayAdvance = useEffectEvent(() => {
+        setActiveIndex(currentIndex => (currentIndex + 1) % projects.length);
+    });
 
     useEffect(() => {
         if (isMobile || isPaused || projects.length <= 1) {
@@ -81,14 +33,6 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
         return () => window.clearInterval(timer);
     }, [isMobile, isPaused, projects.length]);
-
-    useEffect(() => {
-        if (activeIndex < projects.length) {
-            return;
-        }
-
-        setActiveIndex(0);
-    }, [activeIndex, projects.length]);
 
     function showRelativeProject(step: number) {
         setActiveIndex(currentIndex => {
@@ -114,14 +58,10 @@ export function HomePage({ onNavigate }: HomePageProps) {
     }
 
     function showProject(nextIndex: number) {
-        if (nextIndex !== activeIndex) {
+        if (nextIndex !== safeActiveIndex) {
             setActiveIndex(nextIndex);
         }
     }
-
-    const handleAutoplayAdvance = useEffectEvent(() => {
-        setActiveIndex(currentIndex => (currentIndex + 1) % projects.length);
-    });
 
     function handleCarouselKeyDown(event: KeyboardEvent<HTMLElement>) {
         if (isMobile || projects.length <= 1) {
@@ -166,7 +106,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
         showPreviousProject();
     }
 
-    const activeProject = projects[activeIndex] ?? null;
+    const safeActiveIndex = activeIndex < projects.length ? activeIndex : 0;
+    const activeProject = projects[safeActiveIndex] ?? null;
 
     return (
         <main className="home-page">
@@ -207,7 +148,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                                     <FeaturedCarouselSlide
                                         key={project.id}
                                         project={project}
-                                        state={getFeaturedCardState(index, activeIndex, projects.length)}
+                                        state={getFeaturedCardState(index, safeActiveIndex, projects.length)}
                                         onNavigate={onNavigate}
                                     />
                                 ))}
@@ -237,11 +178,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
                             {projects.map((project, index) => (
                                 <button
                                     key={project.id}
-                                    className={`carousel-indicator${index === activeIndex ? ' active' : ''}`}
+                                    className={`carousel-indicator${index === safeActiveIndex ? ' active' : ''}`}
                                     type="button"
                                     onClick={() => showProject(index)}
                                     aria-label={`Show featured project ${index + 1}: ${project.title}`}
-                                    aria-pressed={index === activeIndex}
+                                    aria-pressed={index === safeActiveIndex}
                                 />
                             ))}
                         </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type SyntheticEvent, t
 import screenshotMissing from '../../assets/Placeholders/Screenshot-Missing.png';
 import type { ProjectScreenshot } from '../../app/types';
 import { MediaFrame } from '../../components/common/MediaFrame';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 interface ScreenshotCarouselProps {
     projectTitle: string;
@@ -13,22 +14,11 @@ export function ScreenshotCarousel({
     screenshots
 }: ScreenshotCarouselProps) {
     const [activeIndex, setActiveIndex] = useState(0);
-    const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
+    const isMobile = useMediaQuery('(max-width: 720px)');
     const [transitionDirection, setTransitionDirection] = useState<'prev' | 'next'>('next');
     const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
     const [screenshotRatios, setScreenshotRatios] = useState<Record<number, number>>({});
     const touchStartXRef = useRef<number | null>(null);
-
-    useEffect(() => {
-        const mediaQuery = window.matchMedia('(max-width: 720px)');
-        const updateIsMobile = (event?: MediaQueryListEvent) => {
-            setIsMobile(event?.matches ?? mediaQuery.matches);
-        };
-
-        updateIsMobile();
-        mediaQuery.addEventListener('change', updateIsMobile);
-        return () => mediaQuery.removeEventListener('change', updateIsMobile);
-    }, []);
 
     const activeScreenshotIndex = activeIndex >= screenshots.length ? 0 : activeIndex;
 
