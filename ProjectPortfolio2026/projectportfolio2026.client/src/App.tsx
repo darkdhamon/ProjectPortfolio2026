@@ -698,6 +698,181 @@ function getFeaturedCardState(index: number, activeIndex: number, total: number)
     return 'hidden';
 }
 
+function ScreenshotCarousel({
+    projectTitle,
+    screenshots
+}: {
+    projectTitle: string;
+    screenshots: ProjectScreenshot[];
+}) {
+    const [activeIndex, setActiveIndex] = useState(0);
+    const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
+    const touchStartXRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(max-width: 720px)');
+        const updateIsMobile = (event?: MediaQueryListEvent) => {
+            setIsMobile(event?.matches ?? mediaQuery.matches);
+        };
+
+        updateIsMobile();
+        mediaQuery.addEventListener('change', updateIsMobile);
+        return () => mediaQuery.removeEventListener('change', updateIsMobile);
+    }, []);
+
+    useEffect(() => {
+        setActiveIndex(currentIndex => currentIndex >= screenshots.length ? 0 : currentIndex);
+    }, [screenshots.length]);
+
+    function showRelativeScreenshot(step: number) {
+        setActiveIndex(currentIndex => {
+            const nextIndex = currentIndex + step;
+            return (nextIndex + screenshots.length) % screenshots.length;
+        });
+    }
+
+    function showPreviousScreenshot() {
+        if (screenshots.length <= 1) {
+            return;
+        }
+
+        showRelativeScreenshot(-1);
+    }
+
+    function showNextScreenshot() {
+        if (screenshots.length <= 1) {
+            return;
+        }
+
+        showRelativeScreenshot(1);
+    }
+
+    function showScreenshot(nextIndex: number) {
+        if (nextIndex === activeIndex) {
+            return;
+        }
+
+        setActiveIndex(nextIndex);
+    }
+
+    function handleScreenshotCarouselKeyDown(event: KeyboardEvent<HTMLElement>) {
+        if (isMobile || screenshots.length <= 1) {
+            return;
+        }
+
+        if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            showPreviousScreenshot();
+        }
+
+        if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            showNextScreenshot();
+        }
+    }
+
+    function handleTouchStart(event: TouchEvent<HTMLElement>) {
+        touchStartXRef.current = event.changedTouches[0]?.clientX ?? null;
+    }
+
+    function handleTouchEnd(event: TouchEvent<HTMLElement>) {
+        const touchStartX = touchStartXRef.current;
+        const touchEndX = event.changedTouches[0]?.clientX ?? null;
+
+        touchStartXRef.current = null;
+
+        if (touchStartX === null || touchEndX === null) {
+            return;
+        }
+
+        const swipeDelta = touchStartX - touchEndX;
+        if (Math.abs(swipeDelta) < 40 || screenshots.length <= 1) {
+            return;
+        }
+
+        if (swipeDelta > 0) {
+            showNextScreenshot();
+            return;
+        }
+
+        showPreviousScreenshot();
+    }
+
+    const activeScreenshot = screenshots[activeIndex] ?? null;
+
+    return (
+        <div className="detail-screenshot-block">
+            <section
+                className={`detail-carousel-shell${isMobile ? ' mobile' : ''}`}
+                aria-label="Project screenshot carousel"
+                aria-roledescription="carousel"
+                tabIndex={0}
+                onKeyDown={handleScreenshotCarouselKeyDown}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}>
+                <div className="detail-carousel-track">
+                    {screenshots.map((screenshot, index) => (
+                        <figure
+                            key={`${screenshot.sortOrder}-${screenshot.imageUrl}`}
+                            className={`detail-carousel-slide ${getFeaturedCardState(index, activeIndex, screenshots.length)}`}>
+                            <MediaFrame
+                                src={screenshot.imageUrl}
+                                alt={screenshot.caption?.trim() || `${projectTitle} screenshot ${screenshot.sortOrder}`}
+                                fallbackLabel={screenshot.caption?.trim() || `${projectTitle} ${screenshot.sortOrder}`}
+                                fallbackSrc={screenshotMissing}
+                                className="detail-carousel-media"
+                            />
+                        </figure>
+                    ))}
+                </div>
+
+                {!isMobile && screenshots.length > 1 ? (
+                    <>
+                        <button
+                            className="carousel-arrow carousel-arrow-left"
+                            type="button"
+                            onClick={showPreviousScreenshot}
+                            aria-label="Show previous screenshot">
+                            {'<'}
+                        </button>
+                        <button
+                            className="carousel-arrow carousel-arrow-right"
+                            type="button"
+                            onClick={showNextScreenshot}
+                            aria-label="Show next screenshot">
+                            {'>'}
+                        </button>
+                    </>
+                ) : null}
+            </section>
+
+            {screenshots.length > 1 ? (
+                <div className="detail-carousel-indicators" aria-label="Project screenshot selection">
+                    {screenshots.map((screenshot, index) => (
+                        <button
+                            key={`${screenshot.sortOrder}-${screenshot.imageUrl}-indicator`}
+                            className={`carousel-indicator${index === activeIndex ? ' active' : ''}`}
+                            type="button"
+                            onClick={() => showScreenshot(index)}
+                            aria-label={`Show screenshot ${index + 1}`}
+                            aria-pressed={index === activeIndex}
+                        />
+                    ))}
+                </div>
+            ) : null}
+
+            {activeScreenshot ? (
+                <div className="detail-carousel-caption">
+                    <p className="eyebrow">Screenshot {activeIndex + 1} of {screenshots.length}</p>
+                    <p>
+                        {activeScreenshot.caption?.trim() || `${projectTitle} interface preview.`}
+                    </p>
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
 function ProjectListPage({
     filters,
     onNavigate
@@ -1097,10 +1272,6 @@ function ProjectDetailPage({
     }, [projectId]);
 
     const backPath = buildProjectsPath(listSearch);
-    const screenshotGallery = project
-        ? [project.primaryImageUrl, ...project.screenshots.map(screenshot => screenshot.imageUrl)]
-            .filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index)
-        : [];
 
     return (
         <main className="portfolio-page detail-page">
@@ -1207,20 +1378,10 @@ function ProjectDetailPage({
                             {project.screenshots.length > 0 ? (
                                 <section className="detail-panel detail-panel-wide">
                                     <h2>Screenshots</h2>
-                                    <div className="screenshot-grid">
-                                        {project.screenshots.map(screenshot => (
-                                            <figure key={`${screenshot.sortOrder}-${screenshot.imageUrl}`} className="shot-card">
-                                                <MediaFrame
-                                                    src={screenshot.imageUrl}
-                                                    alt={screenshot.caption?.trim() || `${project.title} screenshot ${screenshot.sortOrder}`}
-                                                    fallbackLabel={screenshot.caption?.trim() || `${project.title} ${screenshot.sortOrder}`}
-                                                    fallbackSrc={screenshotMissing}
-                                                    className="shot-media"
-                                                />
-                                                {screenshot.caption?.trim() ? <figcaption>{screenshot.caption}</figcaption> : null}
-                                            </figure>
-                                        ))}
-                                    </div>
+                                    <ScreenshotCarousel
+                                        projectTitle={project.title}
+                                        screenshots={project.screenshots}
+                                    />
                                 </section>
                             ) : null}
 
@@ -1292,23 +1453,6 @@ function ProjectDetailPage({
                                 </section>
                             ) : null}
 
-                            {screenshotGallery.length > 0 ? (
-                                <section className="detail-panel detail-panel-wide">
-                                    <h2>Gallery Rail</h2>
-                                    <div className="gallery-rail" aria-label={`${project.title} image gallery`}>
-                                        {screenshotGallery.map(imageUrl => (
-                                            <MediaFrame
-                                                key={imageUrl}
-                                                src={imageUrl}
-                                                alt={`${project.title} gallery image`}
-                                                fallbackLabel={project.title}
-                                                fallbackSrc={screenshotMissing}
-                                                className="gallery-media"
-                                            />
-                                        ))}
-                                    </div>
-                                </section>
-                            ) : null}
                         </section>
                     </>
                 ) : null}

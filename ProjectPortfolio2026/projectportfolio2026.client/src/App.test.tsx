@@ -313,7 +313,8 @@ describe('App', () => {
         expect(screen.getByRole('heading', { name: 'Screenshots' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Collaborators' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Milestones' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Gallery Rail' })).toBeInTheDocument();
+        expect(screen.getByRole('region', { name: 'Project screenshot carousel' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Show next screenshot' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Live Demo' })).toHaveAttribute('href', 'https://example.com/launch-control');
         expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute('href', 'https://github.com/example/launch-control');
         expect(screen.getByText('Completed')).toBeInTheDocument();
@@ -321,6 +322,11 @@ describe('App', () => {
         expect(screen.getByText('Taylor Dev')).toBeInTheDocument();
         expect(screen.getByText('Designer | QA')).toBeInTheDocument();
         expect(screen.getByText('Overview dashboard')).toBeInTheDocument();
+        expect(screen.getByText('Screenshot 1 of 2')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Show next screenshot' }));
+        expect(screen.getByText('Screenshot 2 of 2')).toBeInTheDocument();
+        expect(screen.getByText('Launch Control interface preview.')).toBeInTheDocument();
 
         const collaboratorImage = screen.getByAltText('Taylor Dev profile');
         fireEvent.error(collaboratorImage);
