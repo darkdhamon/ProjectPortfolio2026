@@ -187,11 +187,15 @@
     display: grid;
     gap: 0.85rem;
     padding: 1rem;
-    border: 1px solid rgba(35, 53, 88, 0.1);
+    border: 1px solid rgba(111, 137, 171, 0.18);
     border-radius: 1.5rem;
-    background: rgba(250, 251, 253, 0.9);
+    background:
+        linear-gradient(180deg, rgba(13, 28, 48, 0.94), rgba(10, 23, 39, 0.92)),
+        radial-gradient(circle at top right, rgba(245, 183, 48, 0.12), transparent 40%);
     backdrop-filter: blur(14px);
-    box-shadow: 0 14px 38px rgba(14, 29, 43, 0.08);
+    box-shadow:
+        0 18px 42px rgba(3, 10, 20, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .home-intro,
@@ -380,7 +384,7 @@
 
 .search-label,
 .meta-label {
-    color: #516077;
+    color: rgba(213, 224, 239, 0.74);
 }
 
 .detail-hero .meta-label {
@@ -407,18 +411,22 @@
     width: 100%;
     min-height: 3.2rem;
     padding: 0.85rem 1rem;
-    border: 1px solid rgba(35, 53, 88, 0.18);
+    border: 1px solid rgba(111, 137, 171, 0.18);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #10233d;
+    background: rgba(8, 17, 31, 0.72);
+    color: #f4f8fe;
     box-sizing: border-box;
     transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.search-panel input::placeholder {
+    color: rgba(213, 224, 239, 0.48);
 }
 
 .search-panel input:focus {
     outline: none;
     border-color: rgba(245, 183, 48, 0.8);
-    box-shadow: 0 0 0 0.25rem rgba(245, 183, 48, 0.16);
+    box-shadow: 0 0 0 0.25rem rgba(245, 183, 48, 0.14);
     transform: translateY(-1px);
 }
 
@@ -434,17 +442,17 @@
 .clear-button {
     min-height: 3.2rem;
     padding: 0.8rem 1.15rem;
-    border: 1px solid rgba(16, 35, 61, 0.14);
+    border: 1px solid rgba(111, 137, 171, 0.18);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #10233d;
+    background: rgba(16, 34, 58, 0.82);
+    color: #f4f8fe;
     font-weight: 700;
     cursor: pointer;
 }
 
 .clear-button:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
+    opacity: 0.48;
 }
 
 .clear-button:not(:disabled):hover,
@@ -469,38 +477,38 @@
 
 .skill-chip {
     padding: 0.72rem 1rem;
-    border: 1px solid rgba(35, 53, 88, 0.15);
+    border: 1px solid rgba(111, 137, 171, 0.18);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.88);
-    color: #27415f;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(236, 243, 252, 0.92);
     font-size: 0.95rem;
     cursor: pointer;
 }
 
 .skill-chip.selected {
-    background: #10233d;
-    border-color: #10233d;
-    color: #fdf8ec;
+    background: rgba(245, 183, 48, 0.2);
+    border-color: rgba(245, 183, 48, 0.42);
+    color: #fff3c8;
 }
 
 .status-banner,
 .helper-copy,
 .secondary-copy {
     margin: 0;
-    color: #516077;
+    color: rgba(213, 224, 239, 0.74);
 }
 
 .status-banner {
     padding: 1rem 1.15rem;
     border-radius: 1rem;
-    border: 1px solid rgba(35, 53, 88, 0.12);
-    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(111, 137, 171, 0.16);
+    background: rgba(12, 27, 47, 0.9);
 }
 
 .status-banner.error {
-    border-color: rgba(187, 53, 53, 0.2);
-    background: rgba(255, 237, 237, 0.9);
-    color: #8d2323;
+    border-color: rgba(255, 139, 139, 0.28);
+    background: rgba(84, 24, 29, 0.76);
+    color: #ffd6d6;
 }
 
 .project-list {
@@ -680,15 +688,19 @@
     gap: 1.2rem;
     align-items: stretch;
     padding: 1.1rem;
-    border: 1px solid rgba(35, 53, 88, 0.12);
+    border: 1px solid rgba(111, 137, 171, 0.16);
     border-radius: 1.5rem;
-    background: rgba(255, 255, 255, 0.88);
-    box-shadow: 0 18px 50px rgba(14, 29, 43, 0.08);
+    background:
+        linear-gradient(180deg, rgba(13, 29, 49, 0.94), rgba(9, 22, 38, 0.92)),
+        radial-gradient(circle at top right, rgba(245, 183, 48, 0.08), transparent 40%);
+    box-shadow: 0 20px 48px rgba(3, 10, 20, 0.24);
 }
 
 .project-card.featured {
-    border-color: rgba(245, 183, 48, 0.45);
-    box-shadow: 0 20px 65px rgba(245, 183, 48, 0.16);
+    border-color: rgba(245, 183, 48, 0.34);
+    box-shadow:
+        0 24px 58px rgba(3, 10, 20, 0.3),
+        0 0 0 1px rgba(245, 183, 48, 0.08);
 }
 
 .image-shell,
@@ -799,7 +811,7 @@
 }
 
 .project-dates {
-    color: #516077;
+    color: rgba(213, 224, 239, 0.68);
     font-size: 0.86rem;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -821,8 +833,12 @@
 .project-summary,
 .detail-markdown p,
 .stack-card p {
-    color: #435166;
+    color: rgba(213, 224, 239, 0.82);
     font-size: 1rem;
+}
+
+.project-card h2 {
+    color: #f4f8fe;
 }
 
 .carousel-copy h3 {
@@ -870,13 +886,13 @@
 }
 
 .tag.skill {
-    background: rgba(245, 183, 48, 0.14);
-    color: #7b5511;
+    background: rgba(245, 183, 48, 0.16);
+    color: #f6dca0;
 }
 
 .tag.technology {
-    background: rgba(16, 35, 61, 0.08);
-    color: #233550;
+    background: rgba(255, 255, 255, 0.08);
+    color: #dbe7f6;
 }
 
 .detail-hero .tag.skill {
@@ -899,12 +915,12 @@
     justify-content: center;
     min-height: 2.7rem;
     padding: 0.2rem 0.9rem;
-    border: 1px solid rgba(35, 53, 88, 0.14);
+    border: 1px solid rgba(111, 137, 171, 0.18);
     border-radius: 999px;
-    color: #10233d;
+    color: #f4f8fe;
     font-weight: 700;
     text-decoration: none;
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .secondary-link {
@@ -946,9 +962,9 @@
 }
 
 .card-links .primary-link {
-    background: #10233d;
-    color: #fdf8ec;
-    border-color: #10233d;
+    background: rgba(245, 183, 48, 0.92);
+    color: #11243d;
+    border-color: rgba(245, 183, 48, 0.92);
 }
 
 .detail-links a {
