@@ -25,7 +25,19 @@ public static class PortfolioSeedData
                 title: "Project Portfolio 2026",
                 startDate: new DateOnly(2026, 1, 10),
                 shortDescription: "A recruiter-focused portfolio platform with admin management and analytics foundations.",
-                longDescriptionMarkdown: "A full-stack developer portfolio that supports public project discovery, admin editing workflows, and future extensibility for analytics and AI-assisted content experiences.",
+                longDescriptionMarkdown: """
+                    A full-stack developer portfolio that supports public project discovery, admin editing workflows, and future extensibility for analytics and AI-assisted content experiences.
+
+                    The public experience is designed to make projects easy to browse, compare, and understand without requiring a recruiter or hiring manager to decode vague summaries. Each project detail page is meant to present a clear story with supporting screenshots, collaborators, milestones, and contextual metadata that explain what was built and why it mattered.
+
+                    The admin side of the platform is intended to support ongoing curation instead of treating the portfolio as a static site that has to be hand-edited for every change. That includes structured editing workflows, publishing controls, and a data model that can grow as new sections such as timeline, resume, and blog content are introduced.
+
+                    The current implementation work is also being used as a design and architecture proving ground. It gives space to refine routing, responsive layouts, dark-theme consistency, screenshot presentation, and media-heavy detail views in a way that can scale as the portfolio expands.
+
+                    Longer project narratives like this one are useful for validating real layout behavior. They help test how overview content flows beside a sticky screenshot rail, how section spacing holds up on large screens, and whether the detail page still feels readable when project descriptions are more complete than placeholder seed text.
+
+                    Over time, this project is expected to serve as both a portfolio surface and a reference implementation for maintainable full-stack delivery. That means the codebase needs to support polished presentation, practical content management, and enough flexibility to keep evolving without requiring a redesign every time a new public section is added.
+                    """,
                 githubUrl: "https://github.com/darkdhamon/ProjectPortfolio2026",
                 demoUrl: "https://portfolio2026.local/projects/portfolio-2026",
                 developerRoles: ["Lead Developer", "Product Designer"],
