@@ -48,7 +48,9 @@ public sealed class ProjectsController(IProjectRepository projectRepository) : C
         var project = await projectRepository.GetByIdAsync(id, cancellationToken);
         var requestId = HttpContext.Items[RequestIdContext.ItemKey] as string;
 
-        return project is null ? NotFound() : Ok(project.ToResponse(requestId));
+        return project is null || !project.IsPublished
+            ? NotFound(new ApiErrorResponse { Message = "The requested project could not be found." })
+            : Ok(project.ToResponse(requestId));
     }
 
     [HttpPost]

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NUnit.Framework;
+using ProjectPortfolio2026.Server.Contracts;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Controllers;
 using ProjectPortfolio2026.Server.Domain.Projects;
@@ -89,6 +90,59 @@ public sealed class ProjectsControllerRequestIdTests
 
         Assert.That(response, Is.Not.Null);
         Assert.That(response!.RequestId, Is.EqualTo("body-id"));
+    }
+
+    [Test]
+    public async Task GetByIdAsync_ReturnsPublishedProjectWithRequestId()
+    {
+        var repository = new StubProjectRepository();
+        repository.Projects.Add(new Project
+        {
+            Id = 24,
+            Title = "Portfolio Platform",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Short summary.",
+            LongDescriptionMarkdown = "Long summary.",
+            IsPublished = true
+        });
+
+        var controller = CreateController(repository);
+        controller.ControllerContext.HttpContext.Items[RequestIdContext.ItemKey] = "detail-id";
+
+        var actionResult = await controller.GetByIdAsync(24, CancellationToken.None);
+        var okResult = actionResult.Result as OkObjectResult;
+        var response = okResult?.Value as ProjectResponse;
+
+        Assert.That(response, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(response!.Id, Is.EqualTo(24));
+            Assert.That(response.RequestId, Is.EqualTo("detail-id"));
+        });
+    }
+
+    [Test]
+    public async Task GetByIdAsync_ReturnsNotFoundForUnpublishedProject()
+    {
+        var repository = new StubProjectRepository();
+        repository.Projects.Add(new Project
+        {
+            Id = 29,
+            Title = "Hidden Draft",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Internal only.",
+            LongDescriptionMarkdown = "Draft.",
+            IsPublished = false
+        });
+
+        var controller = CreateController(repository);
+
+        var actionResult = await controller.GetByIdAsync(29, CancellationToken.None);
+        var notFoundResult = actionResult.Result as NotFoundObjectResult;
+        var response = notFoundResult?.Value as ApiErrorResponse;
+
+        Assert.That(notFoundResult, Is.Not.Null);
+        Assert.That(response?.Message, Is.EqualTo("The requested project could not be found."));
     }
 
     private static ProjectsController CreateController(IProjectRepository repository)
