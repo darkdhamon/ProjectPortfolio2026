@@ -27,13 +27,16 @@ public sealed class ProjectsController(IProjectRepository projectRepository) : C
 
     [HttpGet("{id:int}")]
     [ProducesResponseType<ProjectResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProjectResponse>> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         var project = await projectRepository.GetByIdAsync(id, cancellationToken);
         var requestId = ResolveRequestId();
 
-        return project is null ? NotFound() : Ok(project.ToResponse(requestId));
+        return project is null
+            ? NotFound(CreateNotFoundError("project_not_found", $"Project {id} was not found.", requestId))
+            : Ok(project.ToResponse(requestId));
     }
 
     [HttpPost]
@@ -51,6 +54,7 @@ public sealed class ProjectsController(IProjectRepository projectRepository) : C
 
     [HttpPut("{id:int}")]
     [ProducesResponseType<ProjectResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProjectResponse>> UpdateAsync(
         int id,
@@ -61,7 +65,7 @@ public sealed class ProjectsController(IProjectRepository projectRepository) : C
         var existingProject = await projectRepository.GetByIdAsync(id, cancellationToken);
         if (existingProject is null)
         {
-            return NotFound();
+            return NotFound(CreateNotFoundError("project_not_found", $"Project {id} was not found.", requestId));
         }
 
         request.ApplyTo(existingProject);
@@ -89,5 +93,15 @@ public sealed class ProjectsController(IProjectRepository projectRepository) : C
 
         var headerRequestId = Request.Headers["X-Request-Id"].FirstOrDefault();
         return string.IsNullOrWhiteSpace(headerRequestId) ? null : headerRequestId.Trim();
+    }
+
+    private static ApiErrorResponse CreateNotFoundError(string errorCode, string message, string? requestId)
+    {
+        return new ApiErrorResponse
+        {
+            RequestId = requestId,
+            ErrorCode = errorCode,
+            Message = message
+        };
     }
 }

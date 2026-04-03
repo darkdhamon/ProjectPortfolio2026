@@ -154,6 +154,61 @@ public sealed class ProjectContractMapperTests
     }
 
     [Test]
+    public void ToDomain_TreatsNullCollectionsAsEmpty()
+    {
+        var request = new ProjectRequest
+        {
+            Title = "Null-safe project",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Short summary.",
+            LongDescriptionMarkdown = "Long summary.",
+            Screenshots = null!,
+            DeveloperRoles = null!,
+            Technologies = null!,
+            Skills = null!,
+            Collaborators = null!,
+            Milestones = null!
+        };
+
+        var project = request.ToDomain();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(project.Screenshots, Is.Empty);
+            Assert.That(project.DeveloperRoles, Is.Empty);
+            Assert.That(project.Technologies, Is.Empty);
+            Assert.That(project.Skills, Is.Empty);
+            Assert.That(project.Collaborators, Is.Empty);
+            Assert.That(project.Milestones, Is.Empty);
+        });
+    }
+
+    [Test]
+    public void ToDomain_TreatsNullCollaboratorRolesAsEmpty()
+    {
+        var request = new ProjectRequest
+        {
+            Title = "Null collaborator roles",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Short summary.",
+            LongDescriptionMarkdown = "Long summary.",
+            Collaborators =
+            [
+                new ProjectCollaboratorRequest
+                {
+                    Name = "Taylor",
+                    Roles = null!
+                }
+            ]
+        };
+
+        var project = request.ToDomain();
+
+        Assert.That(project.Collaborators, Has.Count.EqualTo(1));
+        Assert.That(project.Collaborators[0].Roles, Is.Empty);
+    }
+
+    [Test]
     public void ToResponse_MapsAndSortsNestedCollections_WithRequestId()
     {
         var project = new Project

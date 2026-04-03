@@ -19,7 +19,7 @@ public static class ProjectContractMapper
             DemoUrl = request.DemoUrl,
             IsPublished = request.IsPublished,
             IsFeatured = request.IsFeatured,
-            Screenshots = request.Screenshots
+            Screenshots = (request.Screenshots ?? [])
                 .Select(screenshot => new ProjectScreenshot
                 {
                     ImageUrl = screenshot.ImageUrl,
@@ -27,32 +27,32 @@ public static class ProjectContractMapper
                     SortOrder = screenshot.SortOrder
                 })
                 .ToList(),
-            DeveloperRoles = request.DeveloperRoles
+            DeveloperRoles = (request.DeveloperRoles ?? [])
                 .Where(role => !string.IsNullOrWhiteSpace(role))
                 .Select(role => new ProjectDeveloperRole { Name = role.Trim() })
                 .ToList(),
-            Technologies = request.Technologies
+            Technologies = (request.Technologies ?? [])
                 .Where(technology => !string.IsNullOrWhiteSpace(technology))
                 .Select(technology => new ProjectTechnology { Name = technology.Trim() })
                 .ToList(),
-            Skills = request.Skills
+            Skills = (request.Skills ?? [])
                 .Where(skill => !string.IsNullOrWhiteSpace(skill))
                 .Select(skill => new ProjectSkill { Name = skill.Trim() })
                 .ToList(),
-            Collaborators = request.Collaborators
+            Collaborators = (request.Collaborators ?? [])
                 .Select(collaborator => new ProjectCollaborator
                 {
                     Name = collaborator.Name,
                     GitHubProfileUrl = collaborator.GitHubProfileUrl,
                     WebsiteUrl = collaborator.WebsiteUrl,
                     PhotoUrl = collaborator.PhotoUrl,
-                    Roles = collaborator.Roles
+                    Roles = (collaborator.Roles ?? [])
                         .Where(role => !string.IsNullOrWhiteSpace(role))
                         .Select(role => new ProjectCollaboratorRole { Name = role.Trim() })
                         .ToList()
                 })
                 .ToList(),
-            Milestones = request.Milestones
+            Milestones = (request.Milestones ?? [])
                 .Select(milestone => new ProjectMilestone
                 {
                     Title = milestone.Title,
