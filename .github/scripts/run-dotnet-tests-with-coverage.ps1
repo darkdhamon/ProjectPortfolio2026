@@ -119,17 +119,6 @@ try {
     Write-Host ".NET test files: $($testResultFiles.Count)"
     Write-Host ".NET test results: $passedTests passed, $failedTests failed, $skippedTests skipped, $totalTests total"
 
-    if ($env:GITHUB_STEP_SUMMARY) {
-        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "## .NET Test Report"
-        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
-        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Test Files: $($testResultFiles.Count)"
-        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Test Results: $passedTests passed, $failedTests failed, $skippedTests skipped, $totalTests total"
-        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
-        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "## Coverage Check Result"
-        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
-        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Combined .NET line coverage: $coveragePercent%"
-    }
-
     $dotnetSummary = @{
         suite = '.NET'
         testFiles = $testResultFiles.Count
