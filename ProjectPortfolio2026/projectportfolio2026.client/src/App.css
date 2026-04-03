@@ -91,7 +91,7 @@
 .site-brand strong {
     display: inline-grid;
     gap: 0.05rem;
-    background: linear-gradient(90deg, #63deff 0%, #7ee9ff 34%, #ffd86f 72%, #f0b43c 100%);
+    background: linear-gradient(180deg, #63deff 0%, #7ee9ff 42%, #ffd86f 72%, #f0b43c 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
