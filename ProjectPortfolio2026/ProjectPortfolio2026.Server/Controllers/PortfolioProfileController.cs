@@ -4,12 +4,15 @@ using ProjectPortfolio2026.Server.Contracts.Portfolio;
 using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Mappers;
 using ProjectPortfolio2026.Server.Repositories;
+using ProjectPortfolio2026.Server.Services.Interfaces;
 
 namespace ProjectPortfolio2026.Server.Controllers;
 
 [ApiController]
 [Route("api/portfolio-profile")]
-public sealed class PortfolioProfileController(IPortfolioProfileRepository portfolioProfileRepository) : ControllerBase
+public sealed class PortfolioProfileController(
+    IPortfolioProfileRepository portfolioProfileRepository,
+    IPortfolioLinkFormatter portfolioLinkFormatter) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType<PortfolioProfileResponse>(StatusCodes.Status200OK)]
@@ -23,6 +26,6 @@ public sealed class PortfolioProfileController(IPortfolioProfileRepository portf
         }
 
         var requestId = HttpContext.Items[RequestIdContext.ItemKey] as string;
-        return Ok(profile.ToResponse(requestId));
+        return Ok(profile.ToResponse(portfolioLinkFormatter, requestId));
     }
 }

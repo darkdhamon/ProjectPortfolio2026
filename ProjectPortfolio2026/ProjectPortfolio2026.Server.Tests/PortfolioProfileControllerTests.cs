@@ -7,6 +7,7 @@ using ProjectPortfolio2026.Server.Controllers;
 using ProjectPortfolio2026.Server.Domain.Portfolio;
 using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Repositories;
+using ProjectPortfolio2026.Server.Services.Interfaces;
 
 namespace ProjectPortfolio2026.Server.Tests;
 
@@ -66,7 +67,7 @@ public sealed class PortfolioProfileControllerTests
             }
         };
 
-        var controller = new PortfolioProfileController(repository)
+        var controller = new PortfolioProfileController(repository, new StubPortfolioLinkFormatter())
         {
             ControllerContext = new ControllerContext
             {
@@ -93,7 +94,7 @@ public sealed class PortfolioProfileControllerTests
     [Test]
     public async Task GetAsync_ReturnsNotFoundWhenNoPublicProfileExists()
     {
-        var controller = new PortfolioProfileController(new StubPortfolioProfileRepository())
+        var controller = new PortfolioProfileController(new StubPortfolioProfileRepository(), new StubPortfolioLinkFormatter())
         {
             ControllerContext = new ControllerContext
             {
@@ -116,6 +117,23 @@ public sealed class PortfolioProfileControllerTests
         public Task<PortfolioProfile?> GetPublicAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Profile);
+        }
+    }
+
+    private sealed class StubPortfolioLinkFormatter : IPortfolioLinkFormatter
+    {
+        public string? BuildContactMethodHref(PortfolioContactMethod contactMethod)
+        {
+            return contactMethod.Type.Equals("email", StringComparison.OrdinalIgnoreCase)
+                ? $"mailto:{contactMethod.Value}"
+                : contactMethod.Href;
+        }
+
+        public string? BuildSocialLinkUrl(PortfolioSocialLink socialLink)
+        {
+            return socialLink.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                ? socialLink.Url
+                : null;
         }
     }
 }

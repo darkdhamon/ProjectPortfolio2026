@@ -1,12 +1,15 @@
-using System.Net.Mail;
 using ProjectPortfolio2026.Server.Contracts.Portfolio;
 using ProjectPortfolio2026.Server.Domain.Portfolio;
+using ProjectPortfolio2026.Server.Services.Interfaces;
 
 namespace ProjectPortfolio2026.Server.Mappers;
 
 public static class PortfolioProfileContractMapper
 {
-    public static PortfolioProfileResponse ToResponse(this PortfolioProfile profile, string? requestId = null)
+    public static PortfolioProfileResponse ToResponse(
+        this PortfolioProfile profile,
+        IPortfolioLinkFormatter linkFormatter,
+        string? requestId = null)
     {
         return new PortfolioProfileResponse
         {
@@ -21,7 +24,7 @@ public static class PortfolioProfileContractMapper
                 .Where(contactMethod => contactMethod.IsVisible)
                 .OrderBy(contactMethod => contactMethod.SortOrder)
                 .ThenBy(contactMethod => contactMethod.Label)
-                .Select(ToContactMethodResponse)
+                .Select(contactMethod => ToContactMethodResponse(contactMethod, linkFormatter))
                 .Where(response => response is not null)
                 .Select(response => response!)
                 .ToList(),
@@ -29,16 +32,18 @@ public static class PortfolioProfileContractMapper
                 .Where(socialLink => socialLink.IsVisible)
                 .OrderBy(socialLink => socialLink.SortOrder)
                 .ThenBy(socialLink => socialLink.Label)
-                .Select(ToSocialLinkResponse)
+                .Select(socialLink => ToSocialLinkResponse(socialLink, linkFormatter))
                 .Where(response => response is not null)
                 .Select(response => response!)
                 .ToList()
         };
     }
 
-    private static PortfolioContactMethodResponse? ToContactMethodResponse(PortfolioContactMethod contactMethod)
+    private static PortfolioContactMethodResponse? ToContactMethodResponse(
+        PortfolioContactMethod contactMethod,
+        IPortfolioLinkFormatter linkFormatter)
     {
-        var href = BuildContactMethodHref(contactMethod);
+        var href = linkFormatter.BuildContactMethodHref(contactMethod);
         return new PortfolioContactMethodResponse
         {
             Type = contactMethod.Type,
@@ -50,9 +55,11 @@ public static class PortfolioProfileContractMapper
         };
     }
 
-    private static PortfolioSocialLinkResponse? ToSocialLinkResponse(PortfolioSocialLink socialLink)
+    private static PortfolioSocialLinkResponse? ToSocialLinkResponse(
+        PortfolioSocialLink socialLink,
+        IPortfolioLinkFormatter linkFormatter)
     {
-        var url = SanitizeUrl(socialLink.Url, "http", "https");
+        var url = linkFormatter.BuildSocialLinkUrl(socialLink);
         if (url is null)
         {
             return null;
@@ -67,88 +74,5 @@ public static class PortfolioProfileContractMapper
             Summary = socialLink.Summary,
             SortOrder = socialLink.SortOrder
         };
-    }
-
-    private static string? BuildContactMethodHref(PortfolioContactMethod contactMethod)
-    {
-        if (contactMethod.Type.Equals("email", StringComparison.OrdinalIgnoreCase))
-        {
-            return BuildMailToHref(contactMethod.Value);
-        }
-
-        if (contactMethod.Type.Equals("phone", StringComparison.OrdinalIgnoreCase))
-        {
-            return BuildTelephoneHref(contactMethod.Value);
-        }
-
-        return SanitizeUrl(contactMethod.Href, "http", "https");
-    }
-
-    private static string? BuildMailToHref(string value)
-    {
-        var trimmedValue = value.Trim();
-        if (string.IsNullOrWhiteSpace(trimmedValue))
-        {
-            return null;
-        }
-
-        try
-        {
-            var mailAddress = new MailAddress(trimmedValue);
-            return mailAddress.Address.Equals(trimmedValue, StringComparison.OrdinalIgnoreCase)
-                ? $"mailto:{mailAddress.Address}"
-                : null;
-        }
-        catch (FormatException)
-        {
-            return null;
-        }
-    }
-
-    private static string? BuildTelephoneHref(string value)
-    {
-        var normalizedPhone = NormalizeTelephoneValue(value);
-        return string.IsNullOrWhiteSpace(normalizedPhone)
-            ? null
-            : $"tel:{normalizedPhone}";
-    }
-
-    private static string? NormalizeTelephoneValue(string value)
-    {
-        var trimmedValue = value.Trim();
-        if (string.IsNullOrWhiteSpace(trimmedValue))
-        {
-            return null;
-        }
-
-        var characters = trimmedValue
-            .Where((character, index) => char.IsDigit(character) || (character == '+' && index == 0))
-            .ToArray();
-        if (characters.Length == 0)
-        {
-            return null;
-        }
-
-        var normalizedValue = new string(characters);
-        return normalizedValue.Any(char.IsDigit)
-            ? normalizedValue
-            : null;
-    }
-
-    private static string? SanitizeUrl(string? value, params string[] allowedSchemes)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri))
-        {
-            return null;
-        }
-
-        return allowedSchemes.Contains(uri.Scheme, StringComparer.OrdinalIgnoreCase)
-            ? uri.AbsoluteUri
-            : null;
     }
 }

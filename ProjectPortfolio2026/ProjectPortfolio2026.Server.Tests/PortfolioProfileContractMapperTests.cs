@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using ProjectPortfolio2026.Server.Domain.Portfolio;
 using ProjectPortfolio2026.Server.Mappers;
+using ProjectPortfolio2026.Server.Services.Interfaces;
 
 namespace ProjectPortfolio2026.Server.Tests;
 
@@ -8,7 +9,7 @@ namespace ProjectPortfolio2026.Server.Tests;
 public sealed class PortfolioProfileContractMapperTests
 {
     [Test]
-    public void ToResponse_GeneratesEmailAndPhoneLinks_AndFiltersUnsafeLinks()
+    public void ToResponse_MapsVisibleContactMethodsAndSocialLinks_UsingFormatter()
     {
         var profile = new PortfolioProfile
         {
@@ -16,7 +17,6 @@ public sealed class PortfolioProfileContractMapperTests
             DisplayName = "Bronze Loft",
             ContactHeadline = "Reach out",
             ContactIntro = "Intro",
-            IsPublic = true,
             ContactMethods =
             [
                 new PortfolioContactMethod
@@ -24,27 +24,16 @@ public sealed class PortfolioProfileContractMapperTests
                     Type = "email",
                     Label = "Email",
                     Value = "bronze@example.dev",
-                    Href = "javascript:alert('xss')",
                     SortOrder = 1,
                     IsVisible = true
                 },
                 new PortfolioContactMethod
                 {
-                    Type = "phone",
-                    Label = "Phone",
-                    Value = "(312) 555-0147",
-                    Href = "https://ignored.example.test",
+                    Type = "hidden",
+                    Label = "Hidden",
+                    Value = "Hidden",
                     SortOrder = 2,
-                    IsVisible = true
-                },
-                new PortfolioContactMethod
-                {
-                    Type = "portfolio",
-                    Label = "Website",
-                    Value = "Portfolio site",
-                    Href = "javascript:alert('xss')",
-                    SortOrder = 3,
-                    IsVisible = true
+                    IsVisible = false
                 }
             ],
             SocialLinks =
@@ -59,25 +48,39 @@ public sealed class PortfolioProfileContractMapperTests
                 },
                 new PortfolioSocialLink
                 {
-                    Platform = "unsafe",
-                    Label = "Unsafe",
-                    Url = "javascript:alert('xss')",
+                    Platform = "unsupported",
+                    Label = "Unsupported",
+                    Url = "ignored",
                     SortOrder = 2,
                     IsVisible = true
                 }
             ]
         };
 
-        var response = profile.ToResponse("request-1");
+        var response = profile.ToResponse(new StubPortfolioLinkFormatter(), "request-1");
 
         Assert.Multiple(() =>
         {
-            Assert.That(response.ContactMethods, Has.Count.EqualTo(3));
-            Assert.That(response.ContactMethods[0].Href, Is.EqualTo("mailto:bronze@example.dev"));
-            Assert.That(response.ContactMethods[1].Href, Is.EqualTo("tel:3125550147"));
-            Assert.That(response.ContactMethods[2].Href, Is.Null);
-            Assert.That(response.SocialLinks.Select(link => link.Label), Is.EqualTo(new[] { "GitHub" }));
+            Assert.That(response.RequestId, Is.EqualTo("request-1"));
+            Assert.That(response.ContactMethods.Select(contactMethod => contactMethod.Label), Is.EqualTo(new[] { "Email" }));
+            Assert.That(response.ContactMethods[0].Href, Is.EqualTo("formatted:email"));
+            Assert.That(response.SocialLinks.Select(socialLink => socialLink.Label), Is.EqualTo(new[] { "GitHub" }));
             Assert.That(response.SocialLinks[0].Url, Is.EqualTo("https://github.com/darkdhamon"));
         });
+    }
+
+    private sealed class StubPortfolioLinkFormatter : IPortfolioLinkFormatter
+    {
+        public string? BuildContactMethodHref(PortfolioContactMethod contactMethod)
+        {
+            return $"formatted:{contactMethod.Type}";
+        }
+
+        public string? BuildSocialLinkUrl(PortfolioSocialLink socialLink)
+        {
+            return socialLink.Platform.Equals("github", StringComparison.OrdinalIgnoreCase)
+                ? socialLink.Url
+                : null;
+        }
     }
 }
