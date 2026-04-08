@@ -60,6 +60,7 @@ jobs:
             }
 
             $codePathPatterns = @(
+              '^\.github/',
               '^ProjectPortfolio2026/projectportfolio2026\.client/',
               '^ProjectPortfolio2026/ProjectPortfolio2026\.Server/',
               '^ProjectPortfolio2026/ProjectPortfolio2026\.Server\.Tests/'
@@ -126,6 +127,10 @@ jobs:
         if: steps.code-changes.outputs.should_run_tests == 'true'
         working-directory: ${{ env.CLIENT_ROOT }}
         run: npm ci
+
+      - name: Run workflow automation tests
+        if: steps.code-changes.outputs.should_run_tests == 'true'
+        run: node --test .github/scripts/*.test.mjs
 
       - name: Lint client
         if: steps.code-changes.outputs.should_run_tests == 'true'
