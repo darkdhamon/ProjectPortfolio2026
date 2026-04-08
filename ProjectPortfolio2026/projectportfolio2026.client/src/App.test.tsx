@@ -701,6 +701,69 @@ describe('App', () => {
 
         expect(await screen.findByText('The project detail endpoint is unavailable.')).toBeInTheDocument();
     });
+
+    it('shows the admin dashboard mockup without login during preview mode', async () => {
+        render(<App />);
+
+        fireEvent.click(screen.getByRole('button', { name: /Admin/ }));
+
+        expect(await screen.findByRole('heading', { name: 'Admin dashboard mockup' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
+        expect(window.location.pathname).toBe('/admin');
+    });
+
+    it('signs in through the mock login page and reveals admin account navigation', async () => {
+        window.history.replaceState({}, '', '/login?redirect=%2Fadmin');
+        render(<App />);
+
+        fireEvent.change(screen.getByLabelText('Username or email'), {
+            target: { value: 'admin@example.com' }
+        });
+        fireEvent.change(screen.getByLabelText('Password'), {
+            target: { value: 'Password123!' }
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
+
+        expect(await screen.findByRole('heading', { name: 'Admin dashboard mockup' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Account Settings' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
+        expect(screen.getByText('Signed in as admin')).toBeInTheDocument();
+        expect(window.location.pathname).toBe('/admin');
+    });
+
+    it('shows the account settings mockup without login when opened directly', async () => {
+        window.history.replaceState({}, '', '/admin/account');
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Manage your current admin account' })).toBeInTheDocument();
+        expect(screen.getByText(/preview mode/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
+    });
+
+    it('lets the signed-in mock admin edit account settings and log out', async () => {
+        window.history.replaceState({}, '', '/login?redirect=%2Fadmin');
+        render(<App />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
+        fireEvent.click(await screen.findByRole('link', { name: 'Account Settings' }));
+
+        expect(await screen.findByRole('heading', { name: 'Manage your current admin account' })).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText('Username'), {
+            target: { value: 'editor-admin' }
+        });
+        fireEvent.change(screen.getByLabelText('Display name'), {
+            target: { value: 'Portfolio Owner' }
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Save Profile Mockup' }));
+
+        expect(screen.getByText('Signed in as Portfolio Owner')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
+
+        expect(await screen.findByRole('heading', { name: 'Sign in through the admin entry point.' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
+    });
 });
 
 describe('App helpers', () => {
@@ -711,9 +774,22 @@ describe('App helpers', () => {
         });
     });
 
-    it('parses home, list, and detail routes', () => {
+    it('parses home, list, detail, and admin routes', () => {
         expect(parseRoute({ pathname: '/', search: '?search=react' })).toEqual({
             kind: 'home'
+        });
+
+        expect(parseRoute({ pathname: '/login', search: '?redirect=%2Fadmin' })).toEqual({
+            kind: 'login',
+            redirectTo: '/admin'
+        });
+
+        expect(parseRoute({ pathname: '/admin', search: '' })).toEqual({
+            kind: 'admin'
+        });
+
+        expect(parseRoute({ pathname: '/admin/account', search: '' })).toEqual({
+            kind: 'admin-account'
         });
 
         expect(parseRoute({ pathname: '/projects', search: '?search=react' })).toEqual({

@@ -9,6 +9,9 @@ export interface AppLocation {
 }
 
 const homeRoutePattern = /^\/?$/;
+const loginRoutePattern = /^\/login\/?$/;
+const adminRoutePattern = /^\/admin\/?$/;
+const adminAccountRoutePattern = /^\/admin\/account\/?$/;
 const listRoutePattern = /^\/projects\/?$/;
 const detailRoutePattern = /^\/projects\/(?<id>\d+)\/?$/;
 
@@ -16,6 +19,25 @@ export function parseRoute(location: AppLocation) {
     if (homeRoutePattern.test(location.pathname)) {
         return {
             kind: 'home' as const
+        };
+    }
+
+    if (loginRoutePattern.test(location.pathname)) {
+        return {
+            kind: 'login' as const,
+            redirectTo: parseRedirectTarget(location.search)
+        };
+    }
+
+    if (adminAccountRoutePattern.test(location.pathname)) {
+        return {
+            kind: 'admin-account' as const
+        };
+    }
+
+    if (adminRoutePattern.test(location.pathname)) {
+        return {
+            kind: 'admin' as const
         };
     }
 
@@ -38,6 +60,17 @@ export function parseRoute(location: AppLocation) {
     return {
         kind: 'home' as const
     };
+}
+
+export function parseRedirectTarget(search: string) {
+    const params = new URLSearchParams(search);
+    const redirect = params.get('redirect');
+
+    if (!redirect || !redirect.startsWith('/')) {
+        return '/admin';
+    }
+
+    return redirect;
 }
 
 export function parseListFilters(search: string): ListFilters {

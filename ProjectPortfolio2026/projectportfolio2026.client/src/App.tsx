@@ -1,5 +1,4 @@
-import { Fragment, startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent, type TouchEvent } from 'react';
-import portfolioLogoIcon from './assets/Logo/Portfolio-Logo-Icon.png';
+import { Fragment, startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, type KeyboardEvent, type SyntheticEvent, type TouchEvent } from 'react';
 import profilePlaceholder from './assets/Placeholders/Profile-Placeholder.png';
 import projectImageUnavailable from './assets/Placeholders/Project-Image-Unavailable.png';
 import screenshotMissing from './assets/Placeholders/Screenshot-Missing.png';
@@ -18,6 +17,12 @@ import {
     type AppLocation,
     type ListFilters
 } from './appSupport';
+import { AccountSettingsPage } from './components/admin/AccountSettingsPage';
+import { AdminDashboardPage } from './components/admin/AdminDashboardPage';
+import { LoginPage } from './components/admin/LoginPage';
+import { type AccountDraft, type MockAuthUser, isAuthMockupPreviewEnabled, mockAdminUser } from './components/admin/mockAuth';
+import { InternalLink, type NavigateHandler } from './components/navigation/InternalLink';
+import { SiteShell, type SiteShellContent } from './components/shell/SiteShell';
 import './App.css';
 
 interface ProjectSummary {
@@ -96,32 +101,10 @@ interface ApiErrorResponse {
     message?: string;
 }
 
-interface SiteShellContent {
-    kicker: string;
-    title: string;
-    summary: string;
-}
-
-interface NavItem {
-    label: string;
-    description: string;
-    href?: string;
-}
-
-
 const pageSize = 6;
 const startupRetryDelayMs = 2000;
 const startupRetryAttempts = 2;
 const startupRetryMessage = 'The portfolio API is still starting up. Please wait a moment and try again.';
-const navItems: readonly NavItem[] = [
-    { label: 'Home', href: '/', description: 'Featured highlights and introduction.' },
-    { label: 'Projects', href: '/projects', description: 'Browse shipped work and project detail stories.' },
-    { label: 'Timeline', description: 'Career milestones, education, and certifications.' },
-    { label: 'About', description: 'Background, strengths, and developer story.' },
-    { label: 'Resume', description: 'Resume hub and downloadable materials.' },
-    { label: 'Contact', description: 'Direct outreach paths and social links.' },
-    { label: 'Blog', description: 'Writing, updates, and thought pieces.' }
-] as const;
 
 class RetryableApiError extends Error {
     constructor(message: string) {
@@ -226,6 +209,7 @@ async function fetchResponsePayloadWithStartupRetry<TPayload>(
 
 function App() {
     const [location, setLocation] = useState<AppLocation>(() => readLocation());
+    const [currentUser, setCurrentUser] = useState<MockAuthUser | null>(null);
 
     useEffect(() => {
         const handlePopState = () => {
@@ -241,7 +225,10 @@ function App() {
         ? 'Home'
         : route.kind === 'detail' || route.kind === 'list'
             ? 'Projects'
+            : route.kind === 'login' || route.kind === 'admin' || route.kind === 'admin-account'
+                ? 'Admin'
             : '';
+    const displayName = currentUser?.displayName.trim() ? currentUser.displayName.trim() : currentUser?.username ?? '';
     const shellContent = route.kind === 'home'
         ? {
             kicker: 'Project Portfolio',
@@ -254,13 +241,31 @@ function App() {
             title: 'Project Detail',
             summary: 'Review the project story, supporting media, collaborators, and milestone context.'
         } satisfies SiteShellContent
+        : route.kind === 'login'
+        ? {
+            kicker: 'Admin Access',
+            title: 'Log In',
+            summary: 'Use the admin entry point to sign in, review the protected dashboard, and shape the account management flow before the live API wiring lands.'
+        } satisfies SiteShellContent
+        : route.kind === 'admin'
+        ? {
+            kicker: 'Admin Access',
+            title: 'Admin Dashboard',
+            summary: 'This mock dashboard is the placeholder shell for protected management tools, system status, and future admin-only workflows.'
+        } satisfies SiteShellContent
+        : route.kind === 'admin-account'
+        ? {
+            kicker: 'Admin Access',
+            title: 'Account Settings',
+            summary: 'Use this account area to preview how admins will update username, email, display name, and password once the live endpoint wiring is in place.'
+        } satisfies SiteShellContent
         : {
             kicker: 'Project Portfolio',
             title: 'Projects',
             summary: 'Browse shipped work, search the portfolio, and move into individual project case studies.'
         } satisfies SiteShellContent;
 
-    function navigate(nextPath: string, options?: { replace?: boolean; preserveScroll?: boolean }) {
+    const navigate: NavigateHandler = (nextPath, options) => {
         const method = options?.replace ? 'replaceState' : 'pushState';
         window.history[method](window.history.state, '', nextPath);
         setLocation(readLocation());
@@ -268,12 +273,50 @@ function App() {
         if (!options?.preserveScroll) {
             window.scrollTo({ top: 0, behavior: 'auto' });
         }
+    };
+
+    function handleAdminNavigate() {
+        if (currentUser || isAuthMockupPreviewEnabled) {
+            navigate('/admin');
+            return;
+        }
+
+        navigate('/login?redirect=%2Fadmin');
+    }
+
+    function handleMockLogin(redirectTo: string) {
+        setCurrentUser(mockAdminUser);
+        navigate(redirectTo);
+    }
+
+    function handleMockLogout() {
+        setCurrentUser(null);
+        navigate('/login?redirect=%2Fadmin');
+    }
+
+    function handleAccountSave(draft: AccountDraft) {
+        setCurrentUser(existingUser => {
+            if (!existingUser) {
+                return existingUser;
+            }
+
+            return {
+                ...existingUser,
+                username: draft.username.trim(),
+                email: draft.email.trim(),
+                displayName: draft.displayName.trim()
+            };
+        });
     }
 
     return (
         <SiteShell
             activeNavLabel={activeNavLabel}
             content={shellContent}
+            currentUserDisplayName={displayName}
+            isAuthenticated={currentUser !== null}
+            onAdminNavigate={handleAdminNavigate}
+            onLogout={handleMockLogout}
             onNavigate={navigate}>
             {route.kind === 'home' ? (
                 <HomePage onNavigate={navigate} />
@@ -282,6 +325,21 @@ function App() {
                     projectId={route.projectId}
                     listSearch={route.listSearch}
                     onNavigate={navigate} />
+            ) : route.kind === 'login' ? (
+                <LoginPage
+                    redirectTo={route.redirectTo}
+                    onSignIn={handleMockLogin}
+                />
+            ) : route.kind === 'admin' ? (
+                <AdminDashboardPage
+                    currentUserDisplayName={displayName}
+                    onNavigate={navigate}
+                />
+            ) : route.kind === 'admin-account' ? (
+                <AccountSettingsPage
+                    currentUser={currentUser ?? mockAdminUser}
+                    onSave={handleAccountSave}
+                />
             ) : (
                 <ProjectListPage
                     filters={route.filters}
@@ -294,7 +352,7 @@ function App() {
 function HomePage({
     onNavigate
 }: {
-    onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
+    onNavigate: NavigateHandler;
 }) {
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -567,75 +625,6 @@ function HomePage({
     );
 }
 
-function SiteShell({
-    activeNavLabel,
-    content,
-    onNavigate,
-    children
-}: {
-    activeNavLabel: string;
-    content: SiteShellContent;
-    onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
-    children: ReactNode;
-}) {
-    return (
-        <div className="site-shell">
-            <aside className="site-sidebar" aria-label="Primary">
-                <div className="site-brand">
-                    <div className="brand-mark" aria-hidden="true">
-                        <img src={portfolioLogoIcon} alt="" />
-                    </div>
-                    <div>
-                        <strong>
-                            <span>Project</span>
-                            <span>Portfolio</span>
-                        </strong>
-                    </div>
-                </div>
-
-                <nav className="site-nav" aria-label="Primary site navigation">
-                    {navItems.map(item => item.href ? (
-                        <InternalLink
-                            key={item.label}
-                            className={`nav-link${activeNavLabel === item.label ? ' active' : ''}`}
-                            href={item.href}
-                            ariaCurrent={activeNavLabel === item.label ? 'page' : undefined}
-                            onNavigate={onNavigate}>
-                            {item.label}
-                        </InternalLink>
-                    ) : (
-                        <button
-                            key={item.label}
-                            className="nav-link nav-link-disabled"
-                            type="button"
-                            disabled
-                            aria-disabled="true">
-                            <span>{item.label}</span>
-                            <span className="coming-soon-pill">Coming Soon</span>
-                        </button>
-                    ))}
-                </nav>
-
-                <p className="sidebar-footnote">
-                    Resume will eventually include the Work History subsection.
-                </p>
-            </aside>
-
-            <div className="site-main">
-                <header className="site-header">
-                    <div>
-                        <p className="header-kicker">{content.kicker}</p>
-                        <p className="site-title">{content.title}</p>
-                    </div>
-                    <p className="site-header-copy">{content.summary}</p>
-                </header>
-
-                {children}
-            </div>
-        </div>
-    );
-}
-
 function FeaturedCarouselSlide({
     project,
     state,
@@ -643,7 +632,7 @@ function FeaturedCarouselSlide({
 }: {
     project: ProjectSummary;
     state: 'active' | 'prev1' | 'prev2' | 'next1' | 'next2' | 'hidden';
-    onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
+    onNavigate: NavigateHandler;
 }) {
     return (
         <article className={`carousel-slide ${state}`}>
@@ -1010,7 +999,7 @@ function ProjectListPage({
     onNavigate
 }: {
     filters: ListFilters;
-    onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
+    onNavigate: NavigateHandler;
 }) {
     const [searchInput, setSearchInput] = useState(filters.searchInput);
     const deferredSearch = useDeferredValue(searchInput.trim());
@@ -1360,7 +1349,7 @@ function ProjectDetailPage({
 }: {
     projectId: number;
     listSearch: string;
-    onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
+    onNavigate: NavigateHandler;
 }) {
     const [project, setProject] = useState<ProjectDetail | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -1611,35 +1600,6 @@ function ProjectDetailPage({
                 ) : null}
             </section>
         </main>
-    );
-}
-
-function InternalLink({
-    className,
-    href,
-    ariaCurrent,
-    onNavigate,
-    children,
-    preserveScroll
-}: {
-    className?: string;
-    href: string;
-    ariaCurrent?: 'page';
-    onNavigate: (path: string, options?: { replace?: boolean; preserveScroll?: boolean }) => void;
-    children: string;
-    preserveScroll?: boolean;
-}) {
-    return (
-        <a
-            className={className}
-            href={href}
-            aria-current={ariaCurrent}
-            onClick={event => {
-                event.preventDefault();
-                onNavigate(href, { preserveScroll });
-            }}>
-            {children}
-        </a>
     );
 }
 
