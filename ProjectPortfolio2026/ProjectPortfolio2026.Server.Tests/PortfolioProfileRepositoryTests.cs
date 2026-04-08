@@ -10,7 +10,7 @@ namespace ProjectPortfolio2026.Server.Tests;
 public sealed class PortfolioProfileRepositoryTests
 {
     [Test]
-    public async Task GetPublicAsync_ReturnsOnlyPublicProfileWithLoadedCollections()
+    public async Task GetPublicAsync_ReturnsNewestPublicProfileWithLoadedCollections()
     {
         await using var dbContext = CreateDbContext();
         dbContext.PortfolioProfiles.AddRange(
@@ -20,6 +20,13 @@ public sealed class PortfolioProfileRepositoryTests
                 ContactHeadline = "Hidden",
                 ContactIntro = "Hidden intro",
                 IsPublic = false
+            },
+            new PortfolioProfile
+            {
+                DisplayName = "Older Public Profile",
+                ContactHeadline = "Older",
+                ContactIntro = "Older intro",
+                IsPublic = true
             },
             new PortfolioProfile
             {

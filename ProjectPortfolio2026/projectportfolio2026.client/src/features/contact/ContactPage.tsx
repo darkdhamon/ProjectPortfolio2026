@@ -51,7 +51,7 @@ export function ContactPage() {
                                 className="contact-channel-card">
                                 <span className="meta-label">{contactMethod.label}</span>
                                 {contactMethod.href ? (
-                                    <a href={contactMethod.href}>{contactMethod.value}</a>
+                                    <a href={contactMethod.href} target="_blank" rel="noreferrer">{contactMethod.value}</a>
                                 ) : (
                                     <strong>{contactMethod.value}</strong>
                                 )}

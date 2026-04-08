@@ -331,8 +331,10 @@ describe('App', () => {
         expect(await screen.findByRole('heading', { name: 'Choose the contact path that fits the conversation you want to have.' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute('aria-current', 'page');
         expect(screen.getByRole('link', { name: 'bronze@example.dev' })).toHaveAttribute('href', 'mailto:bronze@example.dev');
+        expect(screen.getByRole('link', { name: 'bronze@example.dev' })).toHaveAttribute('target', '_blank');
         expect(screen.getByText('Chicago, Illinois')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
+        expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('target', '_blank');
         expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', expect.objectContaining({
             method: 'GET'
         }));

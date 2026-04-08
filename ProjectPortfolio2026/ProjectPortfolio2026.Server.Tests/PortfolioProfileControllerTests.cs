@@ -32,7 +32,6 @@ public sealed class PortfolioProfileControllerTests
                         Type = "email",
                         Label = "Email",
                         Value = "bronze@example.dev",
-                        Href = "mailto:bronze@example.dev",
                         SortOrder = 1,
                         IsVisible = true
                     },
@@ -47,6 +46,14 @@ public sealed class PortfolioProfileControllerTests
                 ],
                 SocialLinks =
                 [
+                    new PortfolioSocialLink
+                    {
+                        Platform = "bad-link",
+                        Label = "Bad Link",
+                        Url = "javascript:alert('xss')",
+                        SortOrder = 0,
+                        IsVisible = true
+                    },
                     new PortfolioSocialLink
                     {
                         Platform = "github",
@@ -78,6 +85,7 @@ public sealed class PortfolioProfileControllerTests
             Assert.That(response!.RequestId, Is.EqualTo("profile-id"));
             Assert.That(response.DisplayName, Is.EqualTo("Bronze Loft"));
             Assert.That(response.ContactMethods.Select(contactMethod => contactMethod.Label), Is.EqualTo(new[] { "Email" }));
+            Assert.That(response.ContactMethods[0].Href, Is.EqualTo("mailto:bronze@example.dev"));
             Assert.That(response.SocialLinks.Select(socialLink => socialLink.Label), Is.EqualTo(new[] { "GitHub" }));
         });
     }

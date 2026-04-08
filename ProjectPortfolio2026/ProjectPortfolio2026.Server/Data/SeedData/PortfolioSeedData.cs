@@ -47,7 +47,6 @@ public static class PortfolioSeedData
                     Type = "email",
                     Label = "Email",
                     Value = "bronze@example.dev",
-                    Href = "mailto:bronze@example.dev",
                     Note = "Best for interview requests, consulting inquiries, and longer-form conversations.",
                     SortOrder = 1,
                     IsVisible = true
@@ -57,7 +56,6 @@ public static class PortfolioSeedData
                     Type = "phone",
                     Label = "Phone",
                     Value = "(312) 555-0147",
-                    Href = "tel:+13125550147",
                     Note = "Available for scheduled calls on weekdays between 9 AM and 5 PM Central.",
                     SortOrder = 2,
                     IsVisible = true

@@ -13,7 +13,7 @@ public sealed class PortfolioProfileRepository(PortfolioDbContext dbContext) : I
             .Include(profile => profile.ContactMethods)
             .Include(profile => profile.SocialLinks)
             .Where(profile => profile.IsPublic)
-            .OrderBy(profile => profile.Id)
-            .SingleOrDefaultAsync(cancellationToken);
+            .OrderByDescending(profile => profile.Id)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }
