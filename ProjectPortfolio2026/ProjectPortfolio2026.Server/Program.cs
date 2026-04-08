@@ -70,6 +70,8 @@ builder.Services
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<IPortfolioProfileRepository, PortfolioProfileRepository>();
+builder.Services.AddScoped<IPortfolioLinkFormatter, PortfolioLinkFormatter>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IEmployerRepository, EmployerRepository>();
 builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();

@@ -6,6 +6,7 @@ import { AdminDashboardPage } from './components/admin/AdminDashboardPage';
 import { LoginPage } from './components/admin/LoginPage';
 import { type AccountDraft } from './components/admin/mockAuth';
 import { SiteShell, type SiteShellContent } from './components/shell/SiteShell';
+import { ContactPage } from './features/contact/ContactPage';
 import { HomePage } from './features/home/HomePage';
 import { ProjectDetailPage } from './features/projects/ProjectDetailPage';
 import { ProjectListPage } from './features/projects/ProjectListPage';
@@ -53,7 +54,9 @@ function App() {
                 ? 'Work History'
             : route.kind === 'login' || route.kind === 'admin' || route.kind === 'admin-account'
                 ? 'Admin'
-                : '';
+                : route.kind === 'contact'
+                    ? 'Contact'
+                    : '';
     const displayName = currentUser?.displayName.trim() ? currentUser.displayName.trim() : currentUser?.username ?? '';
     const shellContent = route.kind === 'home'
         ? {
@@ -91,11 +94,17 @@ function App() {
                             title: 'Account Settings',
                             summary: 'Update your username, email, display name, and password through the authenticated admin account flow.'
                         } satisfies SiteShellContent
-                        : {
-                            kicker: 'Project Portfolio',
-                            title: 'Projects',
-                            summary: 'Browse shipped work, search the portfolio, and move into individual project case studies.'
-                        } satisfies SiteShellContent;
+                        : route.kind === 'list'
+                            ? {
+                                kicker: 'Project Portfolio',
+                                title: 'Projects',
+                                summary: 'Browse shipped work, search the portfolio, and move into individual project case studies.'
+                            } satisfies SiteShellContent
+                            : {
+                                kicker: 'Project Portfolio',
+                                title: 'Contact',
+                                summary: 'Choose the right outreach channel, review availability, and move from portfolio browsing into a real conversation.'
+                            } satisfies SiteShellContent;
 
     const navigate: NavigateFn = (nextPath, options) => {
         const method = options?.replace ? 'replaceState' : 'pushState';
@@ -217,10 +226,12 @@ function App() {
                         </div>
                     </section>
                 </main>
-            ) : (
+            ) : route.kind === 'list' ? (
                 <ProjectListPage
                     filters={route.filters}
                     onNavigate={navigate} />
+            ) : (
+                <ContactPage />
             )}
         </SiteShell>
     );

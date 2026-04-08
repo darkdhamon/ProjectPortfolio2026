@@ -22,7 +22,7 @@ const navItems: readonly NavItem[] = [
     { label: 'Admin', description: 'Authentication, dashboard access, and account management.' },
     { label: 'About', description: 'Background, strengths, and developer story.' },
     { label: 'Resume', description: 'Resume hub and downloadable materials.' },
-    { label: 'Contact', description: 'Direct outreach paths and social links.' },
+    { label: 'Contact', href: '/contact', description: 'Direct outreach paths and social links.' },
     { label: 'Blog', description: 'Writing, updates, and thought pieces.' }
 ] as const;
 

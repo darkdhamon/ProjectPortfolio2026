@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjectPortfolio2026.Server.Data;
 
@@ -11,9 +12,11 @@ using ProjectPortfolio2026.Server.Data;
 namespace ProjectPortfolio2026.Server.Migrations
 {
     [DbContext(typeof(PortfolioDbContext))]
-    partial class PortfolioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260408182642_AddPortfolioProfileData")]
+    partial class AddPortfolioProfileData
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -563,98 +566,30 @@ namespace ProjectPortfolio2026.Server.Migrations
                     b.ToTable("ProjectScreenshots", (string)null);
                 });
 
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.ProjectTag", b =>
-                {
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TagId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ProjectId", "TagId");
-
-                    b.HasIndex("TagId");
-
-                    b.ToTable("ProjectTags", (string)null);
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Tags.Tag", b =>
+            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.ProjectSkill", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Category")
-                        .HasColumnType("int");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("NormalizedName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Category", "NormalizedName")
-                        .IsUnique();
-
-                    b.ToTable("Tags", (string)null);
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.WorkHistory.Employer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("City")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Country")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<bool>("IsPublished")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("PostalCode")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<string>("Region")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("StreetAddress1")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("StreetAddress2")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Employers", (string)null);
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ProjectSkills", (string)null);
                 });
 
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.WorkHistory.JobRole", b =>
+            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.ProjectTechnology", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -662,48 +597,19 @@ namespace ProjectPortfolio2026.Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("DescriptionMarkdown")
+                    b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("EmployerId")
+                    b.Property<int>("ProjectId")
                         .HasColumnType("int");
-
-                    b.Property<DateOnly?>("EndDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateOnly>("StartDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("SupervisorName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployerId");
+                    b.HasIndex("ProjectId");
 
-                    b.ToTable("JobRoles", (string)null);
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.WorkHistory.JobRoleTag", b =>
-                {
-                    b.Property<int>("JobRoleId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TagId")
-                        .HasColumnType("int");
-
-                    b.HasKey("JobRoleId", "TagId");
-
-                    b.HasIndex("TagId");
-
-                    b.ToTable("JobRoleTags", (string)null);
+                    b.ToTable("ProjectTechnologies", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -834,53 +740,26 @@ namespace ProjectPortfolio2026.Server.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.ProjectTag", b =>
+            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.ProjectSkill", b =>
                 {
                     b.HasOne("ProjectPortfolio2026.Server.Domain.Projects.Project", "Project")
-                        .WithMany("ProjectTags")
+                        .WithMany("Skills")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ProjectPortfolio2026.Server.Domain.Tags.Tag", "Tag")
-                        .WithMany("ProjectTags")
-                        .HasForeignKey("TagId")
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.ProjectTechnology", b =>
+                {
+                    b.HasOne("ProjectPortfolio2026.Server.Domain.Projects.Project", "Project")
+                        .WithMany("Technologies")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Project");
-
-                    b.Navigation("Tag");
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.WorkHistory.JobRole", b =>
-                {
-                    b.HasOne("ProjectPortfolio2026.Server.Domain.WorkHistory.Employer", "Employer")
-                        .WithMany("JobRoles")
-                        .HasForeignKey("EmployerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Employer");
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.WorkHistory.JobRoleTag", b =>
-                {
-                    b.HasOne("ProjectPortfolio2026.Server.Domain.WorkHistory.JobRole", "JobRole")
-                        .WithMany("JobRoleTags")
-                        .HasForeignKey("JobRoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ProjectPortfolio2026.Server.Domain.Tags.Tag", "Tag")
-                        .WithMany("JobRoleTags")
-                        .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("JobRole");
-
-                    b.Navigation("Tag");
                 });
 
             modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Portfolio.PortfolioProfile", b =>
@@ -898,31 +777,16 @@ namespace ProjectPortfolio2026.Server.Migrations
 
                     b.Navigation("Milestones");
 
-                    b.Navigation("ProjectTags");
-
                     b.Navigation("Screenshots");
+
+                    b.Navigation("Skills");
+
+                    b.Navigation("Technologies");
                 });
 
             modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.ProjectCollaborator", b =>
                 {
                     b.Navigation("Roles");
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Tags.Tag", b =>
-                {
-                    b.Navigation("JobRoleTags");
-
-                    b.Navigation("ProjectTags");
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.WorkHistory.Employer", b =>
-                {
-                    b.Navigation("JobRoles");
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.WorkHistory.JobRole", b =>
-                {
-                    b.Navigation("JobRoleTags");
                 });
 #pragma warning restore 612, 618
         }

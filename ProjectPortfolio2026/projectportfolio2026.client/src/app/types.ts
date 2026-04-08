@@ -97,6 +97,36 @@ export interface WorkHistoryResponse {
     items: Employer[];
 }
 
+export interface PortfolioContactMethod {
+    type: string;
+    label: string;
+    value: string;
+    href?: string | null;
+    note?: string | null;
+    sortOrder: number;
+}
+
+export interface PortfolioSocialLink {
+    platform: string;
+    label: string;
+    url: string;
+    handle?: string | null;
+    summary?: string | null;
+    sortOrder: number;
+}
+
+export interface PortfolioProfile {
+    requestId?: string;
+    id: number;
+    displayName: string;
+    contactHeadline: string;
+    contactIntro: string;
+    availabilityHeadline?: string | null;
+    availabilitySummary?: string | null;
+    contactMethods: PortfolioContactMethod[];
+    socialLinks: PortfolioSocialLink[];
+}
+
 export interface ApiErrorResponse {
     message?: string;
 }

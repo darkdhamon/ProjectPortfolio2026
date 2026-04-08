@@ -15,6 +15,7 @@ const adminAccountRoutePattern = /^\/admin\/account\/?$/;
 const listRoutePattern = /^\/projects\/?$/;
 const workHistoryRoutePattern = /^\/work-history\/?$/;
 const detailRoutePattern = /^\/projects\/(?<id>\d+)\/?$/;
+const contactRoutePattern = /^\/contact\/?$/;
 
 export function parseRoute(location: AppLocation) {
     if (homeRoutePattern.test(location.pathname)) {
@@ -61,6 +62,12 @@ export function parseRoute(location: AppLocation) {
         return {
             kind: 'list' as const,
             filters: parseListFilters(location.search)
+        };
+    }
+
+    if (contactRoutePattern.test(location.pathname)) {
+        return {
+            kind: 'contact' as const
         };
     }
 
