@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Determine coverage enforcement
         id: coverage-policy
@@ -45,12 +45,12 @@ jobs:
           Write-Host "Coverage enforcement for branch '$targetBranch': $enforceCoverageGate"
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -86,7 +86,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results
           path: |
