@@ -1,11 +1,12 @@
-import { InternalLink, type NavigateHandler } from '../navigation/InternalLink';
+import type { NavigateFn } from '../../app/navigation';
+import { InternalLink } from '../common/InternalLink';
 
 export function AdminDashboardPage({
     currentUserDisplayName,
     onNavigate
 }: {
     currentUserDisplayName: string;
-    onNavigate: NavigateHandler;
+    onNavigate: NavigateFn;
 }) {
     return (
         <main className="admin-page">

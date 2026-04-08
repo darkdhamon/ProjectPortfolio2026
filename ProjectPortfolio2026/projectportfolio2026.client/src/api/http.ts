@@ -115,11 +115,11 @@ export async function fetchAuthJson<TPayload>(
 ) {
     const response = await fetch(input, {
         credentials: 'include',
+        ...init,
         headers: {
             'Content-Type': 'application/json',
             ...(init.headers ?? {})
-        },
-        ...init
+        }
     });
 
     const payload = await readResponsePayload<TPayload>(response);
