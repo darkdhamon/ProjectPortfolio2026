@@ -18,8 +18,8 @@ interface NavItem {
 const navItems: readonly NavItem[] = [
     { label: 'Home', href: '/', description: 'Featured highlights and introduction.' },
     { label: 'Projects', href: '/projects', description: 'Browse shipped work and project detail stories.' },
+    { label: 'Work History', href: '/work-history', description: 'Employers, roles, and resume-ready timeline data.' },
     { label: 'Admin', description: 'Authentication, dashboard access, and account management.' },
-    { label: 'Timeline', description: 'Career milestones, education, and certifications.' },
     { label: 'About', description: 'Background, strengths, and developer story.' },
     { label: 'Resume', description: 'Resume hub and downloadable materials.' },
     { label: 'Contact', description: 'Direct outreach paths and social links.' },

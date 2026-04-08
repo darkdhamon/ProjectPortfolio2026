@@ -1689,6 +1689,52 @@
     height: 1px;
 }
 
+.work-history-page,
+.work-history-stack,
+.work-history-employer,
+.work-role-list,
+.work-role-heading,
+.work-employer-header {
+    display: grid;
+}
+
+.work-history-page,
+.work-history-stack,
+.work-history-employer,
+.work-role-list {
+    gap: 1rem;
+}
+
+.work-history-hero {
+    background:
+        linear-gradient(145deg, rgba(18, 38, 57, 0.95), rgba(11, 26, 42, 0.94)),
+        radial-gradient(circle at top right, rgba(97, 191, 171, 0.18), transparent 42%);
+}
+
+.work-employer-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+}
+
+.work-role-list {
+    padding-left: 1.2rem;
+    border-left: 1px solid rgba(111, 137, 171, 0.18);
+}
+
+.work-role-card {
+    gap: 0.9rem;
+}
+
+.work-role-heading {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: start;
+}
+
+.work-role-description {
+    gap: 0.75rem;
+}
+
 h3 {
     margin: 0;
     font-size: 1.08rem;
@@ -1719,7 +1765,9 @@ h3 {
     .auth-card,
     .admin-hero,
     .project-card,
-    .detail-grid {
+    .detail-grid,
+    .work-employer-header,
+    .work-role-heading {
         grid-template-columns: 1fr;
     }
 
@@ -1808,9 +1856,15 @@ h3 {
     .toolbar,
     .featured-panel-heading,
     .milestone-heading,
-    .auth-actions {
+    .auth-actions,
+    .work-role-heading {
         grid-template-columns: 1fr;
         align-items: stretch;
+    }
+
+    .work-role-list {
+        padding-left: 0;
+        border-left: 0;
     }
 
     .clear-button {

@@ -260,12 +260,46 @@ describe('App', () => {
         expect(screen.getByText('Published Projects')).toBeInTheDocument();
         expect(screen.getByText('Visible Cards')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('button', { name: /Timeline/i })).toBeDisabled();
+        expect(screen.getByRole('link', { name: 'Work History' })).toHaveAttribute('href', '/work-history');
         expect(screen.getAllByText('Coming Soon').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'React' })).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getByLabelText('Projects ending in Present')).toBeInTheDocument();
         expect(screen.getByLabelText('Projects ending in 2024')).toBeInTheDocument();
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
+    });
+
+    it('renders the work history page from the public endpoint', async () => {
+        window.history.replaceState({}, '', '/work-history');
+        queueFetchJson('/api/work-history?requestId=request-1', {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 7,
+                    name: 'Northwind Health',
+                    city: 'Chicago',
+                    region: 'IL',
+                    jobRoles: [
+                        {
+                            role: 'Senior Software Engineer',
+                            startDate: '2024-01-08',
+                            endDate: null,
+                            supervisorName: 'Dana Smith',
+                            descriptionMarkdown: 'Leading API delivery.',
+                            skills: ['API Design'],
+                            technologies: ['.NET 10']
+                        }
+                    ]
+                }
+            ]
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Northwind Health' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Work History' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByText('Senior Software Engineer')).toBeInTheDocument();
+        expect(screen.getByText('Chicago, IL')).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledWith('/api/work-history?requestId=request-1', expect.any(Object));
     });
 
     it('shows loading and empty states for the list view', async () => {
