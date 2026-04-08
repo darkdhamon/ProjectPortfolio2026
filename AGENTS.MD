@@ -7,6 +7,9 @@
 - If no GitHub issue exists for requested code work, create one or request one before implementation begins.
 - Before making code changes, confirm the current branch is not a protected branch.
 - If currently on a protected branch, switch to or create an appropriate feature branch before editing code.
+- Feature branches must open pull requests into `dev`.
+- `stage` can only receive pull requests from `dev`.
+- `main` can only receive pull requests from `stage`.
 - Before merging, pull the latest remote branch changes into the local branch.
 - Resolve merge conflicts locally before completing the merge or opening the final pull request.
 
