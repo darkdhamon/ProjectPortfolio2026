@@ -268,6 +268,27 @@ describe('App', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
     });
 
+    it('renders the contact page mockup and highlights contact navigation', () => {
+        window.history.replaceState({}, '', '/contact');
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            isAuthenticated: false,
+            isAdmin: false,
+            username: null,
+            displayName: null,
+            email: null
+        }));
+
+        render(<App />);
+
+        expect(screen.getByRole('heading', { name: 'Choose the contact path that fits the conversation you want to have.' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByRole('link', { name: 'bronze@example.dev' })).toHaveAttribute('href', 'mailto:bronze@example.dev');
+        expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
+        expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', expect.objectContaining({
+            method: 'GET'
+        }));
+    });
+
     it('shows loading and empty states for the list view', async () => {
         window.history.replaceState({}, '', '/projects');
         queueFetchJson(/^\/api\/projects\?/, {
@@ -931,6 +952,10 @@ describe('App helpers', () => {
             kind: 'detail',
             projectId: 42,
             listSearch: '?skills=React'
+        });
+
+        expect(parseRoute({ pathname: '/contact', search: '' })).toEqual({
+            kind: 'contact'
         });
     });
 
