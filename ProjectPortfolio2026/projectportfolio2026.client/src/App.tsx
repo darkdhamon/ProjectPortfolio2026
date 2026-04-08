@@ -114,7 +114,11 @@ function App() {
 
         if (!currentUser?.isAdmin) {
             const redirectTarget = `${location.pathname}${location.search}` || '/admin';
-            navigate(`/login?redirect=${encodeURIComponent(redirectTarget)}`, { replace: true });
+            const redirectTimeoutId = window.setTimeout(() => {
+                navigate(`/login?redirect=${encodeURIComponent(redirectTarget)}`, { replace: true });
+            }, 0);
+
+            return () => window.clearTimeout(redirectTimeoutId);
         }
     }, [currentUser, isAdminRoute, isAuthResolved, location.pathname, location.search]);
 
