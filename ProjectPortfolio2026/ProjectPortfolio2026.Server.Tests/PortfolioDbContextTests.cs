@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 using ProjectPortfolio2026.Server.Data;
+using ProjectPortfolio2026.Server.Domain.Identity;
 using ProjectPortfolio2026.Server.Domain.Projects;
 
 namespace ProjectPortfolio2026.Server.Tests;
@@ -15,6 +17,7 @@ public sealed class PortfolioDbContextTests
 
         Assert.Multiple(() =>
         {
+            Assert.That(dbContext.ApplicationUsers, Is.Not.Null);
             Assert.That(dbContext.Projects, Is.Not.Null);
             Assert.That(dbContext.ProjectCollaborators, Is.Not.Null);
             Assert.That(dbContext.ProjectCollaboratorRoles, Is.Not.Null);
@@ -23,6 +26,8 @@ public sealed class PortfolioDbContextTests
             Assert.That(dbContext.ProjectScreenshots, Is.Not.Null);
             Assert.That(dbContext.ProjectSkills, Is.Not.Null);
             Assert.That(dbContext.ProjectTechnologies, Is.Not.Null);
+            Assert.That(dbContext.Model.FindEntityType(typeof(ApplicationUser))?.GetTableName(), Is.EqualTo("AspNetUsers"));
+            Assert.That(dbContext.Model.FindEntityType(typeof(IdentityRole))?.GetTableName(), Is.EqualTo("AspNetRoles"));
             Assert.That(dbContext.Model.FindEntityType(typeof(Project))?.GetTableName(), Is.EqualTo("Projects"));
             Assert.That(dbContext.Model.FindEntityType(typeof(ProjectCollaborator))?.GetTableName(), Is.EqualTo("ProjectCollaborators"));
             Assert.That(dbContext.Model.FindEntityType(typeof(ProjectCollaboratorRole))?.GetTableName(), Is.EqualTo("ProjectCollaboratorRoles"));
@@ -31,6 +36,10 @@ public sealed class PortfolioDbContextTests
             Assert.That(dbContext.Model.FindEntityType(typeof(ProjectScreenshot))?.GetTableName(), Is.EqualTo("ProjectScreenshots"));
             Assert.That(dbContext.Model.FindEntityType(typeof(ProjectSkill))?.GetTableName(), Is.EqualTo("ProjectSkills"));
             Assert.That(dbContext.Model.FindEntityType(typeof(ProjectTechnology))?.GetTableName(), Is.EqualTo("ProjectTechnologies"));
+            Assert.That(dbContext.Model.FindEntityType(typeof(ApplicationUser))?.FindProperty(nameof(ApplicationUser.DisplayName))?.GetMaxLength(), Is.EqualTo(256));
+            Assert.That(dbContext.Model.FindEntityType(typeof(ApplicationUser))?.GetIndexes().Any(index =>
+                index.Properties.Select(property => property.Name).SequenceEqual([nameof(ApplicationUser.NormalizedEmail)]) &&
+                index.IsUnique), Is.True);
         });
     }
 
@@ -100,6 +109,82 @@ public sealed class PortfolioDbContextTests
         finally
         {
             File.Delete(existingFile);
+        }
+    }
+
+    [Test]
+    public void LocalDbRecovery_CreatesAttachDirectory_WhenAttachPathHasMissingFolders()
+    {
+        var attachDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "App_Data");
+        var missingFile = Path.Combine(attachDirectory, "ProjectPortfolio2026.Dev.mdf");
+        var rootDirectory = Path.GetDirectoryName(attachDirectory)!;
+
+        try
+        {
+            if (Directory.Exists(attachDirectory))
+            {
+                Directory.Delete(attachDirectory, recursive: true);
+            }
+
+            LocalDbDatabaseRecovery.EnsureAttachDirectoryExists(missingFile);
+
+            Assert.That(Directory.Exists(attachDirectory), Is.True);
+        }
+        finally
+        {
+            if (Directory.Exists(rootDirectory))
+            {
+                Directory.Delete(rootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Test]
+    public void ConnectionStringPathResolver_ResolvesRelativeAttachPathAgainstContentRoot()
+    {
+        var contentRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        const string connectionString = "Server=(localdb)\\MSSQLLocalDB;AttachDbFilename=App_Data\\ProjectPortfolio2026.Dev.mdf;Database=ProjectPortfolio2026Dev;Integrated Security=True";
+
+        try
+        {
+            var resolvedConnectionString = ConnectionStringPathResolver.ResolveDataPaths(connectionString, contentRootPath);
+            var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(resolvedConnectionString);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Path.IsPathRooted(builder.AttachDBFilename), Is.True);
+                Assert.That(builder.AttachDBFilename, Is.EqualTo(Path.Combine(contentRootPath, "App_Data", "ProjectPortfolio2026.Dev.mdf")));
+                Assert.That(Directory.Exists(Path.Combine(contentRootPath, "App_Data")), Is.True);
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(contentRootPath))
+            {
+                Directory.Delete(contentRootPath, recursive: true);
+            }
+        }
+    }
+
+    [Test]
+    public void ConnectionStringPathResolver_ReplacesDataDirectoryToken()
+    {
+        var contentRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        const string connectionString = "Server=(localdb)\\MSSQLLocalDB;AttachDbFilename=|DataDirectory|\\ProjectPortfolio2026.Dev.mdf;Database=ProjectPortfolio2026Dev;Integrated Security=True";
+
+        try
+        {
+            var resolvedConnectionString = ConnectionStringPathResolver.ResolveDataPaths(connectionString, contentRootPath);
+            var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(resolvedConnectionString);
+
+            Assert.That(builder.AttachDBFilename, Is.EqualTo(Path.Combine(contentRootPath, "App_Data", "ProjectPortfolio2026.Dev.mdf")));
+        }
+        finally
+        {
+            if (Directory.Exists(contentRootPath))
+            {
+                Directory.Delete(contentRootPath, recursive: true);
+            }
         }
     }
 
