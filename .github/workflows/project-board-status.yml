@@ -1,0 +1,44 @@
+name: project-board-status
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - edited
+      - ready_for_review
+      - closed
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  repository-projects: write
+
+jobs:
+  update-project-board-status:
+    name: update-project-board-status
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out base branch automation scripts
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Update linked issue project statuses
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PROJECT_AUTOMATION_TOKEN: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
+          PROJECT_ID: PVT_kwHOACEO7s4BUEGN
+          PROJECT_STATUS_FIELD_ID: PVTSSF_lAHOACEO7s4BUEGNzhBOxOM
+          PROJECT_STATUS_IN_REVIEW: 4f516d6b
+          PROJECT_STATUS_IN_DEV_BRANCH: befac53f
+          PROJECT_STATUS_IN_STAGE_BRANCH: 9eb7c4ca
+          PROJECT_STATUS_DONE: 7602d953
+        run: node .github/scripts/project-board-status.mjs
