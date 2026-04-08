@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjectPortfolio2026.Server.Data;
 
@@ -11,9 +12,11 @@ using ProjectPortfolio2026.Server.Data;
 namespace ProjectPortfolio2026.Server.Migrations
 {
     [DbContext(typeof(PortfolioDbContext))]
-    partial class PortfolioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260408194401_RefactorProjectTagsAndAddWorkHistory")]
+    partial class RefactorProjectTagsAndAddWorkHistory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -224,144 +227,6 @@ namespace ProjectPortfolio2026.Server.Migrations
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
                     b.ToTable("AspNetUsers", (string)null);
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Portfolio.PortfolioContactMethod", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Href")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsVisible")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<string>("Label")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("PortfolioProfileId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PortfolioProfileId");
-
-                    b.ToTable("PortfolioContactMethods", (string)null);
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Portfolio.PortfolioProfile", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AvailabilityHeadline")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("AvailabilitySummary")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("ContactHeadline")
-                        .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
-
-                    b.Property<string>("ContactIntro")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<bool>("IsPublic")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.HasKey("Id");
-
-                    b.ToTable("PortfolioProfiles", (string)null);
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Portfolio.PortfolioSocialLink", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Handle")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<bool>("IsVisible")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<string>("Label")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Platform")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("PortfolioProfileId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Summary")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PortfolioProfileId");
-
-                    b.ToTable("PortfolioSocialLinks", (string)null);
                 });
 
             modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.Project", b =>
@@ -757,28 +622,6 @@ namespace ProjectPortfolio2026.Server.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Portfolio.PortfolioContactMethod", b =>
-                {
-                    b.HasOne("ProjectPortfolio2026.Server.Domain.Portfolio.PortfolioProfile", "PortfolioProfile")
-                        .WithMany("ContactMethods")
-                        .HasForeignKey("PortfolioProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PortfolioProfile");
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Portfolio.PortfolioSocialLink", b =>
-                {
-                    b.HasOne("ProjectPortfolio2026.Server.Domain.Portfolio.PortfolioProfile", "PortfolioProfile")
-                        .WithMany("SocialLinks")
-                        .HasForeignKey("PortfolioProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PortfolioProfile");
-                });
-
             modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.ProjectCollaborator", b =>
                 {
                     b.HasOne("ProjectPortfolio2026.Server.Domain.Projects.Project", "Project")
@@ -881,13 +724,6 @@ namespace ProjectPortfolio2026.Server.Migrations
                     b.Navigation("JobRole");
 
                     b.Navigation("Tag");
-                });
-
-            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Portfolio.PortfolioProfile", b =>
-                {
-                    b.Navigation("ContactMethods");
-
-                    b.Navigation("SocialLinks");
                 });
 
             modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.Project", b =>

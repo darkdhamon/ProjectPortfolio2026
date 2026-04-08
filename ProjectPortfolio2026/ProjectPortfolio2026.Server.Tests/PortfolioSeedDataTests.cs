@@ -22,11 +22,16 @@ public sealed class PortfolioSeedDataTests
         var projects = await dbContext.Projects
             .Include(project => project.Screenshots)
             .Include(project => project.DeveloperRoles)
-            .Include(project => project.Technologies)
-            .Include(project => project.Skills)
+            .Include(project => project.ProjectTags)
+                .ThenInclude(projectTag => projectTag.Tag)
             .Include(project => project.Collaborators)
                 .ThenInclude(collaborator => collaborator.Roles)
             .Include(project => project.Milestones)
+            .ToListAsync();
+        var employers = await dbContext.Employers
+            .Include(employer => employer.JobRoles)
+                .ThenInclude(jobRole => jobRole.JobRoleTags)
+                    .ThenInclude(jobRoleTag => jobRoleTag.Tag)
             .ToListAsync();
 
         Assert.That(profiles, Has.Count.EqualTo(1));
@@ -34,11 +39,14 @@ public sealed class PortfolioSeedDataTests
         Assert.That(profiles[0].ContactMethods, Has.Count.EqualTo(3));
         Assert.That(profiles[0].SocialLinks, Has.Count.EqualTo(3));
         Assert.That(projects, Has.Count.EqualTo(100));
+        Assert.That(employers, Has.Count.EqualTo(2));
         Assert.That(projects.All(project => project.Screenshots.Count >= 2), Is.True);
         Assert.That(projects.Single(project => project.Title == "Project Portfolio 2026").Screenshots, Has.Count.EqualTo(6));
         Assert.That(projects.All(project => project.DeveloperRoles.Count > 0), Is.True);
-        Assert.That(projects.All(project => project.Technologies.Count > 0), Is.True);
-        Assert.That(projects.All(project => project.Skills.Count > 0), Is.True);
+        Assert.That(projects.All(project => project.ProjectTags.Any(projectTag => projectTag.Tag!.Category == ProjectPortfolio2026.Server.Domain.Tags.TagCategory.Technology)), Is.True);
+        Assert.That(projects.All(project => project.ProjectTags.Any(projectTag => projectTag.Tag!.Category == ProjectPortfolio2026.Server.Domain.Tags.TagCategory.Skill)), Is.True);
+        Assert.That(employers.All(employer => employer.JobRoles.Count > 0), Is.True);
+        Assert.That(employers.SelectMany(employer => employer.JobRoles).All(jobRole => jobRole.JobRoleTags.Count > 0), Is.True);
         Assert.That(projects.All(project => project.Milestones.Count > 0), Is.True);
         Assert.That(projects.Count(project => project.EndDate is null), Is.EqualTo(3));
         Assert.That(projects.Min(project => project.StartDate.Year), Is.EqualTo(2015));
@@ -56,6 +64,22 @@ public sealed class PortfolioSeedDataTests
 
         Assert.That(await dbContext.Projects.CountAsync(), Is.EqualTo(100));
         Assert.That(await dbContext.PortfolioProfiles.CountAsync(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task InitializeAsync_ReusesSharedTagsAcrossProjectsAndEmployers()
+    {
+        await using var dbContext = CreateDbContext();
+
+        await PortfolioSeedData.InitializeAsync(dbContext);
+
+        var tags = await dbContext.Tags.ToListAsync();
+        var duplicateTagGroups = tags
+            .GroupBy(tag => new { tag.Category, tag.NormalizedName })
+            .Where(group => group.Count() > 1)
+            .ToList();
+
+        Assert.That(duplicateTagGroups, Is.Empty);
     }
 
     private static PortfolioDbContext CreateDbContext()

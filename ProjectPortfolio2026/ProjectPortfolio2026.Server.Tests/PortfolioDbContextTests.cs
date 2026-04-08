@@ -5,6 +5,8 @@ using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Domain.Identity;
 using ProjectPortfolio2026.Server.Domain.Portfolio;
 using ProjectPortfolio2026.Server.Domain.Projects;
+using ProjectPortfolio2026.Server.Domain.Tags;
+using ProjectPortfolio2026.Server.Domain.WorkHistory;
 
 namespace ProjectPortfolio2026.Server.Tests;
 
@@ -27,9 +29,12 @@ public sealed class PortfolioDbContextTests
             Assert.That(dbContext.ProjectCollaboratorRoles, Is.Not.Null);
             Assert.That(dbContext.ProjectDeveloperRoles, Is.Not.Null);
             Assert.That(dbContext.ProjectMilestones, Is.Not.Null);
+            Assert.That(dbContext.ProjectTags, Is.Not.Null);
             Assert.That(dbContext.ProjectScreenshots, Is.Not.Null);
-            Assert.That(dbContext.ProjectSkills, Is.Not.Null);
-            Assert.That(dbContext.ProjectTechnologies, Is.Not.Null);
+            Assert.That(dbContext.Tags, Is.Not.Null);
+            Assert.That(dbContext.Employers, Is.Not.Null);
+            Assert.That(dbContext.JobRoles, Is.Not.Null);
+            Assert.That(dbContext.JobRoleTags, Is.Not.Null);
             Assert.That(dbContext.Model.FindEntityType(typeof(ApplicationUser))?.GetTableName(), Is.EqualTo("AspNetUsers"));
             Assert.That(dbContext.Model.FindEntityType(typeof(IdentityRole))?.GetTableName(), Is.EqualTo("AspNetRoles"));
             Assert.That(dbContext.Model.FindEntityType(typeof(PortfolioProfile))?.GetTableName(), Is.EqualTo("PortfolioProfiles"));
@@ -40,9 +45,12 @@ public sealed class PortfolioDbContextTests
             Assert.That(dbContext.Model.FindEntityType(typeof(ProjectCollaboratorRole))?.GetTableName(), Is.EqualTo("ProjectCollaboratorRoles"));
             Assert.That(dbContext.Model.FindEntityType(typeof(ProjectDeveloperRole))?.GetTableName(), Is.EqualTo("ProjectDeveloperRoles"));
             Assert.That(dbContext.Model.FindEntityType(typeof(ProjectMilestone))?.GetTableName(), Is.EqualTo("ProjectMilestones"));
+            Assert.That(dbContext.Model.FindEntityType(typeof(ProjectTag))?.GetTableName(), Is.EqualTo("ProjectTags"));
             Assert.That(dbContext.Model.FindEntityType(typeof(ProjectScreenshot))?.GetTableName(), Is.EqualTo("ProjectScreenshots"));
-            Assert.That(dbContext.Model.FindEntityType(typeof(ProjectSkill))?.GetTableName(), Is.EqualTo("ProjectSkills"));
-            Assert.That(dbContext.Model.FindEntityType(typeof(ProjectTechnology))?.GetTableName(), Is.EqualTo("ProjectTechnologies"));
+            Assert.That(dbContext.Model.FindEntityType(typeof(Tag))?.GetTableName(), Is.EqualTo("Tags"));
+            Assert.That(dbContext.Model.FindEntityType(typeof(Employer))?.GetTableName(), Is.EqualTo("Employers"));
+            Assert.That(dbContext.Model.FindEntityType(typeof(JobRole))?.GetTableName(), Is.EqualTo("JobRoles"));
+            Assert.That(dbContext.Model.FindEntityType(typeof(JobRoleTag))?.GetTableName(), Is.EqualTo("JobRoleTags"));
             Assert.That(dbContext.Model.FindEntityType(typeof(PortfolioProfile))?.FindProperty(nameof(PortfolioProfile.DisplayName))?.GetMaxLength(), Is.EqualTo(200));
             Assert.That(dbContext.Model.FindEntityType(typeof(PortfolioContactMethod))?.FindProperty(nameof(PortfolioContactMethod.Value))?.GetMaxLength(), Is.EqualTo(250));
             Assert.That(dbContext.Model.FindEntityType(typeof(PortfolioSocialLink))?.FindProperty(nameof(PortfolioSocialLink.Url))?.GetMaxLength(), Is.EqualTo(500));

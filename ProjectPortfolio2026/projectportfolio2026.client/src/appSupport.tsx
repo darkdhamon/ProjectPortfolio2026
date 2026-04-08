@@ -13,6 +13,7 @@ const loginRoutePattern = /^\/login\/?$/;
 const adminRoutePattern = /^\/admin\/?$/;
 const adminAccountRoutePattern = /^\/admin\/account\/?$/;
 const listRoutePattern = /^\/projects\/?$/;
+const workHistoryRoutePattern = /^\/work-history\/?$/;
 const detailRoutePattern = /^\/projects\/(?<id>\d+)\/?$/;
 const contactRoutePattern = /^\/contact\/?$/;
 
@@ -39,6 +40,12 @@ export function parseRoute(location: AppLocation) {
     if (adminRoutePattern.test(location.pathname)) {
         return {
             kind: 'admin' as const
+        };
+    }
+
+    if (workHistoryRoutePattern.test(location.pathname)) {
+        return {
+            kind: 'work-history' as const
         };
     }
 
@@ -106,6 +113,10 @@ export function buildListSearch(filters: ListFilters) {
 
 export function buildProjectsPath(listSearch: string) {
     return `/projects${listSearch}`;
+}
+
+export function buildWorkHistoryPath() {
+    return '/work-history';
 }
 
 export function buildDetailPath(projectId: number, listSearch: string) {
