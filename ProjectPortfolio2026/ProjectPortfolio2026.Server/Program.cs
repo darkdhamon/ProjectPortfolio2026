@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Data.SeedData;
 using ProjectPortfolio2026.Server.Domain.Identity;
 using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
+using ProjectPortfolio2026.Server.Infrastructure.Security;
 using ProjectPortfolio2026.Server.Repositories;
 using ProjectPortfolio2026.Server.Services.Implementations;
 using ProjectPortfolio2026.Server.Services.Interfaces;
@@ -27,6 +29,14 @@ builder.Services.AddControllers(options =>
     options.Filters.Add<RequestTrackingFilter>();
 });
 builder.Services.AddOpenApi();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = AntiforgeryCookieManager.HeaderName;
+    options.Cookie.Name = "ProjectPortfolio2026.Antiforgery";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+});
 builder.Services.AddDbContext<PortfolioDbContext>(options => options.UseSqlServer(resolvedConnectionString));
 builder.Services
     .AddIdentityCore<ApplicationUser>()
@@ -144,3 +154,5 @@ static async Task MigrateAndSeedAsync(IServiceProvider services, bool isDevelopm
         await DevelopmentIdentitySeedData.InitializeAsync(roleManager, userManager);
     }
 }
+
+public partial class Program;
