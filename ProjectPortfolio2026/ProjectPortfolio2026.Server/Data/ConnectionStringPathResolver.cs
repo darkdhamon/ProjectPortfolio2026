@@ -22,6 +22,9 @@ public static class ConnectionStringPathResolver
             "|DataDirectory|",
             dataDirectory,
             StringComparison.OrdinalIgnoreCase);
+        attachDbFilename = attachDbFilename
+            .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
+            .Replace('\\', Path.DirectorySeparatorChar);
 
         if (!Path.IsPathRooted(attachDbFilename))
         {
