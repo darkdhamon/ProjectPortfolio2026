@@ -29,6 +29,28 @@ Fixes #70`;
   assert.deepEqual(extractIssueNumbers(body), [6, 33, 70]);
 });
 
+test("extractIssueNumbers ignores pull request references in prose", () => {
+  const body = `## Summary
+Promote dev to stage.
+
+## Included Issues
+- #69: add csrf protection
+
+## Release Notes
+- Includes Issue #69 via merged PR #81
+`;
+
+  assert.deepEqual(extractIssueNumbers(body), [69]);
+});
+
+test("extractIssueNumbers reads issue references outside Included Issues without capturing PR numbers", () => {
+  const body = `Issue #6 is ready for review.
+See #33 for follow-up work.
+Merged PR #70 already shipped separately.`;
+
+  assert.deepEqual(extractIssueNumbers(body), [6, 33]);
+});
+
 test("determineStatusName maps open PR activity to In review", () => {
   const pullRequest = {
     state: "open",
