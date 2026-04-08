@@ -586,12 +586,7 @@ public static class PortfolioSeedData
                     continue;
                 }
 
-                sharedTags.TryAdd((sourceTag.Category, sourceTag.NormalizedName), new Tag
-                {
-                    Category = sourceTag.Category,
-                    DisplayName = sourceTag.DisplayName,
-                    NormalizedName = sourceTag.NormalizedName
-                });
+                sharedTags.TryAdd((sourceTag.Category, sourceTag.NormalizedName), sourceTag);
             }
         }
 
@@ -605,12 +600,7 @@ public static class PortfolioSeedData
                     continue;
                 }
 
-                sharedTags.TryAdd((sourceTag.Category, sourceTag.NormalizedName), new Tag
-                {
-                    Category = sourceTag.Category,
-                    DisplayName = sourceTag.DisplayName,
-                    NormalizedName = sourceTag.NormalizedName
-                });
+                sharedTags.TryAdd((sourceTag.Category, sourceTag.NormalizedName), sourceTag);
             }
         }
 

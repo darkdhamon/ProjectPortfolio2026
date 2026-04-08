@@ -13,7 +13,7 @@ export function JobRoleCard({
             <div className="work-role-heading">
                 <div>
                     <p className="project-dates">{formatWorkDateRange(jobRole.startDate, jobRole.endDate)}</p>
-                    <h3>{jobRole.role}</h3>
+                    <h3 className="work-role-title">{jobRole.role}</h3>
                 </div>
                 {jobRole.supervisorName?.trim() ? (
                     <p className="secondary-copy">Supervisor: {jobRole.supervisorName}</p>

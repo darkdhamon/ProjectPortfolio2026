@@ -57,6 +57,22 @@ public sealed class PortfolioSeedDataTests
         Assert.That(await dbContext.Projects.CountAsync(), Is.EqualTo(100));
     }
 
+    [Test]
+    public async Task InitializeAsync_ReusesSharedTagsAcrossProjectsAndEmployers()
+    {
+        await using var dbContext = CreateDbContext();
+
+        await PortfolioSeedData.InitializeAsync(dbContext);
+
+        var tags = await dbContext.Tags.ToListAsync();
+        var duplicateTagGroups = tags
+            .GroupBy(tag => new { tag.Category, tag.NormalizedName })
+            .Where(group => group.Count() > 1)
+            .ToList();
+
+        Assert.That(duplicateTagGroups, Is.Empty);
+    }
+
     private static PortfolioDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<PortfolioDbContext>()
