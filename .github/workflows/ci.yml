@@ -88,7 +88,7 @@ jobs:
           "should_run_tests=$shouldRunTests" >> $env:GITHUB_OUTPUT
 
           if ($changedFiles.Count -gt 0) {
-            Write-Host "Changed files detected relative to $baseCommit:"
+            Write-Host "Changed files detected relative to ${baseCommit}:"
             $changedFiles | ForEach-Object { Write-Host " - $_" }
           }
           else {

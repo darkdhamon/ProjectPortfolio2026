@@ -268,6 +268,81 @@ describe('App', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
     });
 
+    it('renders the contact page from the portfolio profile endpoint and highlights contact navigation', async () => {
+        window.history.replaceState({}, '', '/contact');
+        fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+            const url = input.toString();
+
+            if (url === '/api/auth/me') {
+                return jsonResponse({
+                    isAuthenticated: false,
+                    isAdmin: false,
+                    username: null,
+                    displayName: null,
+                    email: null
+                });
+            }
+
+            if (url === '/api/portfolio-profile?requestId=request-1') {
+                return jsonResponse({
+                    requestId: 'request-1',
+                    id: 1,
+                    displayName: 'Bronze Loft',
+                    contactHeadline: 'Choose the contact path that fits the conversation you want to have.',
+                    contactIntro: 'This portfolio frames outreach as a calm next step.',
+                    availabilityHeadline: 'Open to new opportunities',
+                    availabilitySummary: 'Focused on full-stack product engineering roles.',
+                    contactMethods: [
+                        {
+                            type: 'email',
+                            label: 'Email',
+                            value: 'bronze@example.dev',
+                            href: 'mailto:bronze@example.dev',
+                            note: 'Best for interview requests.',
+                            sortOrder: 1
+                        },
+                        {
+                            type: 'location',
+                            label: 'Location',
+                            value: 'Chicago, Illinois',
+                            href: null,
+                            note: 'Open to remote roles.',
+                            sortOrder: 2
+                        }
+                    ],
+                    socialLinks: [
+                        {
+                            platform: 'github',
+                            label: 'GitHub',
+                            url: 'https://github.com/darkdhamon',
+                            handle: '@darkdhamon',
+                            summary: 'Code samples and implementation details.',
+                            sortOrder: 1
+                        }
+                    ]
+                });
+            }
+
+            throw new Error(`Unexpected fetch request: ${url}`);
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Choose the contact path that fits the conversation you want to have.' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByRole('link', { name: 'bronze@example.dev' })).toHaveAttribute('href', 'mailto:bronze@example.dev');
+        expect(screen.getByRole('link', { name: 'bronze@example.dev' })).toHaveAttribute('target', '_blank');
+        expect(screen.getByText('Chicago, Illinois')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
+        expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('target', '_blank');
+        expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', expect.objectContaining({
+            method: 'GET'
+        }));
+        expect(fetchMock).toHaveBeenCalledWith('/api/portfolio-profile?requestId=request-1', expect.objectContaining({
+            signal: expect.any(AbortSignal)
+        }));
+    });
+
     it('shows loading and empty states for the list view', async () => {
         window.history.replaceState({}, '', '/projects');
         queueFetchJson(/^\/api\/projects\?/, {
@@ -931,6 +1006,10 @@ describe('App helpers', () => {
             kind: 'detail',
             projectId: 42,
             listSearch: '?skills=React'
+        });
+
+        expect(parseRoute({ pathname: '/contact', search: '' })).toEqual({
+            kind: 'contact'
         });
     });
 
