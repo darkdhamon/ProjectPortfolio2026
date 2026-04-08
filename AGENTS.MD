@@ -37,3 +37,4 @@
 - When the .NET coverage collector writes empty Cobertura files under a `TestResults` directory on Windows, switch the coverage script to a different results folder name such as `CoverageResults`.
 - If PowerShell cannot resolve `node` or `npm` on Windows, verify that the Node.js toolchain is installed before attempting frontend dependency changes or client build verification.
 - If Visual Studio deployment for the `.esproj` fails with `Value cannot be null. Parameter name: source` while referencing `launch.json`, restore or recreate `projectportfolio2026.client/.vscode/launch.json`; the JavaScript project template expects that debug profile to exist.
+- When opening this repository in Visual Studio on this machine, prefer Visual Studio 2026 Insiders at `C:\Program Files\Microsoft Visual Studio\18\Insiders\Common7\IDE\devenv.exe` instead of the default Visual Studio 2022 instance.

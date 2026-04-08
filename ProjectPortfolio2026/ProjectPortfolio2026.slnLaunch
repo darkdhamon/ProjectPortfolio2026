@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Client + Server",
+    "Projects": [
+      {
+        "Path": "projectportfolio2026.client\\projectportfolio2026.client.esproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "ProjectPortfolio2026.Server\\ProjectPortfolio2026.Server.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

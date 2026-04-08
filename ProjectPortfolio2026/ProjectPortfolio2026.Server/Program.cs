@@ -5,8 +5,6 @@ using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
-var dataDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
-Directory.CreateDirectory(dataDirectory);
 
 var connectionString = builder.Configuration.GetConnectionString("PortfolioDatabase");
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -15,10 +13,9 @@ if (string.IsNullOrWhiteSpace(connectionString))
         "Connection string 'PortfolioDatabase' is required. Configure it in appsettings, app secrets, or environment variables.");
 }
 
-var resolvedConnectionString = connectionString.Replace(
-    "|DataDirectory|",
-    dataDirectory,
-    StringComparison.OrdinalIgnoreCase);
+var resolvedConnectionString = ConnectionStringPathResolver.ResolveDataPaths(
+    connectionString,
+    builder.Environment.ContentRootPath);
 
 builder.Services.AddControllers(options =>
 {
@@ -39,7 +36,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-await EnsureDatabaseReadyAsync(app.Services, resolvedConnectionString, app.Environment.IsDevelopment());
+await EnsureDatabaseReadyAsync(app.Services, connectionString, resolvedConnectionString, app.Environment.IsDevelopment());
 
 app.UseHttpsRedirection();
 
@@ -51,16 +48,24 @@ app.MapFallbackToFile("/index.html");
 
 app.Run();
 
-static async Task EnsureDatabaseReadyAsync(IServiceProvider services, string connectionString, bool isDevelopment)
+static async Task EnsureDatabaseReadyAsync(
+    IServiceProvider services,
+    string connectionString,
+    string resolvedConnectionString,
+    bool isDevelopment)
 {
     try
     {
         await MigrateAndSeedAsync(services, isDevelopment);
     }
     catch (Microsoft.Data.SqlClient.SqlException exception)
-        when (LocalDbDatabaseRecovery.CanRecover(connectionString, exception.Number, exception.Message))
+        when (LocalDbDatabaseRecovery.CanRecover(connectionString, exception.Number, exception.Message) ||
+              LocalDbDatabaseRecovery.CanRecover(resolvedConnectionString, exception.Number, exception.Message))
     {
-        var recovered = await LocalDbDatabaseRecovery.TryRecoverAsync(connectionString);
+        var recoveryConnectionString = LocalDbDatabaseRecovery.CanRecover(resolvedConnectionString, exception.Number, exception.Message)
+            ? resolvedConnectionString
+            : connectionString;
+        var recovered = await LocalDbDatabaseRecovery.TryRecoverAsync(recoveryConnectionString);
         if (!recovered)
         {
             throw;
