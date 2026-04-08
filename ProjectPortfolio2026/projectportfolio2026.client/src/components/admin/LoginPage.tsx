@@ -1,19 +1,22 @@
 import { useState, type SyntheticEvent } from 'react';
-import { isAuthMockupPreviewEnabled } from './mockAuth';
 
 export function LoginPage({
     redirectTo,
+    isSubmitting,
+    errorMessage,
     onSignIn
 }: {
     redirectTo: string;
-    onSignIn: (redirectTo: string) => void;
+    isSubmitting: boolean;
+    errorMessage: string | null;
+    onSignIn: (login: string, password: string, redirectTo: string) => void;
 }) {
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
 
     function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
         event.preventDefault();
-        onSignIn(redirectTo);
+        onSignIn(identifier, password, redirectTo);
     }
 
     return (
@@ -52,17 +55,13 @@ export function LoginPage({
                     </label>
 
                     <div className="auth-actions">
-                        <button className="primary-action" type="submit">
-                            Log In
+                        <button className="primary-action" type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? 'Signing In...' : 'Log In'}
                         </button>
                         <p className="auth-helper">
                             Redirect target: <strong>{redirectTo}</strong>
                         </p>
-                        {isAuthMockupPreviewEnabled ? (
-                            <p className="auth-helper">
-                                Mockup preview is enabled, so the admin screens can also be reviewed before sign-in wiring is enforced.
-                            </p>
-                        ) : null}
+                        {errorMessage ? <p className="status-banner error">{errorMessage}</p> : null}
                     </div>
                 </form>
             </section>

@@ -10,8 +10,7 @@ namespace ProjectPortfolio2026.Server.Services.Implementations;
 
 public sealed class AuthService(
     UserManager<ApplicationUser> userManager,
-    SignInManager<ApplicationUser> signInManager,
-    IHostEnvironment hostEnvironment) : IAuthService
+    SignInManager<ApplicationUser> signInManager) : IAuthService
 {
     public async Task<LoginResult> LoginAsync(AuthLoginRequest request, CancellationToken cancellationToken = default)
     {
@@ -21,22 +20,15 @@ public sealed class AuthService(
             return new LoginResult { Succeeded = false };
         }
 
-        if (ShouldAllowEmptyDevelopmentPassword(user, request.Password))
-        {
-            await signInManager.SignInAsync(user, isPersistent: false);
-        }
-        else
-        {
-            var signInResult = await signInManager.PasswordSignInAsync(
-                user,
-                request.Password,
-                isPersistent: false,
-                lockoutOnFailure: false);
+        var signInResult = await signInManager.PasswordSignInAsync(
+            user,
+            request.Password,
+            isPersistent: false,
+            lockoutOnFailure: false);
 
-            if (!signInResult.Succeeded)
-            {
-                return new LoginResult { Succeeded = false };
-            }
+        if (!signInResult.Succeeded)
+        {
+            return new LoginResult { Succeeded = false };
         }
 
         return new LoginResult
@@ -199,12 +191,5 @@ public sealed class AuthService(
             Email = user.Email,
             DisplayName = string.IsNullOrWhiteSpace(user.DisplayName) ? user.UserName : user.DisplayName
         };
-    }
-
-    private bool ShouldAllowEmptyDevelopmentPassword(ApplicationUser user, string password)
-    {
-        return hostEnvironment.IsDevelopment()
-            && string.IsNullOrEmpty(user.PasswordHash)
-            && string.IsNullOrEmpty(password);
     }
 }

@@ -1,8 +1,8 @@
-export interface MockAuthUser {
+export interface AuthUser {
     username: string;
-    email: string;
+    email: string | null;
     displayName: string;
-    roles: string[];
+    isAdmin: boolean;
 }
 
 export interface AccountDraft {
@@ -10,12 +10,3 @@ export interface AccountDraft {
     email: string;
     displayName: string;
 }
-
-export const mockAdminUser: MockAuthUser = {
-    username: 'admin',
-    email: 'admin@example.com',
-    displayName: '',
-    roles: ['Admin']
-};
-
-export const isAuthMockupPreviewEnabled = true;

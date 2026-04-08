@@ -1,16 +1,30 @@
 import { useState, type SyntheticEvent } from 'react';
-import { type AccountDraft, type MockAuthUser, isAuthMockupPreviewEnabled } from './mockAuth';
+import { type AccountDraft, type AuthUser } from './mockAuth';
 
 export function AccountSettingsPage({
     currentUser,
-    onSave
+    isSavingProfile,
+    profileError,
+    profileNotice,
+    isSavingPassword,
+    passwordError,
+    passwordNotice,
+    onSave,
+    onChangePassword
 }: {
-    currentUser: MockAuthUser;
+    currentUser: AuthUser;
+    isSavingProfile: boolean;
+    profileError: string | null;
+    profileNotice: string | null;
+    isSavingPassword: boolean;
+    passwordError: string | null;
+    passwordNotice: string | null;
     onSave: (draft: AccountDraft) => void;
+    onChangePassword: (currentPassword: string, newPassword: string, confirmPassword: string) => void;
 }) {
     const [draft, setDraft] = useState<AccountDraft>({
         username: currentUser.username,
-        email: currentUser.email,
+        email: currentUser.email ?? '',
         displayName: currentUser.displayName
     });
     const [passwordDraft, setPasswordDraft] = useState({
@@ -27,11 +41,7 @@ export function AccountSettingsPage({
 
     function handlePasswordSubmit(event: SyntheticEvent<HTMLFormElement>) {
         event.preventDefault();
-        setPasswordDraft({
-            currentPassword: '',
-            newPassword: '',
-            confirmPassword: ''
-        });
+        onChangePassword(passwordDraft.currentPassword, passwordDraft.newPassword, passwordDraft.confirmPassword);
     }
 
     return (
@@ -43,17 +53,12 @@ export function AccountSettingsPage({
                     <p className="hero-description">
                         Display name is optional here, so the mockup shows the username as the fallback label when no separate display name is set.
                     </p>
-                    {isAuthMockupPreviewEnabled ? (
-                        <p className="secondary-copy">
-                            This account page is also available in preview mode so we can review the layout before the live auth handshake is wired up.
-                        </p>
-                    ) : null}
                 </div>
 
                 <div className="admin-callout">
                     <span className="stat-label">Displayed as</span>
                     <strong>{resolvedDisplayName}</strong>
-                    <p className="secondary-copy">Role: {currentUser.roles.join(', ')}</p>
+                    <p className="secondary-copy">Role: {currentUser.isAdmin ? 'Admin' : 'User'}</p>
                 </div>
             </section>
 
@@ -90,7 +95,12 @@ export function AccountSettingsPage({
                         />
                     </label>
 
-                    <button className="primary-action" type="submit">Save Profile Mockup</button>
+                    {profileError ? <p className="status-banner error">{profileError}</p> : null}
+                    {profileNotice ? <p className="status-banner">{profileNotice}</p> : null}
+
+                    <button className="primary-action" type="submit" disabled={isSavingProfile}>
+                        {isSavingProfile ? 'Saving Profile...' : 'Save Profile'}
+                    </button>
                 </form>
 
                 <form className="admin-card account-form" onSubmit={handlePasswordSubmit}>
@@ -124,7 +134,12 @@ export function AccountSettingsPage({
                         />
                     </label>
 
-                    <button className="primary-action secondary-action" type="submit">Save Password Mockup</button>
+                    {passwordError ? <p className="status-banner error">{passwordError}</p> : null}
+                    {passwordNotice ? <p className="status-banner">{passwordNotice}</p> : null}
+
+                    <button className="primary-action secondary-action" type="submit" disabled={isSavingPassword}>
+                        {isSavingPassword ? 'Saving Password...' : 'Save Password'}
+                    </button>
                 </form>
             </section>
         </main>

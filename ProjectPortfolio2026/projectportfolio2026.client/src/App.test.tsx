@@ -702,19 +702,44 @@ describe('App', () => {
         expect(await screen.findByText('The project detail endpoint is unavailable.')).toBeInTheDocument();
     });
 
-    it('shows the admin dashboard mockup without login during preview mode', async () => {
+    it('routes signed-out admin navigation through the login page', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            isAuthenticated: false,
+            isAdmin: false
+        }));
+
         render(<App />);
 
-        fireEvent.click(screen.getByRole('button', { name: /Admin/ }));
+        fireEvent.click(await screen.findByRole('button', { name: /Admin/ }));
 
-        expect(await screen.findByRole('heading', { name: 'Admin dashboard mockup' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Sign in through the admin entry point.' })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
         expect(screen.queryByText('Welcome')).not.toBeInTheDocument();
-        expect(window.location.pathname).toBe('/admin');
+        expect(window.location.pathname).toBe('/login');
+        expect(window.location.search).toBe('?redirect=%2Fadmin');
     });
 
     it('signs in through the mock login page and reveals admin account navigation', async () => {
         window.history.replaceState({}, '', '/login?redirect=%2Fadmin');
+        fetchMock
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: false,
+                isAdmin: false
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: true,
+                isAdmin: true,
+                userName: 'admin',
+                email: 'admin@example.com',
+                displayName: 'admin'
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: true,
+                isAdmin: true,
+                userName: 'admin',
+                email: 'admin@example.com',
+                displayName: 'admin'
+            }));
         render(<App />);
 
         fireEvent.change(screen.getByLabelText('Username or email'), {
@@ -734,17 +759,67 @@ describe('App', () => {
         expect(window.location.pathname).toBe('/admin');
     });
 
-    it('shows the account settings mockup without login when opened directly', async () => {
+    it('redirects direct account access to login when signed out', async () => {
         window.history.replaceState({}, '', '/admin/account');
+        fetchMock
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: false,
+                isAdmin: false
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: false,
+                isAdmin: false
+            }));
         render(<App />);
 
-        expect(await screen.findByRole('heading', { name: 'Manage your current admin account' })).toBeInTheDocument();
-        expect(screen.getByText(/preview mode/i)).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Sign in through the admin entry point.' })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
+        expect(window.location.pathname).toBe('/login');
+        expect(window.location.search).toBe('?redirect=%2Fadmin%2Faccount');
     });
 
-    it('lets the signed-in mock admin edit account settings and log out', async () => {
+    it('lets the signed-in admin edit account settings and log out', async () => {
         window.history.replaceState({}, '', '/login?redirect=%2Fadmin');
+        fetchMock
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: false,
+                isAdmin: false
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: true,
+                isAdmin: true,
+                userName: 'admin',
+                email: 'admin@example.com',
+                displayName: 'admin'
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: true,
+                isAdmin: true,
+                userName: 'admin',
+                email: 'admin@example.com',
+                displayName: 'admin'
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: true,
+                isAdmin: true,
+                userName: 'admin',
+                email: 'admin@example.com',
+                displayName: 'admin'
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: true,
+                isAdmin: true,
+                userName: 'editor-admin',
+                email: 'admin@example.com',
+                displayName: 'Portfolio Owner'
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                signedOut: true
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                isAuthenticated: false,
+                isAdmin: false
+            }));
         render(<App />);
 
         fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
@@ -758,8 +833,9 @@ describe('App', () => {
         fireEvent.change(screen.getByLabelText('Display name'), {
             target: { value: 'Portfolio Owner' }
         });
-        fireEvent.click(screen.getByRole('button', { name: 'Save Profile Mockup' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save Profile' }));
 
+        expect(await screen.findByText('Profile saved.')).toBeInTheDocument();
         expect(screen.getByText('Welcome')).toBeInTheDocument();
         expect(screen.getAllByText('Portfolio Owner').length).toBeGreaterThan(0);
         expect(screen.getByText('Signed in as Portfolio Owner')).toBeInTheDocument();

@@ -20,7 +20,7 @@ import {
 import { AccountSettingsPage } from './components/admin/AccountSettingsPage';
 import { AdminDashboardPage } from './components/admin/AdminDashboardPage';
 import { LoginPage } from './components/admin/LoginPage';
-import { type AccountDraft, type MockAuthUser, isAuthMockupPreviewEnabled, mockAdminUser } from './components/admin/mockAuth';
+import { type AccountDraft, type AuthUser } from './components/admin/mockAuth';
 import { InternalLink, type NavigateHandler } from './components/navigation/InternalLink';
 import { SiteShell, type SiteShellContent } from './components/shell/SiteShell';
 import './App.css';
@@ -99,6 +99,15 @@ interface FeaturedProjectsResponse {
 
 interface ApiErrorResponse {
     message?: string;
+}
+
+interface AuthStatusResponse {
+    isAuthenticated: boolean;
+    isAdmin: boolean;
+    userId?: string | null;
+    userName?: string | null;
+    email?: string | null;
+    displayName?: string | null;
 }
 
 const pageSize = 6;
@@ -207,9 +216,56 @@ async function fetchResponsePayloadWithStartupRetry<TPayload>(
     }
 }
 
+async function fetchAuthJson<TPayload>(
+    input: string,
+    init: RequestInit,
+    fallbackMessage: string,
+    acceptedErrorStatuses: number[] = []
+) {
+    const response = await fetch(input, {
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(init.headers ?? {})
+        },
+        ...init
+    });
+
+    const payload = await readResponsePayload<TPayload>(response);
+
+    if (!response.ok && !acceptedErrorStatuses.includes(response.status)) {
+        const apiMessage = isApiErrorResponse(payload) ? payload.message : undefined;
+        throw new Error(apiMessage ?? fallbackMessage);
+    }
+
+    return { response, payload };
+}
+
+function mapAuthUser(response: AuthStatusResponse): AuthUser | null {
+    if (!response.isAuthenticated || !response.userName) {
+        return null;
+    }
+
+    return {
+        username: response.userName,
+        email: response.email ?? null,
+        displayName: response.displayName?.trim() || response.userName,
+        isAdmin: response.isAdmin
+    };
+}
+
 function App() {
     const [location, setLocation] = useState<AppLocation>(() => readLocation());
-    const [currentUser, setCurrentUser] = useState<MockAuthUser | null>(null);
+    const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+    const [isAuthResolved, setIsAuthResolved] = useState(false);
+    const [isAuthenticating, setIsAuthenticating] = useState(false);
+    const [authError, setAuthError] = useState<string | null>(null);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [profileError, setProfileError] = useState<string | null>(null);
+    const [profileNotice, setProfileNotice] = useState<string | null>(null);
+    const [isSavingPassword, setIsSavingPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [passwordNotice, setPasswordNotice] = useState<string | null>(null);
 
     useEffect(() => {
         const handlePopState = () => {
@@ -221,6 +277,7 @@ function App() {
     }, []);
 
     const route = useMemo(() => parseRoute(location), [location]);
+    const isAdminRoute = route.kind === 'admin' || route.kind === 'admin-account';
     const activeNavLabel = route.kind === 'home'
         ? 'Home'
         : route.kind === 'detail' || route.kind === 'list'
@@ -275,8 +332,59 @@ function App() {
         }
     };
 
-    function handleAdminNavigate() {
-        if (currentUser || isAuthMockupPreviewEnabled) {
+    useEffect(() => {
+        if (!isAdminRoute && route.kind !== 'login') {
+            return;
+        }
+
+        const controller = new AbortController();
+        setAuthError(null);
+        void loadCurrentUser(controller.signal);
+
+        return () => controller.abort();
+    }, [isAdminRoute, route.kind]);
+
+    useEffect(() => {
+        if (!isAdminRoute || !isAuthResolved) {
+            return;
+        }
+
+        if (!currentUser?.isAdmin) {
+            const redirectTarget = `${location.pathname}${location.search}` || '/admin';
+            navigate(`/login?redirect=${encodeURIComponent(redirectTarget)}`, { replace: true });
+        }
+    }, [currentUser, isAdminRoute, isAuthResolved, location.pathname, location.search]);
+
+    async function loadCurrentUser(signal?: AbortSignal) {
+        try {
+            const { payload } = await fetchAuthJson<AuthStatusResponse>(
+                '/api/auth/me',
+                {
+                    method: 'GET',
+                    signal
+                },
+                'Unable to check the current session.'
+            );
+
+            const user = payload ? mapAuthUser(payload as AuthStatusResponse) : null;
+            setCurrentUser(user);
+            return user;
+        } catch (caughtError) {
+            if ((caughtError as Error).name === 'AbortError') {
+                return null;
+            }
+
+            setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to check the current session.');
+            setCurrentUser(null);
+            return null;
+        } finally {
+            setIsAuthResolved(true);
+        }
+    }
+
+    async function handleAdminNavigate() {
+        const user = await loadCurrentUser();
+        if (user?.isAdmin) {
             navigate('/admin');
             return;
         }
@@ -284,39 +392,118 @@ function App() {
         navigate('/login?redirect=%2Fadmin');
     }
 
-    function handleMockLogin(redirectTo: string) {
-        setCurrentUser(mockAdminUser);
-        navigate(redirectTo);
+    async function handleLogin(login: string, password: string, redirectTo: string) {
+        setIsAuthenticating(true);
+        setAuthError(null);
+
+        try {
+            const { payload } = await fetchAuthJson<AuthStatusResponse>(
+                '/api/auth/login',
+                {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        login,
+                        password
+                    })
+                },
+                'Invalid username/email or password.'
+            );
+
+            const user = payload ? mapAuthUser(payload as AuthStatusResponse) : null;
+            setCurrentUser(user);
+            setIsAuthResolved(true);
+            navigate(redirectTo);
+        } catch (caughtError) {
+            setAuthError(caughtError instanceof Error ? caughtError.message : 'Invalid username/email or password.');
+        } finally {
+            setIsAuthenticating(false);
+        }
     }
 
-    function handleMockLogout() {
+    async function handleLogout() {
+        await fetchAuthJson(
+            '/api/auth/logout',
+            {
+                method: 'POST'
+            },
+            'Unable to sign out right now.'
+        );
+
         setCurrentUser(null);
+        setProfileNotice(null);
+        setPasswordNotice(null);
         navigate('/login?redirect=%2Fadmin');
     }
 
-    function handleAccountSave(draft: AccountDraft) {
-        setCurrentUser(existingUser => {
-            if (!existingUser) {
-                return existingUser;
+    async function handleAccountSave(draft: AccountDraft) {
+        setIsSavingProfile(true);
+        setProfileError(null);
+        setProfileNotice(null);
+
+        try {
+            const { payload } = await fetchAuthJson<AuthStatusResponse>(
+                '/api/auth/me',
+                {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        userName: draft.username,
+                        email: draft.email.trim() || null,
+                        displayName: draft.displayName.trim() || null
+                    })
+                },
+                'Unable to save profile changes.'
+            );
+
+            const user = payload ? mapAuthUser(payload as AuthStatusResponse) : null;
+            setCurrentUser(user);
+            setProfileNotice('Profile saved.');
+        } catch (caughtError) {
+            setProfileError(caughtError instanceof Error ? caughtError.message : 'Unable to save profile changes.');
+        } finally {
+            setIsSavingProfile(false);
+        }
+    }
+
+    async function handlePasswordChange(currentPassword: string, newPassword: string, confirmPassword: string) {
+        setIsSavingPassword(true);
+        setPasswordError(null);
+        setPasswordNotice(null);
+
+        try {
+            if (newPassword !== confirmPassword) {
+                throw new Error('New password and confirmation must match.');
             }
 
-            return {
-                ...existingUser,
-                username: draft.username.trim(),
-                email: draft.email.trim(),
-                displayName: draft.displayName.trim()
-            };
-        });
+            await fetchAuthJson(
+                '/api/auth/me/password',
+                {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        currentPassword,
+                        newPassword
+                    })
+                },
+                'Unable to change password right now.'
+            );
+
+            setPasswordNotice('Password updated.');
+        } catch (caughtError) {
+            setPasswordError(caughtError instanceof Error ? caughtError.message : 'Unable to change password right now.');
+        } finally {
+            setIsSavingPassword(false);
+        }
     }
+
+    const isAdminAuthenticated = currentUser?.isAdmin === true;
 
     return (
         <SiteShell
             activeNavLabel={activeNavLabel}
             content={shellContent}
             currentUserDisplayName={displayName}
-            isAuthenticated={currentUser !== null}
+            isAuthenticated={isAdminAuthenticated}
             onAdminNavigate={handleAdminNavigate}
-            onLogout={handleMockLogout}
+            onLogout={handleLogout}
             onNavigate={navigate}>
             {route.kind === 'home' ? (
                 <HomePage onNavigate={navigate} />
@@ -328,18 +515,39 @@ function App() {
             ) : route.kind === 'login' ? (
                 <LoginPage
                     redirectTo={route.redirectTo}
-                    onSignIn={handleMockLogin}
+                    isSubmitting={isAuthenticating}
+                    errorMessage={authError}
+                    onSignIn={handleLogin}
                 />
-            ) : route.kind === 'admin' ? (
+            ) : route.kind === 'admin' && isAdminAuthenticated ? (
                 <AdminDashboardPage
                     currentUserDisplayName={displayName}
                     onNavigate={navigate}
                 />
-            ) : route.kind === 'admin-account' ? (
+            ) : route.kind === 'admin-account' && currentUser ? (
                 <AccountSettingsPage
-                    currentUser={currentUser ?? mockAdminUser}
+                    currentUser={currentUser}
+                    isSavingProfile={isSavingProfile}
+                    profileError={profileError}
+                    profileNotice={profileNotice}
+                    isSavingPassword={isSavingPassword}
+                    passwordError={passwordError}
+                    passwordNotice={passwordNotice}
                     onSave={handleAccountSave}
+                    onChangePassword={handlePasswordChange}
                 />
+            ) : isAdminRoute ? (
+                <main className="auth-page">
+                    <section className="auth-card">
+                        <div className="auth-intro">
+                            <p className="eyebrow">Admin Access</p>
+                            <h1>Checking your session.</h1>
+                            <p className="hero-description">
+                                {authError ?? 'Verifying whether you are already signed in before opening the admin area.'}
+                            </p>
+                        </div>
+                    </section>
+                </main>
             ) : (
                 <ProjectListPage
                     filters={route.filters}

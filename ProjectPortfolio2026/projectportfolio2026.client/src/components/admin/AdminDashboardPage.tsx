@@ -1,5 +1,4 @@
 import { InternalLink, type NavigateHandler } from '../navigation/InternalLink';
-import { isAuthMockupPreviewEnabled } from './mockAuth';
 
 export function AdminDashboardPage({
     currentUserDisplayName,
@@ -17,11 +16,6 @@ export function AdminDashboardPage({
                     <p className="hero-description">
                         This placeholder confirms the protected route, the nav behavior, and the general tone of the admin area before live API wiring begins.
                     </p>
-                    {isAuthMockupPreviewEnabled ? (
-                        <p className="secondary-copy">
-                            Mockup preview mode is active right now, so this screen stays visible even before authentication is fully enforced.
-                        </p>
-                    ) : null}
                 </div>
 
                 <div className="admin-callout">

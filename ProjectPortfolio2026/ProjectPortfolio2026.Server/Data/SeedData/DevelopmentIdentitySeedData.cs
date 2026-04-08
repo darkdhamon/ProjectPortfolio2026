@@ -7,6 +7,7 @@ public static class DevelopmentIdentitySeedData
 {
     public const string SeedUserName = "admin";
     public const string SeedEmail = "admin@example.com";
+    public const string SeedPassword = "Password@1";
 
     public static async Task InitializeAsync(
         RoleManager<IdentityRole> roleManager,
@@ -34,10 +35,18 @@ public static class DevelopmentIdentitySeedData
                 EmailConfirmed = true
             };
 
-            var createResult = await userManager.CreateAsync(user);
+            var createResult = await userManager.CreateAsync(user, SeedPassword);
             if (!createResult.Succeeded)
             {
                 throw new InvalidOperationException("Unable to create the development admin user.");
+            }
+        }
+        else if (!await userManager.HasPasswordAsync(user))
+        {
+            var addPasswordResult = await userManager.AddPasswordAsync(user, SeedPassword);
+            if (!addPasswordResult.Succeeded)
+            {
+                throw new InvalidOperationException("Unable to assign the development admin password.");
             }
         }
 
