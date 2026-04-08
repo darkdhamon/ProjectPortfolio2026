@@ -1443,6 +1443,11 @@
     gap: 0.5rem;
 }
 
+.contact-panel h2 {
+    margin: 0;
+    color: #f4f8fe;
+}
+
 .contact-channel-list,
 .social-link-list,
 .contact-principles,
@@ -1472,6 +1477,10 @@
 .contact-channel-card a,
 .social-link-card strong {
     font-size: 1.1rem;
+}
+
+.contact-channel-card strong {
+    color: #f4f8fe;
 }
 
 .contact-channel-card p,

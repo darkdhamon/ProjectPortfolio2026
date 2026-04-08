@@ -1,43 +1,4 @@
-const contactChannels = [
-    {
-        label: 'Email',
-        value: 'bronze@example.dev',
-        href: 'mailto:bronze@example.dev',
-        note: 'Best for interview requests, consulting inquiries, and longer-form conversations.'
-    },
-    {
-        label: 'Phone',
-        value: '(312) 555-0147',
-        href: 'tel:+13125550147',
-        note: 'Available for scheduled calls on weekdays between 9 AM and 5 PM Central.'
-    },
-    {
-        label: 'Location',
-        value: 'Chicago, Illinois',
-        note: 'Open to remote roles, hybrid collaboration, and select on-site visits.'
-    }
-] as const;
-
-const socialLinks = [
-    {
-        label: 'GitHub',
-        href: 'https://github.com/darkdhamon',
-        handle: '@darkdhamon',
-        summary: 'Code samples, ongoing portfolio work, and implementation details.'
-    },
-    {
-        label: 'LinkedIn',
-        href: 'https://www.linkedin.com/in/bronze-loft',
-        handle: 'Bronze Loft',
-        summary: 'Professional background, role history, and recruiter-friendly context.'
-    },
-    {
-        label: 'Calendly',
-        href: 'https://calendly.com/bronze-loft/portfolio-intro',
-        handle: 'Schedule an intro',
-        summary: 'A lightweight path for a first conversation without email back-and-forth.'
-    }
-] as const;
+import { usePortfolioProfile } from '../../hooks/usePortfolioProfile';
 
 const responsePrinciples = [
     'Clear communication on project scope, tradeoffs, and delivery progress.',
@@ -46,25 +7,32 @@ const responsePrinciples = [
 ] as const;
 
 export function ContactPage() {
+    const { profile, isLoading, error, isMissing } = usePortfolioProfile();
+    const contactMethods = profile?.contactMethods ?? [];
+    const socialLinks = profile?.socialLinks ?? [];
+
     return (
         <main className="contact-page">
+            {error ? <p className="status-banner error">{error}</p> : null}
+            {!error && isLoading ? <p className="status-banner">Loading contact profile...</p> : null}
+            {!error && !isLoading && isMissing ? (
+                <p className="status-banner">The public contact profile has not been configured yet.</p>
+            ) : null}
+
             <section className="contact-hero">
                 <div className="contact-hero-copy">
                     <p className="eyebrow">Direct Contact</p>
-                    <h1>Choose the contact path that fits the conversation you want to have.</h1>
+                    <h1>{profile?.contactHeadline ?? 'Choose the contact path that fits the conversation you want to have.'}</h1>
                     <p className="hero-description">
-                        This mockup frames outreach as a small, calm decision instead of a wall of links.
-                        Recruiters can move quickly, collaborators can find the right channel, and optional
-                        profile details can disappear cleanly when configuration is incomplete.
+                        {profile?.contactIntro ?? 'Contact details will appear here once the portfolio profile is available.'}
                     </p>
                 </div>
 
                 <div className="contact-availability-card" aria-label="Current availability">
                     <span className="stat-label">Current Availability</span>
-                    <strong>Open to new opportunities</strong>
+                    <strong>{profile?.availabilityHeadline ?? 'Availability not configured'}</strong>
                     <p>
-                        Focused on full-stack product engineering roles where API design, thoughtful UI,
-                        and maintainable delivery all matter.
+                        {profile?.availabilitySummary ?? 'Add a portfolio profile to publish an availability summary for the contact page.'}
                     </p>
                 </div>
             </section>
@@ -77,17 +45,21 @@ export function ContactPage() {
                     </div>
 
                     <div className="contact-channel-list">
-                        {contactChannels.map(channel => (
-                            <section key={channel.label} className="contact-channel-card">
-                                <span className="meta-label">{channel.label}</span>
-                                {channel.href ? (
-                                    <a href={channel.href}>{channel.value}</a>
+                        {contactMethods.length > 0 ? contactMethods.map(contactMethod => (
+                            <section
+                                key={`${contactMethod.type}-${contactMethod.label}-${contactMethod.sortOrder}`}
+                                className="contact-channel-card">
+                                <span className="meta-label">{contactMethod.label}</span>
+                                {contactMethod.href ? (
+                                    <a href={contactMethod.href}>{contactMethod.value}</a>
                                 ) : (
-                                    <strong>{channel.value}</strong>
+                                    <strong>{contactMethod.value}</strong>
                                 )}
-                                <p>{channel.note}</p>
+                                {contactMethod.note ? <p>{contactMethod.note}</p> : null}
                             </section>
-                        ))}
+                        )) : (
+                            <p className="secondary-copy">Public contact methods will appear here once they are configured.</p>
+                        )}
                     </div>
                 </article>
 
@@ -98,20 +70,22 @@ export function ContactPage() {
                     </div>
 
                     <div className="social-link-list">
-                        {socialLinks.map(link => (
+                        {socialLinks.length > 0 ? socialLinks.map(link => (
                             <a
-                                key={link.label}
+                                key={`${link.platform}-${link.label}-${link.sortOrder}`}
                                 className="social-link-card"
-                                href={link.href}
+                                href={link.url}
                                 target="_blank"
                                 rel="noreferrer">
                                 <div>
                                     <span className="meta-label">{link.label}</span>
-                                    <strong>{link.handle}</strong>
+                                    <strong>{link.handle ?? link.label}</strong>
                                 </div>
-                                <p>{link.summary}</p>
+                                {link.summary ? <p>{link.summary}</p> : null}
                             </a>
-                        ))}
+                        )) : (
+                            <p className="secondary-copy">Public social links will appear here once they are configured.</p>
+                        )}
                     </div>
                 </article>
             </section>
@@ -120,7 +94,7 @@ export function ContactPage() {
                 <article className="contact-panel">
                     <div className="contact-panel-heading">
                         <p className="eyebrow">What To Expect</p>
-                        <h2>A portfolio contact page should answer more than “how.”</h2>
+                        <h2>A portfolio contact page should answer more than "how."</h2>
                     </div>
 
                     <div className="contact-principles">
@@ -135,19 +109,18 @@ export function ContactPage() {
 
                 <article className="contact-panel">
                     <div className="contact-panel-heading">
-                        <p className="eyebrow">Mockup Notes</p>
-                        <h2>Designed to become data-driven later.</h2>
+                        <p className="eyebrow">Profile Model</p>
+                        <h2>Built around a portfolio profile aggregate.</h2>
                     </div>
 
                     <div className="contact-notes">
                         <p>
-                            The card structure is intentionally friendly to future configuration work.
-                            Contact rows, social links, and availability text can all come from a single
-                            profile settings payload once the backend model exists.
+                            Contact methods and social links are now loaded from the server through a
+                            portfolio profile entity instead of being hardcoded in the client.
                         </p>
                         <p>
-                            For now, this gives issue #6 a concrete visual direction without forcing the
-                            data model before the work history and resume issues are ready.
+                            Visibility is handled in the data model so the future admin experience can
+                            show or hide individual contact methods and platforms without changing the page layout.
                         </p>
                     </div>
                 </article>

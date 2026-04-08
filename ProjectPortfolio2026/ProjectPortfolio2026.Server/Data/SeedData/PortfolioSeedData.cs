@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ProjectPortfolio2026.Server.Domain.Portfolio;
 using ProjectPortfolio2026.Server.Domain.Projects;
 
 namespace ProjectPortfolio2026.Server.Data.SeedData;
@@ -7,14 +8,104 @@ public static class PortfolioSeedData
 {
     public static async Task InitializeAsync(PortfolioDbContext dbContext, CancellationToken cancellationToken = default)
     {
-        if (await dbContext.Projects.AnyAsync(cancellationToken))
+        var hasProjects = await dbContext.Projects.AnyAsync(cancellationToken);
+        var hasPortfolioProfile = await dbContext.PortfolioProfiles.AnyAsync(cancellationToken);
+
+        if (hasProjects && hasPortfolioProfile)
         {
             return;
         }
 
-        var projects = CreateProjects();
-        dbContext.Projects.AddRange(projects);
+        if (!hasPortfolioProfile)
+        {
+            dbContext.PortfolioProfiles.Add(CreatePortfolioProfile());
+        }
+
+        if (!hasProjects)
+        {
+            var projects = CreateProjects();
+            dbContext.Projects.AddRange(projects);
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static PortfolioProfile CreatePortfolioProfile()
+    {
+        return new PortfolioProfile
+        {
+            DisplayName = "Bronze Loft",
+            ContactHeadline = "Choose the contact path that fits the conversation you want to have.",
+            ContactIntro = "This portfolio frames outreach as a calm next step. Recruiters, collaborators, and hiring teams should be able to find the right channel quickly without sorting through hardcoded one-off content.",
+            AvailabilityHeadline = "Open to new opportunities",
+            AvailabilitySummary = "Focused on full-stack product engineering roles where API design, thoughtful UI, and maintainable delivery all matter.",
+            IsPublic = true,
+            ContactMethods =
+            [
+                new PortfolioContactMethod
+                {
+                    Type = "email",
+                    Label = "Email",
+                    Value = "bronze@example.dev",
+                    Href = "mailto:bronze@example.dev",
+                    Note = "Best for interview requests, consulting inquiries, and longer-form conversations.",
+                    SortOrder = 1,
+                    IsVisible = true
+                },
+                new PortfolioContactMethod
+                {
+                    Type = "phone",
+                    Label = "Phone",
+                    Value = "(312) 555-0147",
+                    Href = "tel:+13125550147",
+                    Note = "Available for scheduled calls on weekdays between 9 AM and 5 PM Central.",
+                    SortOrder = 2,
+                    IsVisible = true
+                },
+                new PortfolioContactMethod
+                {
+                    Type = "location",
+                    Label = "Location",
+                    Value = "Chicago, Illinois",
+                    Note = "Open to remote roles, hybrid collaboration, and select on-site visits.",
+                    SortOrder = 3,
+                    IsVisible = true
+                }
+            ],
+            SocialLinks =
+            [
+                new PortfolioSocialLink
+                {
+                    Platform = "github",
+                    Label = "GitHub",
+                    Url = "https://github.com/darkdhamon",
+                    Handle = "@darkdhamon",
+                    Summary = "Code samples, ongoing portfolio work, and implementation details.",
+                    SortOrder = 1,
+                    IsVisible = true
+                },
+                new PortfolioSocialLink
+                {
+                    Platform = "linkedin",
+                    Label = "LinkedIn",
+                    Url = "https://www.linkedin.com/in/bronze-loft",
+                    Handle = "Bronze Loft",
+                    Summary = "Professional background, role history, and recruiter-friendly context.",
+                    SortOrder = 2,
+                    IsVisible = true
+                },
+                new PortfolioSocialLink
+                {
+                    Platform = "calendly",
+                    Label = "Calendly",
+                    Url = "https://calendly.com/bronze-loft/portfolio-intro",
+                    Handle = "Schedule an intro",
+                    Summary = "A lightweight path for a first conversation without email back-and-forth.",
+                    SortOrder = 3,
+                    IsVisible = true
+                }
+            ]
+        };
     }
 
     private static List<Project> CreateProjects()

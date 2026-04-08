@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio2026.Server.Domain.Identity;
+using ProjectPortfolio2026.Server.Domain.Portfolio;
 using ProjectPortfolio2026.Server.Domain.Projects;
 
 namespace ProjectPortfolio2026.Server.Data;
@@ -10,6 +11,12 @@ public sealed class PortfolioDbContext(DbContextOptions<PortfolioDbContext> opti
     : IdentityDbContext<ApplicationUser, IdentityRole, string>(options)
 {
     public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
+
+    public DbSet<PortfolioProfile> PortfolioProfiles => Set<PortfolioProfile>();
+
+    public DbSet<PortfolioContactMethod> PortfolioContactMethods => Set<PortfolioContactMethod>();
+
+    public DbSet<PortfolioSocialLink> PortfolioSocialLinks => Set<PortfolioSocialLink>();
 
     public DbSet<Project> Projects => Set<Project>();
 

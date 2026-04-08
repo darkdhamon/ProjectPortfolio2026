@@ -70,6 +70,7 @@ builder.Services
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<IPortfolioProfileRepository, PortfolioProfileRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 builder.Services.AddScoped<IAuthService, AuthService>();
