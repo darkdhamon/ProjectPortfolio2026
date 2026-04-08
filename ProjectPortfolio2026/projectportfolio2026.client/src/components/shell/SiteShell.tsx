@@ -1,12 +1,40 @@
-import { type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import portfolioLogoIcon from '../../assets/Logo/Portfolio-Logo-Icon.png';
-import { InternalLink, type NavigateHandler } from '../navigation/InternalLink';
-import { navItems } from './siteNavigation';
+import type { NavigateFn } from '../../app/navigation';
+import { InternalLink } from '../common/InternalLink';
 
 export interface SiteShellContent {
     kicker: string;
     title: string;
     summary: string;
+}
+
+interface NavItem {
+    label: string;
+    description: string;
+    href?: string;
+}
+
+const navItems: readonly NavItem[] = [
+    { label: 'Home', href: '/', description: 'Featured highlights and introduction.' },
+    { label: 'Projects', href: '/projects', description: 'Browse shipped work and project detail stories.' },
+    { label: 'Admin', description: 'Authentication, dashboard access, and account management.' },
+    { label: 'Timeline', description: 'Career milestones, education, and certifications.' },
+    { label: 'About', description: 'Background, strengths, and developer story.' },
+    { label: 'Resume', description: 'Resume hub and downloadable materials.' },
+    { label: 'Contact', description: 'Direct outreach paths and social links.' },
+    { label: 'Blog', description: 'Writing, updates, and thought pieces.' }
+] as const;
+
+interface SiteShellProps {
+    activeNavLabel: string;
+    content: SiteShellContent;
+    currentUserDisplayName: string;
+    isAuthenticated: boolean;
+    onAdminNavigate: () => void;
+    onLogout: () => void;
+    onNavigate: NavigateFn;
+    children: ReactNode;
 }
 
 export function SiteShell({
@@ -18,16 +46,7 @@ export function SiteShell({
     onLogout,
     onNavigate,
     children
-}: {
-    activeNavLabel: string;
-    content: SiteShellContent;
-    currentUserDisplayName: string;
-    isAuthenticated: boolean;
-    onAdminNavigate: () => void;
-    onLogout: () => void;
-    onNavigate: NavigateHandler;
-    children: ReactNode;
-}) {
+}: SiteShellProps) {
     return (
         <div className="site-shell">
             <aside className="site-sidebar" aria-label="Primary">
