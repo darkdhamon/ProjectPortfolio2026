@@ -39,22 +39,20 @@ export function extractIssueNumbers(body) {
     sourceText = includedIssueLines.join("\n");
   }
 
+  return collectIssueNumbers(sourceText);
+}
+
+function collectIssueNumbers(sourceText) {
   const issueNumbers = new Set();
-  const genericIssuePattern = /#(\d+)\b/g;
+  const issueReferencePattern =
+    /(?:^|[\s(])(?:-\s*)?(?:(issues?)\s*:?\s*|(pull\s+request|pr)\s*:?\s*)?#(\d+)\b/gi;
 
-  for (const match of sourceText.matchAll(genericIssuePattern)) {
-    issueNumbers.add(Number(match[1]));
-  }
+  for (const match of sourceText.matchAll(issueReferencePattern)) {
+    if (match[2]) {
+      continue;
+    }
 
-  if (issueNumbers.size > 0) {
-    return [...issueNumbers];
-  }
-
-  const keywordPattern =
-    /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|ref(?:er(?:s|enced?)?)?)\s*:?\s+#(\d+)\b/gi;
-
-  for (const match of body.matchAll(keywordPattern)) {
-    issueNumbers.add(Number(match[1]));
+    issueNumbers.add(Number(match[3]));
   }
 
   return [...issueNumbers];

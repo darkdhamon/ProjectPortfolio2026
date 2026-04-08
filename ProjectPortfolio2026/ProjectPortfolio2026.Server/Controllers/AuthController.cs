@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using ProjectPortfolio2026.Server.Contracts.Auth;
+using ProjectPortfolio2026.Server.Infrastructure.Security;
 using ProjectPortfolio2026.Server.Services.Interfaces;
 using ProjectPortfolio2026.Server.Services.ServiceModels;
 
@@ -8,7 +10,7 @@ namespace ProjectPortfolio2026.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class AuthController(IAuthService authService) : ControllerBase
+public sealed class AuthController(IAuthService authService, IAntiforgery antiforgery) : ControllerBase
 {
     [AllowAnonymous]
     [HttpPost("login")]
@@ -26,15 +28,18 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
             },
             cancellationToken);
         return result.Succeeded && result.User is not null
-            ? Ok(result.User)
+            ? IssueAntiforgeryTokenAndReturn(result.User)
             : Unauthorized("Invalid username/email or password.");
     }
 
+    [Authorize]
+    [ValidateAntiForgeryToken]
     [HttpPost("logout")]
     [ProducesResponseType<LogoutResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<LogoutResponse>> LogoutAsync()
     {
         await authService.SignOutAsync();
+        AntiforgeryCookieManager.DeleteRequestTokenCookie(HttpContext);
         return Ok(new LogoutResponse { SignedOut = true });
     }
 
@@ -44,10 +49,11 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     public async Task<ActionResult<AuthStatusResponse>> GetCurrentUserAsync(CancellationToken cancellationToken)
     {
         var response = await authService.GetCurrentUserAsync(User, cancellationToken);
-        return Ok(response);
+        return IssueAntiforgeryTokenAndReturn(response);
     }
 
     [Authorize]
+    [ValidateAntiForgeryToken]
     [HttpPut("me")]
     [ProducesResponseType<AuthStatusResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -66,7 +72,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
             cancellationToken);
         if (result.Succeeded && result.User is not null)
         {
-            return Ok(result.User);
+            return IssueAntiforgeryTokenAndReturn(result.User);
         }
 
         if (result.UserNameConflict)
@@ -83,6 +89,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     }
 
     [Authorize]
+    [ValidateAntiForgeryToken]
     [HttpPost("me/password")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -109,5 +116,11 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         }
 
         return Unauthorized("Authentication is required.");
+    }
+
+    private OkObjectResult IssueAntiforgeryTokenAndReturn(AuthStatusResponse response)
+    {
+        AntiforgeryCookieManager.IssueRequestTokenCookie(HttpContext, antiforgery);
+        return Ok(response);
     }
 }
