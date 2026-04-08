@@ -46,16 +46,6 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .HasForeignKey(role => role.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasMany(project => project.Technologies)
-            .WithOne(technology => technology.Project)
-            .HasForeignKey(technology => technology.ProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(project => project.Skills)
-            .WithOne(skill => skill.Project)
-            .HasForeignKey(skill => skill.ProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         builder.HasMany(project => project.Collaborators)
             .WithOne(collaborator => collaborator.Project)
             .HasForeignKey(collaborator => collaborator.ProjectId)

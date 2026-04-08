@@ -1,12 +1,15 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Data.SeedData;
+using ProjectPortfolio2026.Server.Domain.Identity;
 using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Repositories;
+using ProjectPortfolio2026.Server.Services.Implementations;
+using ProjectPortfolio2026.Server.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
-var dataDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
-Directory.CreateDirectory(dataDirectory);
 
 var connectionString = builder.Configuration.GetConnectionString("PortfolioDatabase");
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -15,10 +18,9 @@ if (string.IsNullOrWhiteSpace(connectionString))
         "Connection string 'PortfolioDatabase' is required. Configure it in appsettings, app secrets, or environment variables.");
 }
 
-var resolvedConnectionString = connectionString.Replace(
-    "|DataDirectory|",
-    dataDirectory,
-    StringComparison.OrdinalIgnoreCase);
+var resolvedConnectionString = ConnectionStringPathResolver.ResolveDataPaths(
+    connectionString,
+    builder.Environment.ContentRootPath);
 
 builder.Services.AddControllers(options =>
 {
@@ -26,7 +28,56 @@ builder.Services.AddControllers(options =>
 });
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<PortfolioDbContext>(options => options.UseSqlServer(resolvedConnectionString));
+builder.Services
+    .AddIdentityCore<ApplicationUser>()
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<PortfolioDbContext>()
+    .AddSignInManager()
+    .AddDefaultTokenProviders();
+builder.Services
+    .AddAuthentication(IdentityConstants.ApplicationScheme)
+    .AddCookie(IdentityConstants.ApplicationScheme, options =>
+    {
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToLogin = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            },
+            OnRedirectToAccessDenied = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            }
+        };
+    });
+builder.Services.AddAuthorization();
+builder.Services.AddScoped<IPortfolioProfileRepository, PortfolioProfileRepository>();
+builder.Services.AddScoped<IPortfolioLinkFormatter, PortfolioLinkFormatter>();
+builder.Services.AddScoped<IProjectTagNormalizer, ProjectTagNormalizer>();
+builder.Services.AddScoped<IFeaturedProjectSelector, FeaturedProjectSelector>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<IEmployerRepository, EmployerRepository>();
+builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<RequestTrackingFilter>();
 
 var app = builder.Build();
@@ -39,10 +90,11 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-await EnsureDatabaseReadyAsync(app.Services, resolvedConnectionString, app.Environment.IsDevelopment());
+await EnsureDatabaseReadyAsync(app.Services, connectionString, resolvedConnectionString, app.Environment.IsDevelopment());
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -51,16 +103,24 @@ app.MapFallbackToFile("/index.html");
 
 app.Run();
 
-static async Task EnsureDatabaseReadyAsync(IServiceProvider services, string connectionString, bool isDevelopment)
+static async Task EnsureDatabaseReadyAsync(
+    IServiceProvider services,
+    string connectionString,
+    string resolvedConnectionString,
+    bool isDevelopment)
 {
     try
     {
         await MigrateAndSeedAsync(services, isDevelopment);
     }
     catch (Microsoft.Data.SqlClient.SqlException exception)
-        when (LocalDbDatabaseRecovery.CanRecover(connectionString, exception.Number, exception.Message))
+        when (LocalDbDatabaseRecovery.CanRecover(connectionString, exception.Number, exception.Message) ||
+              LocalDbDatabaseRecovery.CanRecover(resolvedConnectionString, exception.Number, exception.Message))
     {
-        var recovered = await LocalDbDatabaseRecovery.TryRecoverAsync(connectionString);
+        var recoveryConnectionString = LocalDbDatabaseRecovery.CanRecover(resolvedConnectionString, exception.Number, exception.Message)
+            ? resolvedConnectionString
+            : connectionString;
+        var recovered = await LocalDbDatabaseRecovery.TryRecoverAsync(recoveryConnectionString);
         if (!recovered)
         {
             throw;
@@ -79,5 +139,8 @@ static async Task MigrateAndSeedAsync(IServiceProvider services, bool isDevelopm
     if (isDevelopment)
     {
         await PortfolioSeedData.InitializeAsync(dbContext);
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        await DevelopmentIdentitySeedData.InitializeAsync(roleManager, userManager);
     }
 }

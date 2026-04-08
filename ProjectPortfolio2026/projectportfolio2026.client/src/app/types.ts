@@ -70,6 +70,63 @@ export interface FeaturedProjectsResponse {
     items: ProjectSummary[];
 }
 
+export interface JobRole {
+    role: string;
+    startDate: string;
+    endDate?: string | null;
+    supervisorName?: string | null;
+    descriptionMarkdown: string;
+    skills: string[];
+    technologies: string[];
+}
+
+export interface Employer {
+    id: number;
+    name: string;
+    streetAddress1?: string | null;
+    streetAddress2?: string | null;
+    city?: string | null;
+    region?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+    jobRoles: JobRole[];
+}
+
+export interface WorkHistoryResponse {
+    requestId?: string;
+    items: Employer[];
+}
+
+export interface PortfolioContactMethod {
+    type: string;
+    label: string;
+    value: string;
+    href?: string | null;
+    note?: string | null;
+    sortOrder: number;
+}
+
+export interface PortfolioSocialLink {
+    platform: string;
+    label: string;
+    url: string;
+    handle?: string | null;
+    summary?: string | null;
+    sortOrder: number;
+}
+
+export interface PortfolioProfile {
+    requestId?: string;
+    id: number;
+    displayName: string;
+    contactHeadline: string;
+    contactIntro: string;
+    availabilityHeadline?: string | null;
+    availabilitySummary?: string | null;
+    contactMethods: PortfolioContactMethod[];
+    socialLinks: PortfolioSocialLink[];
+}
+
 export interface ApiErrorResponse {
     message?: string;
 }

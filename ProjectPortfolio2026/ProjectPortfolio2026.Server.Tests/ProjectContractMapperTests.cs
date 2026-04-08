@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Domain.Projects;
+using ProjectPortfolio2026.Server.Domain.Tags;
 using ProjectPortfolio2026.Server.Mappers;
 
 namespace ProjectPortfolio2026.Server.Tests;
@@ -74,8 +75,8 @@ public sealed class ProjectContractMapperTests
             Assert.That(project.Screenshots, Has.Count.EqualTo(1));
             Assert.That(project.Screenshots[0].Caption, Is.EqualTo("Shot 1"));
             Assert.That(project.DeveloperRoles.Select(role => role.Name), Is.EquivalentTo(["Backend", "Architect"]));
-            Assert.That(project.Technologies.Select(technology => technology.Name), Is.EquivalentTo([".NET", "SQL Server"]));
-            Assert.That(project.Skills.Select(skill => skill.Name), Is.EquivalentTo(["Testing", "API Design"]));
+            Assert.That(project.ProjectTags.Where(projectTag => projectTag.Tag?.Category == TagCategory.Technology).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo([".NET", "SQL Server"]));
+            Assert.That(project.ProjectTags.Where(projectTag => projectTag.Tag?.Category == TagCategory.Skill).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(["Testing", "API Design"]));
             Assert.That(project.Collaborators, Has.Count.EqualTo(1));
             Assert.That(project.Collaborators[0].Name, Is.EqualTo("Taylor"));
             Assert.That(project.Collaborators[0].GitHubProfileUrl, Is.EqualTo("https://github.com/taylor"));
@@ -98,8 +99,11 @@ public sealed class ProjectContractMapperTests
             ShortDescription = "Old short.",
             LongDescriptionMarkdown = "Old long.",
             DeveloperRoles = [new ProjectDeveloperRole { Name = "Old Role" }],
-            Technologies = [new ProjectTechnology { Name = "Old Tech" }],
-            Skills = [new ProjectSkill { Name = "Old Skill" }],
+            ProjectTags =
+            [
+                CreateProjectTag(TagCategory.Technology, "Old Tech"),
+                CreateProjectTag(TagCategory.Skill, "Old Skill")
+            ],
             Screenshots = [new ProjectScreenshot { ImageUrl = "https://example.test/old.png", SortOrder = 9 }],
             Collaborators =
             [
@@ -144,8 +148,8 @@ public sealed class ProjectContractMapperTests
             Assert.That(existingProject.IsPublished, Is.True);
             Assert.That(existingProject.IsFeatured, Is.True);
             Assert.That(existingProject.DeveloperRoles.Select(role => role.Name), Is.EquivalentTo(["Backend"]));
-            Assert.That(existingProject.Technologies.Select(technology => technology.Name), Is.EquivalentTo(["SQL Server"]));
-            Assert.That(existingProject.Skills.Select(skill => skill.Name), Is.EquivalentTo(["Testing"]));
+            Assert.That(existingProject.ProjectTags.Where(projectTag => projectTag.Tag?.Category == TagCategory.Technology).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(["SQL Server"]));
+            Assert.That(existingProject.ProjectTags.Where(projectTag => projectTag.Tag?.Category == TagCategory.Skill).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(["Testing"]));
             Assert.That(existingProject.Screenshots.Select(screenshot => screenshot.Caption), Is.EquivalentTo(["New"]));
             Assert.That(existingProject.Collaborators.Select(collaborator => collaborator.Name), Is.EquivalentTo(["New Collaborator"]));
             Assert.That(existingProject.Collaborators[0].Roles.Select(role => role.Name), Is.EquivalentTo(["Reviewer"]));
@@ -176,8 +180,7 @@ public sealed class ProjectContractMapperTests
         {
             Assert.That(project.Screenshots, Is.Empty);
             Assert.That(project.DeveloperRoles, Is.Empty);
-            Assert.That(project.Technologies, Is.Empty);
-            Assert.That(project.Skills, Is.Empty);
+            Assert.That(project.ProjectTags, Is.Empty);
             Assert.That(project.Collaborators, Is.Empty);
             Assert.That(project.Milestones, Is.Empty);
         });
@@ -234,15 +237,12 @@ public sealed class ProjectContractMapperTests
                 new ProjectDeveloperRole { Name = "Backend" },
                 new ProjectDeveloperRole { Name = "Architect" }
             ],
-            Technologies =
+            ProjectTags =
             [
-                new ProjectTechnology { Name = "SQL Server" },
-                new ProjectTechnology { Name = ".NET" }
-            ],
-            Skills =
-            [
-                new ProjectSkill { Name = "API Design" },
-                new ProjectSkill { Name = "Testing" }
+                CreateProjectTag(TagCategory.Technology, "SQL Server"),
+                CreateProjectTag(TagCategory.Technology, ".NET"),
+                CreateProjectTag(TagCategory.Skill, "API Design"),
+                CreateProjectTag(TagCategory.Skill, "Testing")
             ],
             Collaborators =
             [
@@ -290,5 +290,18 @@ public sealed class ProjectContractMapperTests
             Assert.That(response.Milestones.Select(milestone => milestone.Title), Is.EqualTo(["Alpha", "Beta"]));
             Assert.That(response.Milestones.Select(milestone => milestone.Description), Is.EqualTo(["Alpha", "Beta"]));
         });
+    }
+
+    private static ProjectTag CreateProjectTag(TagCategory category, string name)
+    {
+        return new ProjectTag
+        {
+            Tag = new Tag
+            {
+                Category = category,
+                DisplayName = name,
+                NormalizedName = name.Trim().ToUpperInvariant()
+            }
+        };
     }
 }

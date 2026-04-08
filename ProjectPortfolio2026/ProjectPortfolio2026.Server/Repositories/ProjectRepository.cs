@@ -2,13 +2,19 @@ using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Domain.Projects;
+using ProjectPortfolio2026.Server.Domain.Tags;
+using ProjectPortfolio2026.Server.Services.Interfaces;
 
 namespace ProjectPortfolio2026.Server.Repositories;
 
-public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRepository
+public sealed class ProjectRepository(
+    PortfolioDbContext dbContext,
+    IProjectTagNormalizer projectTagNormalizer,
+    IFeaturedProjectSelector featuredProjectSelector) : IProjectRepository
 {
     public async Task<Project> AddAsync(Project project, CancellationToken cancellationToken = default)
     {
+        await projectTagNormalizer.NormalizeAsync(project, cancellationToken);
         dbContext.Projects.Add(project);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRequiredProjectAsync(project.Id, cancellationToken);
@@ -45,8 +51,7 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
                 EF.Functions.Like(project.Title, $"%{normalizedSearch}%") ||
                 EF.Functions.Like(project.ShortDescription, $"%{normalizedSearch}%") ||
                 EF.Functions.Like(project.LongDescriptionMarkdown, $"%{normalizedSearch}%") ||
-                project.Technologies.Any(technology => EF.Functions.Like(technology.Name, $"%{normalizedSearch}%")) ||
-                project.Skills.Any(skill => EF.Functions.Like(skill.Name, $"%{normalizedSearch}%")));
+                project.ProjectTags.Any(projectTag => EF.Functions.Like(projectTag.Tag!.DisplayName, $"%{normalizedSearch}%")));
         }
 
         if (normalizedSkillFilters.Count > 0)
@@ -55,7 +60,9 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
             {
                 var skillFilter = filter;
                 query = query.Where(project =>
-                    project.Skills.Any(skill => skill.Name.ToUpper() == skillFilter));
+                    project.ProjectTags.Any(projectTag =>
+                        projectTag.Tag!.Category == TagCategory.Skill &&
+                        projectTag.Tag.NormalizedName == skillFilter));
             }
         }
 
@@ -79,12 +86,14 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
                 GitHubUrl = project.GitHubUrl,
                 DemoUrl = project.DemoUrl,
                 IsFeatured = project.IsFeatured,
-                Skills = project.Skills
-                    .Select(skill => skill.Name)
+                Skills = project.ProjectTags
+                    .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
+                    .Select(projectTag => projectTag.Tag!.DisplayName)
                     .OrderBy(skill => skill)
                     .ToList(),
-                Technologies = project.Technologies
-                    .Select(technology => technology.Name)
+                Technologies = project.ProjectTags
+                    .Where(projectTag => projectTag.Tag!.Category == TagCategory.Technology)
+                    .Select(projectTag => projectTag.Tag!.DisplayName)
                     .OrderBy(technology => technology)
                     .ToList()
             })
@@ -92,7 +101,9 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
 
         var availableSkills = await CreateProjectQuery()
             .Where(project => project.IsPublished)
-            .SelectMany(project => project.Skills.Select(skill => skill.Name))
+            .SelectMany(project => project.ProjectTags
+                .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
+                .Select(projectTag => projectTag.Tag!.DisplayName))
             .Distinct()
             .OrderBy(skill => skill)
             .ToListAsync(cancellationToken);
@@ -112,7 +123,6 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
         int limit,
         CancellationToken cancellationToken = default)
     {
-        var normalizedLimit = Math.Clamp(limit, 1, 5);
         var publishedProjects = await CreateProjectQuery()
             .Where(project => project.IsPublished)
             .OrderByDescending(project => project.StartDate)
@@ -128,46 +138,31 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
                 GitHubUrl = project.GitHubUrl,
                 DemoUrl = project.DemoUrl,
                 IsFeatured = project.IsFeatured,
-                Skills = project.Skills
-                    .Select(skill => skill.Name)
+                Skills = project.ProjectTags
+                    .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
+                    .Select(projectTag => projectTag.Tag!.DisplayName)
                     .OrderBy(skill => skill)
                     .ToList(),
-                Technologies = project.Technologies
-                    .Select(technology => technology.Name)
+                Technologies = project.ProjectTags
+                    .Where(projectTag => projectTag.Tag!.Category == TagCategory.Technology)
+                    .Select(projectTag => projectTag.Tag!.DisplayName)
                     .OrderBy(technology => technology)
                     .ToList()
             })
             .ToListAsync(cancellationToken);
 
-        var featuredProjects = publishedProjects
-            .Where(project => project.IsFeatured)
-            .ToList();
-        var selectedProjects = featuredProjects.Count > normalizedLimit
-            ? Shuffle(featuredProjects).Take(normalizedLimit).ToList()
-            : featuredProjects.Take(normalizedLimit).ToList();
-
-        if (selectedProjects.Count < normalizedLimit)
-        {
-            var selectedIds = selectedProjects
-                .Select(project => project.Id)
-                .ToHashSet();
-            var fallbackProjects = publishedProjects
-                .Where(project => !selectedIds.Contains(project.Id))
-                .Take(normalizedLimit - selectedProjects.Count);
-
-            selectedProjects.AddRange(fallbackProjects);
-        }
-
-        return selectedProjects;
+        return featuredProjectSelector.Select(publishedProjects, limit);
     }
 
     public async Task<Project?> UpdateAsync(Project project, CancellationToken cancellationToken = default)
     {
+        await projectTagNormalizer.NormalizeAsync(project, cancellationToken);
+
         var existingProject = await dbContext.Projects
             .Include(existing => existing.Screenshots)
             .Include(existing => existing.DeveloperRoles)
-            .Include(existing => existing.Technologies)
-            .Include(existing => existing.Skills)
+            .Include(existing => existing.ProjectTags)
+                .ThenInclude(projectTag => projectTag.Tag)
             .Include(existing => existing.Collaborators)
                 .ThenInclude(collaborator => collaborator.Roles)
             .Include(existing => existing.Milestones)
@@ -181,8 +176,7 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
         dbContext.Entry(existingProject).CurrentValues.SetValues(project);
         ReplaceCollection(existingProject.Screenshots, project.Screenshots);
         ReplaceCollection(existingProject.DeveloperRoles, project.DeveloperRoles);
-        ReplaceCollection(existingProject.Technologies, project.Technologies);
-        ReplaceCollection(existingProject.Skills, project.Skills);
+        ReplaceCollection(existingProject.ProjectTags, project.ProjectTags);
         ReplaceCollection(existingProject.Milestones, project.Milestones);
         ReplaceCollaborators(existingProject.Collaborators, project.Collaborators);
 
@@ -196,8 +190,8 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
             .AsNoTracking()
             .Include(project => project.Screenshots)
             .Include(project => project.DeveloperRoles)
-            .Include(project => project.Technologies)
-            .Include(project => project.Skills)
+            .Include(project => project.ProjectTags)
+                .ThenInclude(projectTag => projectTag.Tag)
             .Include(project => project.Collaborators)
                 .ThenInclude(collaborator => collaborator.Roles)
             .Include(project => project.Milestones);
@@ -230,18 +224,5 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
             collaborator.Roles ??= [];
             target.Add(collaborator);
         }
-    }
-
-    private static IEnumerable<TItem> Shuffle<TItem>(IReadOnlyList<TItem> items)
-    {
-        var shuffledItems = items.ToList();
-
-        for (var index = shuffledItems.Count - 1; index > 0; index -= 1)
-        {
-            var swapIndex = Random.Shared.Next(index + 1);
-            (shuffledItems[index], shuffledItems[swapIndex]) = (shuffledItems[swapIndex], shuffledItems[index]);
-        }
-
-        return shuffledItems;
     }
 }

@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using ProjectPortfolio2026.Server.Domain.Portfolio;
 using ProjectPortfolio2026.Server.Domain.Projects;
+using ProjectPortfolio2026.Server.Domain.Tags;
+using ProjectPortfolio2026.Server.Domain.WorkHistory;
 
 namespace ProjectPortfolio2026.Server.Data.SeedData;
 
@@ -7,14 +10,114 @@ public static class PortfolioSeedData
 {
     public static async Task InitializeAsync(PortfolioDbContext dbContext, CancellationToken cancellationToken = default)
     {
-        if (await dbContext.Projects.AnyAsync(cancellationToken))
+        var hasProjects = await dbContext.Projects.AnyAsync(cancellationToken);
+        var hasPortfolioProfile = await dbContext.PortfolioProfiles.AnyAsync(cancellationToken);
+        var hasEmployers = await dbContext.Employers.AnyAsync(cancellationToken);
+        List<Project> seededProjects = [];
+
+        if (!hasPortfolioProfile)
         {
-            return;
+            dbContext.PortfolioProfiles.Add(CreatePortfolioProfile());
         }
 
-        var projects = CreateProjects();
-        dbContext.Projects.AddRange(projects);
+        if (!hasProjects)
+        {
+            seededProjects = CreateProjects();
+            NormalizeProjectTags(seededProjects, []);
+            dbContext.Projects.AddRange(seededProjects);
+        }
+
+        if (!hasEmployers)
+        {
+            var employers = CreateEmployers();
+            var tagSourceProjects = seededProjects.Count > 0
+                ? seededProjects
+                : await dbContext.Projects
+                    .Include(project => project.ProjectTags)
+                        .ThenInclude(projectTag => projectTag.Tag)
+                    .ToListAsync(cancellationToken);
+
+            NormalizeEmployerTags(employers, tagSourceProjects);
+            dbContext.Employers.AddRange(employers);
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static PortfolioProfile CreatePortfolioProfile()
+    {
+        return new PortfolioProfile
+        {
+            DisplayName = "Bronze Loft",
+            ContactHeadline = "Choose the contact path that fits the conversation you want to have.",
+            ContactIntro = "This portfolio frames outreach as a calm next step. Recruiters, collaborators, and hiring teams should be able to find the right channel quickly without sorting through hardcoded one-off content.",
+            AvailabilityHeadline = "Open to new opportunities",
+            AvailabilitySummary = "Focused on full-stack product engineering roles where API design, thoughtful UI, and maintainable delivery all matter.",
+            IsPublic = true,
+            ContactMethods =
+            [
+                new PortfolioContactMethod
+                {
+                    Type = "email",
+                    Label = "Email",
+                    Value = "bronze@example.dev",
+                    Note = "Best for interview requests, consulting inquiries, and longer-form conversations.",
+                    SortOrder = 1,
+                    IsVisible = true
+                },
+                new PortfolioContactMethod
+                {
+                    Type = "phone",
+                    Label = "Phone",
+                    Value = "(312) 555-0147",
+                    Note = "Available for scheduled calls on weekdays between 9 AM and 5 PM Central.",
+                    SortOrder = 2,
+                    IsVisible = true
+                },
+                new PortfolioContactMethod
+                {
+                    Type = "location",
+                    Label = "Location",
+                    Value = "Chicago, Illinois",
+                    Note = "Open to remote roles, hybrid collaboration, and select on-site visits.",
+                    SortOrder = 3,
+                    IsVisible = true
+                }
+            ],
+            SocialLinks =
+            [
+                new PortfolioSocialLink
+                {
+                    Platform = "github",
+                    Label = "GitHub",
+                    Url = "https://github.com/darkdhamon",
+                    Handle = "@darkdhamon",
+                    Summary = "Code samples, ongoing portfolio work, and implementation details.",
+                    SortOrder = 1,
+                    IsVisible = true
+                },
+                new PortfolioSocialLink
+                {
+                    Platform = "linkedin",
+                    Label = "LinkedIn",
+                    Url = "https://www.linkedin.com/in/bronze-loft",
+                    Handle = "Bronze Loft",
+                    Summary = "Professional background, role history, and recruiter-friendly context.",
+                    SortOrder = 2,
+                    IsVisible = true
+                },
+                new PortfolioSocialLink
+                {
+                    Platform = "calendly",
+                    Label = "Calendly",
+                    Url = "https://calendly.com/bronze-loft/portfolio-intro",
+                    Handle = "Schedule an intro",
+                    Summary = "A lightweight path for a first conversation without email back-and-forth.",
+                    SortOrder = 3,
+                    IsVisible = true
+                }
+            ]
+        };
     }
 
     private static List<Project> CreateProjects()
@@ -312,8 +415,9 @@ public static class PortfolioSeedData
             IsPublished = true,
             IsFeatured = title is "Project Portfolio 2026" or "TransitPulse Dashboard" or "SignalRoom Collaboration Hub" or "CivicStory Archive" or "MentorMatch Platform",
             DeveloperRoles = developerRoles.Select(role => new ProjectDeveloperRole { Name = role }).ToList(),
-            Technologies = technologies.Select(technology => new ProjectTechnology { Name = technology }).ToList(),
-            Skills = skills.Select(skill => new ProjectSkill { Name = skill }).ToList(),
+            ProjectTags = CreateProjectTags(TagCategory.Technology, technologies)
+                .Concat(CreateProjectTags(TagCategory.Skill, skills))
+                .ToList(),
             Collaborators = collaborators.ToList(),
             Milestones = milestones.ToList(),
             Screenshots = CreateScreenshots(title, slug)
@@ -414,4 +518,224 @@ public static class PortfolioSeedData
         string Label,
         IReadOnlyList<string> Technologies,
         IReadOnlyList<string> Skills);
+
+    private static List<Employer> CreateEmployers()
+    {
+        return
+        [
+            new Employer
+            {
+                Name = "Northwind Health",
+                City = "Chicago",
+                Region = "IL",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Senior Software Engineer",
+                        new DateOnly(2024, 1, 8),
+                        null,
+                        "Dana Smith",
+                        """
+                        Leading API delivery, platform refactoring, and public-facing portfolio architecture work.
+
+                        Partnering with product and design stakeholders to align engineering implementation with recruiting and resume-generation goals.
+                        """,
+                        skills: ["API Design", "Technical Writing"],
+                        technologies: [".NET 10", "SQL Server"]),
+                    CreateJobRole(
+                        "Software Engineer",
+                        new DateOnly(2022, 4, 4),
+                        new DateOnly(2023, 12, 29),
+                        "Dana Smith",
+                        """
+                        Delivered internal business applications and improved deployment reliability for line-of-business systems.
+                        """,
+                        skills: ["Workflow Design", "Testing"],
+                        technologies: ["ASP.NET Core", "Azure DevOps"])
+                ]
+            },
+            new Employer
+            {
+                Name = "Blue Ocean Labs",
+                City = "Austin",
+                Region = "TX",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Platform Engineer",
+                        new DateOnly(2020, 6, 1),
+                        new DateOnly(2022, 3, 18),
+                        "Morgan Patel",
+                        """
+                        Built shared backend components and supported product teams with data access and deployment tooling improvements.
+                        """,
+                        skills: ["Data Modeling", "Performance Tuning"],
+                        technologies: ["C#", "SQL Server"])
+                ]
+            }
+        ];
+    }
+
+    private static IEnumerable<ProjectTag> CreateProjectTags(TagCategory category, IEnumerable<string> values)
+    {
+        return values.Select(value => new ProjectTag
+        {
+            Tag = new Tag
+            {
+                Category = category,
+                DisplayName = value,
+                NormalizedName = NormalizeTagName(value)
+            }
+        });
+    }
+
+    private static void NormalizeProjectTags(IEnumerable<Project> projects, IEnumerable<Employer> employers)
+    {
+        var sharedTags = CreateSharedTagLookup(projects, employers);
+
+        foreach (var project in projects)
+        {
+            project.ProjectTags = project.ProjectTags
+                .Select(projectTag =>
+                {
+                    var sourceTag = projectTag.Tag ?? throw new InvalidOperationException("Seed tags must include tag metadata.");
+                    var key = (sourceTag.Category, sourceTag.NormalizedName);
+
+                    if (!sharedTags.TryGetValue(key, out var sharedTag))
+                    {
+                        sharedTag = new Tag
+                        {
+                            Category = sourceTag.Category,
+                            DisplayName = sourceTag.DisplayName,
+                            NormalizedName = sourceTag.NormalizedName
+                        };
+
+                        sharedTags[key] = sharedTag;
+                    }
+
+                    return new ProjectTag
+                    {
+                        Tag = sharedTag
+                    };
+                })
+                .ToList();
+        }
+    }
+
+    private static void NormalizeEmployerTags(IEnumerable<Employer> employers, IEnumerable<Project> projects)
+    {
+        var sharedTags = CreateSharedTagLookup(projects, employers);
+
+        foreach (var employer in employers)
+        {
+            foreach (var jobRole in employer.JobRoles)
+            {
+                jobRole.JobRoleTags = jobRole.JobRoleTags
+                    .Select(jobRoleTag =>
+                    {
+                        var sourceTag = jobRoleTag.Tag ?? throw new InvalidOperationException("Seed tags must include tag metadata.");
+                        var key = (sourceTag.Category, sourceTag.NormalizedName);
+
+                        if (!sharedTags.TryGetValue(key, out var sharedTag))
+                        {
+                            sharedTag = new Tag
+                            {
+                                Category = sourceTag.Category,
+                                DisplayName = sourceTag.DisplayName,
+                                NormalizedName = sourceTag.NormalizedName
+                            };
+
+                            sharedTags[key] = sharedTag;
+                        }
+
+                        return new JobRoleTag
+                        {
+                            Tag = sharedTag
+                        };
+                    })
+                    .ToList();
+            }
+        }
+    }
+
+    private static Dictionary<(TagCategory Category, string NormalizedName), Tag> CreateSharedTagLookup(
+        IEnumerable<Project> projects,
+        IEnumerable<Employer> employers)
+    {
+        var sharedTags = new Dictionary<(TagCategory Category, string NormalizedName), Tag>();
+
+        foreach (var project in projects)
+        {
+            foreach (var projectTag in project.ProjectTags)
+            {
+                var sourceTag = projectTag.Tag;
+                if (sourceTag is null)
+                {
+                    continue;
+                }
+
+                sharedTags.TryAdd((sourceTag.Category, sourceTag.NormalizedName), sourceTag);
+            }
+        }
+
+        foreach (var employer in employers)
+        {
+            foreach (var jobRoleTag in employer.JobRoles.SelectMany(jobRole => jobRole.JobRoleTags))
+            {
+                var sourceTag = jobRoleTag.Tag;
+                if (sourceTag is null)
+                {
+                    continue;
+                }
+
+                sharedTags.TryAdd((sourceTag.Category, sourceTag.NormalizedName), sourceTag);
+            }
+        }
+
+        return sharedTags;
+    }
+
+    private static string NormalizeTagName(string value)
+    {
+        return value.Trim().ToUpperInvariant();
+    }
+
+    private static JobRole CreateJobRole(
+        string role,
+        DateOnly startDate,
+        DateOnly? endDate,
+        string? supervisorName,
+        string descriptionMarkdown,
+        IEnumerable<string> skills,
+        IEnumerable<string> technologies)
+    {
+        return new JobRole
+        {
+            Role = role,
+            StartDate = startDate,
+            EndDate = endDate,
+            SupervisorName = supervisorName,
+            DescriptionMarkdown = descriptionMarkdown,
+            JobRoleTags = CreateJobRoleTags(TagCategory.Skill, skills)
+                .Concat(CreateJobRoleTags(TagCategory.Technology, technologies))
+                .ToList()
+        };
+    }
+
+    private static IEnumerable<JobRoleTag> CreateJobRoleTags(TagCategory category, IEnumerable<string> values)
+    {
+        return values.Select(value => new JobRoleTag
+        {
+            Tag = new Tag
+            {
+                Category = category,
+                DisplayName = value,
+                NormalizedName = NormalizeTagName(value)
+            }
+        });
+    }
 }
