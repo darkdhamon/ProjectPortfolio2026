@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProjectPortfolio2026.Server.Contracts.Auth;
 using ProjectPortfolio2026.Server.Services.Interfaces;
+using ProjectPortfolio2026.Server.Services.ServiceModels;
 
 namespace ProjectPortfolio2026.Server.Controllers;
 
@@ -17,7 +18,13 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         [FromBody] AuthLoginRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await authService.LoginAsync(request, cancellationToken);
+        var result = await authService.LoginAsync(
+            new AuthLoginCommand
+            {
+                Login = request.Login,
+                Password = request.Password
+            },
+            cancellationToken);
         return result.Succeeded && result.User is not null
             ? Ok(result.User)
             : Unauthorized("Invalid username/email or password.");
@@ -48,7 +55,15 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         [FromBody] AccountProfileUpdateRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await authService.UpdateCurrentUserAsync(User, request, cancellationToken);
+        var result = await authService.UpdateCurrentUserAsync(
+            User,
+            new AccountProfileUpdateCommand
+            {
+                UserName = request.UserName,
+                Email = request.Email,
+                DisplayName = request.DisplayName
+            },
+            cancellationToken);
         if (result.Succeeded && result.User is not null)
         {
             return Ok(result.User);
@@ -75,7 +90,14 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         [FromBody] AccountPasswordChangeRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await authService.ChangePasswordAsync(User, request, cancellationToken);
+        var result = await authService.ChangePasswordAsync(
+            User,
+            new AccountPasswordChangeCommand
+            {
+                CurrentPassword = request.CurrentPassword,
+                NewPassword = request.NewPassword
+            },
+            cancellationToken);
         if (result.Succeeded)
         {
             return NoContent();

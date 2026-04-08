@@ -14,6 +14,7 @@ using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Data.SeedData;
 using ProjectPortfolio2026.Server.Domain.Identity;
 using ProjectPortfolio2026.Server.Services.Implementations;
+using ProjectPortfolio2026.Server.Services.ServiceModels;
 using System.Security.Claims;
 
 namespace ProjectPortfolio2026.Server.Tests;
@@ -27,7 +28,7 @@ public sealed class AuthServiceTests
         using var dbContext = CreateDbContext();
         var userManager = CreateUserManager(dbContext);
         var signInManager = CreateSignInManager(userManager);
-        var service = new AuthService(userManager, signInManager);
+        var service = new AuthService(new CurrentUserAccessor(userManager), userManager, signInManager);
 
         var user = new ApplicationUser
         {
@@ -45,7 +46,7 @@ public sealed class AuthServiceTests
         await userManager.AddToRoleAsync(user, RoleNames.Admin);
 
         var result = await service.LoginAsync(
-            new AuthLoginRequest
+            new AuthLoginCommand
             {
                 Login = "admin@example.com",
                 Password = "Passw0rd!"
@@ -66,7 +67,7 @@ public sealed class AuthServiceTests
         using var dbContext = CreateDbContext();
         var userManager = CreateUserManager(dbContext);
         var signInManager = CreateSignInManager(userManager);
-        var service = new AuthService(userManager, signInManager);
+        var service = new AuthService(new CurrentUserAccessor(userManager), userManager, signInManager);
 
         var currentUser = new ApplicationUser
         {
@@ -89,7 +90,7 @@ public sealed class AuthServiceTests
 
         var result = await service.UpdateCurrentUserAsync(
             principal,
-            new AccountProfileUpdateRequest
+            new AccountProfileUpdateCommand
             {
                 UserName = "taken-user"
             });
@@ -104,7 +105,7 @@ public sealed class AuthServiceTests
         using var dbContext = CreateDbContext();
         var userManager = CreateUserManager(dbContext);
         var signInManager = CreateSignInManager(userManager);
-        var service = new AuthService(userManager, signInManager);
+        var service = new AuthService(new CurrentUserAccessor(userManager), userManager, signInManager);
 
         var user = new ApplicationUser
         {
@@ -185,7 +186,7 @@ public sealed class AuthServiceTests
         using var dbContext = CreateDbContext();
         var userManager = CreateUserManager(dbContext);
         var signInManager = CreateSignInManager(userManager);
-        var service = new AuthService(userManager, signInManager);
+        var service = new AuthService(new CurrentUserAccessor(userManager), userManager, signInManager);
 
         var user = new ApplicationUser
         {
@@ -202,7 +203,7 @@ public sealed class AuthServiceTests
 
         var result = await service.ChangePasswordAsync(
             principal,
-            new AccountPasswordChangeRequest
+            new AccountPasswordChangeCommand
             {
                 CurrentPassword = "wrong-value",
                 NewPassword = "Passw0rd!"

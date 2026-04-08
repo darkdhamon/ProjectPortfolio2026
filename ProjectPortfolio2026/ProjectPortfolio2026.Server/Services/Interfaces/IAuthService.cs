@@ -6,7 +6,7 @@ namespace ProjectPortfolio2026.Server.Services.Interfaces;
 
 public interface IAuthService
 {
-    Task<LoginResult> LoginAsync(AuthLoginRequest request, CancellationToken cancellationToken = default);
+    Task<LoginResult> LoginAsync(AuthLoginCommand command, CancellationToken cancellationToken = default);
 
     Task SignOutAsync();
 
@@ -14,11 +14,11 @@ public interface IAuthService
 
     Task<ProfileUpdateResult> UpdateCurrentUserAsync(
         ClaimsPrincipal principal,
-        AccountProfileUpdateRequest request,
+        AccountProfileUpdateCommand command,
         CancellationToken cancellationToken = default);
 
     Task<PasswordChangeResult> ChangePasswordAsync(
         ClaimsPrincipal principal,
-        AccountPasswordChangeRequest request,
+        AccountPasswordChangeCommand command,
         CancellationToken cancellationToken = default);
 }

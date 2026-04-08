@@ -9,12 +9,13 @@ using ProjectPortfolio2026.Server.Services.ServiceModels;
 namespace ProjectPortfolio2026.Server.Services.Implementations;
 
 public sealed class AuthService(
+    ICurrentUserAccessor currentUserAccessor,
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager) : IAuthService
 {
-    public async Task<LoginResult> LoginAsync(AuthLoginRequest request, CancellationToken cancellationToken = default)
+    public async Task<LoginResult> LoginAsync(AuthLoginCommand command, CancellationToken cancellationToken = default)
     {
-        var user = await FindByLoginAsync(request.Login, cancellationToken);
+        var user = await FindByLoginAsync(command.Login, cancellationToken);
         if (user is null)
         {
             return new LoginResult { Succeeded = false };
@@ -22,7 +23,7 @@ public sealed class AuthService(
 
         var signInResult = await signInManager.PasswordSignInAsync(
             user,
-            request.Password,
+            command.Password,
             isPersistent: false,
             lockoutOnFailure: false);
 
@@ -45,7 +46,7 @@ public sealed class AuthService(
 
     public async Task<AuthStatusResponse> GetCurrentUserAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
-        var user = await userManager.GetUserAsync(principal);
+        var user = await currentUserAccessor.GetCurrentUserAsync(principal);
         if (user is null)
         {
             return new AuthStatusResponse
@@ -60,16 +61,16 @@ public sealed class AuthService(
 
     public async Task<ProfileUpdateResult> UpdateCurrentUserAsync(
         ClaimsPrincipal principal,
-        AccountProfileUpdateRequest request,
+        AccountProfileUpdateCommand command,
         CancellationToken cancellationToken = default)
     {
-        var user = await userManager.GetUserAsync(principal);
+        var user = await currentUserAccessor.GetCurrentUserAsync(principal);
         if (user is null)
         {
             return new ProfileUpdateResult { Succeeded = false };
         }
 
-        var normalizedUserName = userManager.NormalizeName(request.UserName);
+        var normalizedUserName = userManager.NormalizeName(command.UserName);
         var existingUser = await userManager.Users
             .Where(candidate => candidate.Id != user.Id)
             .SingleOrDefaultAsync(candidate => candidate.NormalizedUserName == normalizedUserName, cancellationToken);
@@ -82,7 +83,7 @@ public sealed class AuthService(
             };
         }
 
-        var trimmedEmail = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+        var trimmedEmail = string.IsNullOrWhiteSpace(command.Email) ? null : command.Email.Trim();
         if (!string.IsNullOrWhiteSpace(trimmedEmail))
         {
             var normalizedEmail = userManager.NormalizeEmail(trimmedEmail);
@@ -99,11 +100,11 @@ public sealed class AuthService(
             }
         }
 
-        user.UserName = request.UserName.Trim();
+        user.UserName = command.UserName.Trim();
         user.NormalizedUserName = normalizedUserName;
         user.Email = trimmedEmail;
         user.NormalizedEmail = trimmedEmail is null ? null : userManager.NormalizeEmail(trimmedEmail);
-        user.DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? null : request.DisplayName.Trim();
+        user.DisplayName = string.IsNullOrWhiteSpace(command.DisplayName) ? null : command.DisplayName.Trim();
 
         var updateResult = await userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
@@ -122,10 +123,10 @@ public sealed class AuthService(
 
     public async Task<PasswordChangeResult> ChangePasswordAsync(
         ClaimsPrincipal principal,
-        AccountPasswordChangeRequest request,
+        AccountPasswordChangeCommand command,
         CancellationToken cancellationToken = default)
     {
-        var user = await userManager.GetUserAsync(principal);
+        var user = await currentUserAccessor.GetCurrentUserAsync(principal);
         if (user is null)
         {
             return new PasswordChangeResult { Succeeded = false };
@@ -134,11 +135,11 @@ public sealed class AuthService(
         IdentityResult result;
         if (await userManager.HasPasswordAsync(user))
         {
-            result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+            result = await userManager.ChangePasswordAsync(user, command.CurrentPassword, command.NewPassword);
         }
         else
         {
-            if (!string.IsNullOrEmpty(request.CurrentPassword))
+            if (!string.IsNullOrEmpty(command.CurrentPassword))
             {
                 return new PasswordChangeResult
                 {
@@ -150,7 +151,7 @@ public sealed class AuthService(
                 };
             }
 
-            result = await userManager.AddPasswordAsync(user, request.NewPassword);
+            result = await userManager.AddPasswordAsync(user, command.NewPassword);
         }
 
         if (!result.Succeeded)

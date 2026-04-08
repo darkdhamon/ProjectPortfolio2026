@@ -138,7 +138,7 @@ public sealed class AuthControllerTests
 
         public Task<PasswordChangeResult> ChangePasswordAsync(
             ClaimsPrincipal principal,
-            AccountPasswordChangeRequest request,
+            AccountPasswordChangeCommand command,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(PasswordChangeResult);
@@ -149,7 +149,7 @@ public sealed class AuthControllerTests
             return Task.FromResult(CurrentUserResponse);
         }
 
-        public Task<LoginResult> LoginAsync(AuthLoginRequest request, CancellationToken cancellationToken = default)
+        public Task<LoginResult> LoginAsync(AuthLoginCommand command, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(LoginResult);
         }
@@ -161,7 +161,7 @@ public sealed class AuthControllerTests
 
         public Task<ProfileUpdateResult> UpdateCurrentUserAsync(
             ClaimsPrincipal principal,
-            AccountProfileUpdateRequest request,
+            AccountProfileUpdateCommand command,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(UpdateResult);

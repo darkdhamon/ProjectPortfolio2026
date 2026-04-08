@@ -2,6 +2,7 @@ import { Fragment, startTransition, useDeferredValue, useEffect, useEffectEvent,
 import profilePlaceholder from './assets/Placeholders/Profile-Placeholder.png';
 import projectImageUnavailable from './assets/Placeholders/Project-Image-Unavailable.png';
 import screenshotMissing from './assets/Placeholders/Screenshot-Missing.png';
+import { fetchJsonWithStartupRetry, fetchResponsePayloadWithStartupRetry, RetryableApiError, startupRetryMessage } from './api/http';
 import {
     buildDetailPath,
     buildListSearch,
@@ -20,9 +21,10 @@ import {
 import { AccountSettingsPage } from './components/admin/AccountSettingsPage';
 import { AdminDashboardPage } from './components/admin/AdminDashboardPage';
 import { LoginPage } from './components/admin/LoginPage';
-import { type AccountDraft, type AuthUser } from './components/admin/mockAuth';
+import { type AccountDraft } from './components/admin/mockAuth';
 import { InternalLink, type NavigateHandler } from './components/navigation/InternalLink';
 import { SiteShell, type SiteShellContent } from './components/shell/SiteShell';
+import { useAuthSession } from './hooks/useAuthSession';
 import './App.css';
 
 interface ProjectSummary {
@@ -97,175 +99,27 @@ interface FeaturedProjectsResponse {
     items: ProjectSummary[];
 }
 
-interface ApiErrorResponse {
-    message?: string;
-}
-
-interface AuthStatusResponse {
-    isAuthenticated: boolean;
-    isAdmin: boolean;
-    userId?: string | null;
-    userName?: string | null;
-    email?: string | null;
-    displayName?: string | null;
-}
-
 const pageSize = 6;
-const startupRetryDelayMs = 2000;
-const startupRetryAttempts = 2;
-const startupRetryMessage = 'The portfolio API is still starting up. Please wait a moment and try again.';
-
-class RetryableApiError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = 'RetryableApiError';
-    }
-}
-
-function isRetryableApiError(error: unknown): error is RetryableApiError {
-    return error instanceof RetryableApiError;
-}
-
-function isApiErrorResponse(payload: unknown): payload is ApiErrorResponse {
-    return typeof payload === 'object'
-        && payload !== null
-        && 'message' in payload
-        && (typeof (payload as ApiErrorResponse).message === 'string' || typeof (payload as ApiErrorResponse).message === 'undefined');
-}
-
-async function waitForRetry(delayMs: number, signal: AbortSignal) {
-    await new Promise<void>((resolve, reject) => {
-        const timeoutId = window.setTimeout(() => {
-            signal.removeEventListener('abort', handleAbort);
-            resolve();
-        }, delayMs);
-
-        const handleAbort = () => {
-            window.clearTimeout(timeoutId);
-            reject(new DOMException('The request was aborted.', 'AbortError'));
-        };
-
-        signal.addEventListener('abort', handleAbort, { once: true });
-    });
-}
-
-async function readResponsePayload<TPayload>(response: Response) {
-    const responseText = await response.text();
-
-    if (responseText.trim().length === 0) {
-        return null;
-    }
-
-    try {
-        return JSON.parse(responseText) as TPayload | ApiErrorResponse;
-    } catch {
-        throw new RetryableApiError(startupRetryMessage);
-    }
-}
-
-async function fetchJsonWithStartupRetry<TPayload>(
-    input: string,
-    init: RequestInit & { signal: AbortSignal },
-    fallbackMessage: string
-) {
-    const { payload } = await fetchResponsePayloadWithStartupRetry<TPayload>(input, init, fallbackMessage);
-
-    if (payload === null) {
-        throw new RetryableApiError(startupRetryMessage);
-    }
-
-    return payload as TPayload;
-}
-
-async function fetchResponsePayloadWithStartupRetry<TPayload>(
-    input: string,
-    init: RequestInit & { signal: AbortSignal },
-    fallbackMessage: string,
-    acceptedErrorStatuses: number[] = []
-) {
-    let attempt = 0;
-
-    while (true) {
-        try {
-            const response = await fetch(input, init);
-            const payload = await readResponsePayload<TPayload>(response);
-
-            if (!response.ok && !acceptedErrorStatuses.includes(response.status)) {
-                const apiMessage = isApiErrorResponse(payload) ? payload.message : undefined;
-
-                if (response.status >= 500) {
-                    throw new RetryableApiError(apiMessage ?? startupRetryMessage);
-                }
-
-                throw new Error(apiMessage ?? fallbackMessage);
-            }
-
-            return { response, payload };
-        } catch (caughtError) {
-            if ((caughtError as Error).name === 'AbortError') {
-                throw caughtError;
-            }
-
-            if (!isRetryableApiError(caughtError) || attempt >= startupRetryAttempts) {
-                throw caughtError instanceof Error ? caughtError : new Error(fallbackMessage);
-            }
-
-            attempt += 1;
-            await waitForRetry(startupRetryDelayMs, init.signal);
-        }
-    }
-}
-
-async function fetchAuthJson<TPayload>(
-    input: string,
-    init: RequestInit,
-    fallbackMessage: string,
-    acceptedErrorStatuses: number[] = []
-) {
-    const response = await fetch(input, {
-        credentials: 'include',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(init.headers ?? {})
-        },
-        ...init
-    });
-
-    const payload = await readResponsePayload<TPayload>(response);
-
-    if (!response.ok && !acceptedErrorStatuses.includes(response.status)) {
-        const apiMessage = isApiErrorResponse(payload) ? payload.message : undefined;
-        throw new Error(apiMessage ?? fallbackMessage);
-    }
-
-    return { response, payload };
-}
-
-function mapAuthUser(response: AuthStatusResponse): AuthUser | null {
-    if (!response.isAuthenticated || !response.userName) {
-        return null;
-    }
-
-    return {
-        username: response.userName,
-        email: response.email ?? null,
-        displayName: response.displayName?.trim() || response.userName,
-        isAdmin: response.isAdmin
-    };
-}
-
 function App() {
     const [location, setLocation] = useState<AppLocation>(() => readLocation());
-    const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-    const [isAuthResolved, setIsAuthResolved] = useState(false);
-    const [isAuthenticating, setIsAuthenticating] = useState(false);
-    const [authError, setAuthError] = useState<string | null>(null);
-    const [isSavingProfile, setIsSavingProfile] = useState(false);
-    const [profileError, setProfileError] = useState<string | null>(null);
-    const [profileNotice, setProfileNotice] = useState<string | null>(null);
-    const [isSavingPassword, setIsSavingPassword] = useState(false);
-    const [passwordError, setPasswordError] = useState<string | null>(null);
-    const [passwordNotice, setPasswordNotice] = useState<string | null>(null);
+    const {
+        authError,
+        changePassword,
+        currentUser,
+        isAuthResolved,
+        isAuthenticating,
+        isSavingPassword,
+        isSavingProfile,
+        passwordError,
+        passwordNotice,
+        profileError,
+        profileNotice,
+        refreshCurrentUser,
+        saveAccount,
+        setAuthError,
+        signIn,
+        signOut
+    } = useAuthSession();
 
     useEffect(() => {
         const handlePopState = () => {
@@ -336,10 +190,10 @@ function App() {
         const controller = new AbortController();
         const shouldReportSessionErrors = isAdminRoute || route.kind === 'login';
         setAuthError(null);
-        void loadCurrentUser(controller.signal, shouldReportSessionErrors);
+        void refreshCurrentUser(controller.signal, shouldReportSessionErrors);
 
         return () => controller.abort();
-    }, [isAdminRoute, route.kind, location.pathname, location.search]);
+    }, [isAdminRoute, route.kind, location.pathname, location.search, refreshCurrentUser, setAuthError]);
 
     useEffect(() => {
         if (!isAdminRoute || !isAuthResolved) {
@@ -352,38 +206,8 @@ function App() {
         }
     }, [currentUser, isAdminRoute, isAuthResolved, location.pathname, location.search]);
 
-    async function loadCurrentUser(signal?: AbortSignal, reportErrors = true) {
-        try {
-            const { payload } = await fetchAuthJson<AuthStatusResponse>(
-                '/api/auth/me',
-                {
-                    method: 'GET',
-                    signal
-                },
-                'Unable to check the current session.'
-            );
-
-            const user = payload ? mapAuthUser(payload as AuthStatusResponse) : null;
-            setCurrentUser(user);
-            return user;
-        } catch (caughtError) {
-            if ((caughtError as Error).name === 'AbortError') {
-                return null;
-            }
-
-            if (reportErrors) {
-                setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to check the current session.');
-            }
-
-            setCurrentUser(null);
-            return null;
-        } finally {
-            setIsAuthResolved(true);
-        }
-    }
-
     async function handleAdminNavigate() {
-        const user = await loadCurrentUser();
+        const user = await refreshCurrentUser();
         if (user?.isAdmin) {
             navigate('/admin');
             return;
@@ -393,105 +217,23 @@ function App() {
     }
 
     async function handleLogin(login: string, password: string, redirectTo: string) {
-        setIsAuthenticating(true);
-        setAuthError(null);
-
-        try {
-            const { payload } = await fetchAuthJson<AuthStatusResponse>(
-                '/api/auth/login',
-                {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        login,
-                        password
-                    })
-                },
-                'Invalid username/email or password.'
-            );
-
-            const user = payload ? mapAuthUser(payload as AuthStatusResponse) : null;
-            setCurrentUser(user);
-            setIsAuthResolved(true);
+        const user = await signIn(login, password);
+        if (user) {
             navigate(redirectTo);
-        } catch (caughtError) {
-            setAuthError(caughtError instanceof Error ? caughtError.message : 'Invalid username/email or password.');
-        } finally {
-            setIsAuthenticating(false);
         }
     }
 
     async function handleLogout() {
-        await fetchAuthJson(
-            '/api/auth/logout',
-            {
-                method: 'POST'
-            },
-            'Unable to sign out right now.'
-        );
-
-        setCurrentUser(null);
-        setProfileNotice(null);
-        setPasswordNotice(null);
+        await signOut();
         navigate('/login?redirect=%2Fadmin');
     }
 
     async function handleAccountSave(draft: AccountDraft) {
-        setIsSavingProfile(true);
-        setProfileError(null);
-        setProfileNotice(null);
-
-        try {
-            const { payload } = await fetchAuthJson<AuthStatusResponse>(
-                '/api/auth/me',
-                {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                        userName: draft.username,
-                        email: draft.email.trim() || null,
-                        displayName: draft.displayName.trim() || null
-                    })
-                },
-                'Unable to save profile changes.'
-            );
-
-            const user = payload ? mapAuthUser(payload as AuthStatusResponse) : null;
-            setCurrentUser(user);
-            setProfileNotice('Profile saved.');
-        } catch (caughtError) {
-            setProfileError(caughtError instanceof Error ? caughtError.message : 'Unable to save profile changes.');
-        } finally {
-            setIsSavingProfile(false);
-        }
+        await saveAccount(draft);
     }
 
     async function handlePasswordChange(currentPassword: string, newPassword: string, confirmPassword: string) {
-        setIsSavingPassword(true);
-        setPasswordError(null);
-        setPasswordNotice(null);
-
-        try {
-            if (newPassword !== confirmPassword) {
-                throw new Error('New password and confirmation must match.');
-            }
-
-            await fetchAuthJson(
-                '/api/auth/me/password',
-                {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        currentPassword,
-                        newPassword
-                    })
-                },
-                'Unable to change password right now.'
-            );
-
-            setPasswordNotice('Password updated.');
-        } catch (caughtError) {
-            setPasswordError(caughtError instanceof Error ? caughtError.message : 'Unable to change password right now.');
-        } finally {
-            setIsSavingPassword(false);
-        }
+        await changePassword(currentPassword, newPassword, confirmPassword);
     }
 
     const isAdminAuthenticated = currentUser?.isAdmin === true;
