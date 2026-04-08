@@ -3,14 +3,18 @@ using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Domain.Projects;
 using ProjectPortfolio2026.Server.Domain.Tags;
+using ProjectPortfolio2026.Server.Services.Interfaces;
 
 namespace ProjectPortfolio2026.Server.Repositories;
 
-public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRepository
+public sealed class ProjectRepository(
+    PortfolioDbContext dbContext,
+    IProjectTagNormalizer projectTagNormalizer,
+    IFeaturedProjectSelector featuredProjectSelector) : IProjectRepository
 {
     public async Task<Project> AddAsync(Project project, CancellationToken cancellationToken = default)
     {
-        await NormalizeProjectTagsAsync(project, cancellationToken);
+        await projectTagNormalizer.NormalizeAsync(project, cancellationToken);
         dbContext.Projects.Add(project);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRequiredProjectAsync(project.Id, cancellationToken);
@@ -119,7 +123,6 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
         int limit,
         CancellationToken cancellationToken = default)
     {
-        var normalizedLimit = Math.Clamp(limit, 1, 5);
         var publishedProjects = await CreateProjectQuery()
             .Where(project => project.IsPublished)
             .OrderByDescending(project => project.StartDate)
@@ -148,31 +151,12 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
             })
             .ToListAsync(cancellationToken);
 
-        var featuredProjects = publishedProjects
-            .Where(project => project.IsFeatured)
-            .ToList();
-        var selectedProjects = featuredProjects.Count > normalizedLimit
-            ? Shuffle(featuredProjects).Take(normalizedLimit).ToList()
-            : featuredProjects.Take(normalizedLimit).ToList();
-
-        if (selectedProjects.Count < normalizedLimit)
-        {
-            var selectedIds = selectedProjects
-                .Select(project => project.Id)
-                .ToHashSet();
-            var fallbackProjects = publishedProjects
-                .Where(project => !selectedIds.Contains(project.Id))
-                .Take(normalizedLimit - selectedProjects.Count);
-
-            selectedProjects.AddRange(fallbackProjects);
-        }
-
-        return selectedProjects;
+        return featuredProjectSelector.Select(publishedProjects, limit);
     }
 
     public async Task<Project?> UpdateAsync(Project project, CancellationToken cancellationToken = default)
     {
-        await NormalizeProjectTagsAsync(project, cancellationToken);
+        await projectTagNormalizer.NormalizeAsync(project, cancellationToken);
 
         var existingProject = await dbContext.Projects
             .Include(existing => existing.Screenshots)
@@ -213,42 +197,6 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
             .Include(project => project.Milestones);
     }
 
-    private async Task NormalizeProjectTagsAsync(Project project, CancellationToken cancellationToken)
-    {
-        if (project.ProjectTags.Count == 0)
-        {
-            return;
-        }
-
-        var requestedTags = project.ProjectTags
-            .Select(projectTag => projectTag.Tag)
-            .Where(tag => tag is not null)
-            .Select(tag => new TagKey(
-                tag!.Category,
-                tag.DisplayName.Trim(),
-                string.IsNullOrWhiteSpace(tag.NormalizedName) ? NormalizeTagName(tag.DisplayName) : NormalizeTagName(tag.NormalizedName)))
-            .Where(tag => tag.DisplayName.Length > 0)
-            .Distinct()
-            .ToList();
-
-        var requestedCategories = requestedTags
-            .Select(tag => tag.Category)
-            .Distinct()
-            .ToList();
-
-        var existingTags = await dbContext.Tags
-            .Where(tag => requestedCategories.Contains(tag.Category))
-            .ToListAsync(cancellationToken);
-
-        project.ProjectTags = requestedTags
-            .Select(requestedTag => new ProjectTag
-            {
-                ProjectId = project.Id,
-                Tag = ResolveTag(existingTags, requestedTag)
-            })
-            .ToList();
-    }
-
     private async Task<Project> GetRequiredProjectAsync(int id, CancellationToken cancellationToken)
     {
         return await GetByIdAsync(id, cancellationToken)
@@ -277,46 +225,4 @@ public sealed class ProjectRepository(PortfolioDbContext dbContext) : IProjectRe
             target.Add(collaborator);
         }
     }
-
-    private static IEnumerable<TItem> Shuffle<TItem>(IReadOnlyList<TItem> items)
-    {
-        var shuffledItems = items.ToList();
-
-        for (var index = shuffledItems.Count - 1; index > 0; index -= 1)
-        {
-            var swapIndex = Random.Shared.Next(index + 1);
-            (shuffledItems[index], shuffledItems[swapIndex]) = (shuffledItems[swapIndex], shuffledItems[index]);
-        }
-
-        return shuffledItems;
-    }
-
-    private static Tag ResolveTag(ICollection<Tag> existingTags, TagKey requestedTag)
-    {
-        var resolvedTag = existingTags.SingleOrDefault(tag =>
-            tag.Category == requestedTag.Category &&
-            tag.NormalizedName == requestedTag.NormalizedName);
-
-        if (resolvedTag is not null)
-        {
-            return resolvedTag;
-        }
-
-        resolvedTag = new Tag
-        {
-            Category = requestedTag.Category,
-            DisplayName = requestedTag.DisplayName,
-            NormalizedName = requestedTag.NormalizedName
-        };
-
-        existingTags.Add(resolvedTag);
-        return resolvedTag;
-    }
-
-    private static string NormalizeTagName(string value)
-    {
-        return value.Trim().ToUpperInvariant();
-    }
-
-    private sealed record TagKey(TagCategory Category, string DisplayName, string NormalizedName);
 }

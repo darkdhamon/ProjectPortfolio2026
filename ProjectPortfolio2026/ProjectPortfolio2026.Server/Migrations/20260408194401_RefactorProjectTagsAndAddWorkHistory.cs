@@ -133,21 +133,29 @@ namespace ProjectPortfolio2026.Server.Migrations
                 table: "ProjectTags",
                 column: "TagId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Tags_Category_NormalizedName",
-                table: "Tags",
-                columns: new[] { "Category", "NormalizedName" },
-                unique: true);
-
             migrationBuilder.Sql(
                 """
                 INSERT INTO Tags (Category, DisplayName, NormalizedName)
-                SELECT DISTINCT 1, Name, UPPER(LTRIM(RTRIM(Name)))
-                FROM ProjectSkills;
+                SELECT grouped.Category, grouped.DisplayName, grouped.NormalizedName
+                FROM
+                (
+                    SELECT
+                        1 AS Category,
+                        MIN(LTRIM(RTRIM(Name))) AS DisplayName,
+                        UPPER(LTRIM(RTRIM(Name))) AS NormalizedName
+                    FROM ProjectSkills
+                    GROUP BY UPPER(LTRIM(RTRIM(Name)))
 
-                INSERT INTO Tags (Category, DisplayName, NormalizedName)
-                SELECT DISTINCT 2, Name, UPPER(LTRIM(RTRIM(Name)))
-                FROM ProjectTechnologies;
+                    UNION ALL
+
+                    SELECT
+                        2 AS Category,
+                        MIN(LTRIM(RTRIM(Name))) AS DisplayName,
+                        UPPER(LTRIM(RTRIM(Name))) AS NormalizedName
+                    FROM ProjectTechnologies
+                    GROUP BY UPPER(LTRIM(RTRIM(Name)))
+                ) grouped
+                WHERE grouped.NormalizedName <> '';
                 """);
 
             migrationBuilder.Sql(
@@ -166,6 +174,104 @@ namespace ProjectPortfolio2026.Server.Migrations
                     ON tags.Category = 2
                     AND tags.NormalizedName = UPPER(LTRIM(RTRIM(projectTechnologies.Name)));
                 """);
+
+            migrationBuilder.Sql(
+                """
+                ;WITH DuplicateTags AS
+                (
+                    SELECT
+                        tags.Id,
+                        tags.Category,
+                        tags.NormalizedName,
+                        MIN(tags.Id) OVER (PARTITION BY tags.Category, tags.NormalizedName) AS CanonicalTagId
+                    FROM Tags tags
+                )
+                UPDATE projectTags
+                SET TagId = duplicateTags.CanonicalTagId
+                FROM ProjectTags projectTags
+                INNER JOIN DuplicateTags duplicateTags ON duplicateTags.Id = projectTags.TagId
+                WHERE duplicateTags.Id <> duplicateTags.CanonicalTagId
+                  AND NOT EXISTS
+                  (
+                      SELECT 1
+                      FROM ProjectTags existingProjectTag
+                      WHERE existingProjectTag.ProjectId = projectTags.ProjectId
+                        AND existingProjectTag.TagId = duplicateTags.CanonicalTagId
+                  );
+
+                ;WITH DuplicateTags AS
+                (
+                    SELECT
+                        tags.Id,
+                        tags.Category,
+                        tags.NormalizedName,
+                        MIN(tags.Id) OVER (PARTITION BY tags.Category, tags.NormalizedName) AS CanonicalTagId
+                    FROM Tags tags
+                )
+                DELETE projectTags
+                FROM ProjectTags projectTags
+                INNER JOIN DuplicateTags duplicateTags ON duplicateTags.Id = projectTags.TagId
+                WHERE duplicateTags.Id <> duplicateTags.CanonicalTagId;
+
+                ;WITH DuplicateTags AS
+                (
+                    SELECT
+                        tags.Id,
+                        tags.Category,
+                        tags.NormalizedName,
+                        MIN(tags.Id) OVER (PARTITION BY tags.Category, tags.NormalizedName) AS CanonicalTagId
+                    FROM Tags tags
+                )
+                DELETE jobRoleTags
+                FROM JobRoleTags jobRoleTags
+                INNER JOIN DuplicateTags duplicateTags ON duplicateTags.Id = jobRoleTags.TagId
+                WHERE duplicateTags.Id <> duplicateTags.CanonicalTagId
+                  AND EXISTS
+                  (
+                      SELECT 1
+                      FROM JobRoleTags existingJobRoleTag
+                      WHERE existingJobRoleTag.JobRoleId = jobRoleTags.JobRoleId
+                        AND existingJobRoleTag.TagId = duplicateTags.CanonicalTagId
+                  );
+
+                ;WITH DuplicateTags AS
+                (
+                    SELECT
+                        tags.Id,
+                        tags.Category,
+                        tags.NormalizedName,
+                        MIN(tags.Id) OVER (PARTITION BY tags.Category, tags.NormalizedName) AS CanonicalTagId
+                    FROM Tags tags
+                )
+                UPDATE jobRoleTags
+                SET TagId = duplicateTags.CanonicalTagId
+                FROM JobRoleTags jobRoleTags
+                INNER JOIN DuplicateTags duplicateTags ON duplicateTags.Id = jobRoleTags.TagId
+                WHERE duplicateTags.Id <> duplicateTags.CanonicalTagId;
+
+                ;WITH DuplicateTags AS
+                (
+                    SELECT
+                        tags.Id,
+                        tags.Category,
+                        tags.NormalizedName,
+                        MIN(tags.Id) OVER (PARTITION BY tags.Category, tags.NormalizedName) AS CanonicalTagId
+                    FROM Tags tags
+                )
+                DELETE FROM Tags
+                WHERE Id IN
+                (
+                    SELECT duplicateTags.Id
+                    FROM DuplicateTags duplicateTags
+                    WHERE duplicateTags.Id <> duplicateTags.CanonicalTagId
+                );
+                """);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tags_Category_NormalizedName",
+                table: "Tags",
+                columns: new[] { "Category", "NormalizedName" },
+                unique: true);
 
             migrationBuilder.DropTable(
                 name: "ProjectSkills");

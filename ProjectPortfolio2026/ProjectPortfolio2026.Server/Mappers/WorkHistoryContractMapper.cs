@@ -19,7 +19,7 @@ public static class WorkHistoryContractMapper
             PostalCode = employer.PostalCode,
             Country = employer.Country,
             JobRoles = employer.JobRoles
-                .OrderByDescending(jobRole => jobRole.EndDate.HasValue ? 1 : 0)
+                .OrderBy(jobRole => jobRole.EndDate.HasValue ? 1 : 0)
                 .ThenByDescending(jobRole => jobRole.EndDate ?? jobRole.StartDate)
                 .ThenByDescending(jobRole => jobRole.StartDate)
                 .ThenBy(jobRole => jobRole.Role)

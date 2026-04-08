@@ -4,6 +4,7 @@ using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Domain.Projects;
 using ProjectPortfolio2026.Server.Domain.Tags;
 using ProjectPortfolio2026.Server.Repositories;
+using ProjectPortfolio2026.Server.Services.Implementations;
 
 namespace ProjectPortfolio2026.Server.Tests;
 
@@ -14,7 +15,7 @@ public sealed class ProjectRepositoryTests
     public async Task AddAsync_PersistsProjectGraph_WithDefaultFlagsDisabled()
     {
         await using var dbContext = CreateDbContext();
-        var repository = new ProjectRepository(dbContext);
+        var repository = CreateRepository(dbContext);
 
         var project = new Project
         {
@@ -67,7 +68,7 @@ public sealed class ProjectRepositoryTests
     public async Task UpdateAsync_ReplacesNestedCollections()
     {
         await using var dbContext = CreateDbContext();
-        var repository = new ProjectRepository(dbContext);
+        var repository = CreateRepository(dbContext);
 
         var project = await repository.AddAsync(new Project
         {
@@ -105,10 +106,47 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task AddAsync_DeduplicatesProjectTagsByNormalizedName()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var project = new Project
+        {
+            Title = "Normalization Check",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Checks duplicate tag normalization.",
+            LongDescriptionMarkdown = "Normalization details.",
+            ProjectTags =
+            [
+                CreateProjectTag(TagCategory.Skill, "React"),
+                CreateProjectTag(TagCategory.Skill, " react "),
+                CreateProjectTag(TagCategory.Technology, ".NET"),
+                CreateProjectTag(TagCategory.Technology, " .net ")
+            ]
+        };
+
+        var savedProject = await repository.AddAsync(project);
+        var savedSkillTags = savedProject.ProjectTags
+            .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
+            .ToList();
+        var savedTechnologyTags = savedProject.ProjectTags
+            .Where(projectTag => projectTag.Tag!.Category == TagCategory.Technology)
+            .ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(savedSkillTags, Has.Count.EqualTo(1));
+            Assert.That(savedTechnologyTags, Has.Count.EqualTo(1));
+            Assert.That(savedProject.ProjectTags.Select(projectTag => projectTag.Tag!.NormalizedName), Is.EquivalentTo(new[] { "REACT", ".NET" }));
+        });
+    }
+
+    [Test]
     public async Task ListAsync_ReturnsPublishedProjectsMatchingSearchAndSkillFilters()
     {
         await using var dbContext = CreateDbContext();
-        var repository = new ProjectRepository(dbContext);
+        var repository = CreateRepository(dbContext);
 
         await repository.AddAsync(new Project
         {
@@ -165,7 +203,7 @@ public sealed class ProjectRepositoryTests
     public async Task ListAsync_AppliesPagingAndNormalizesInputs()
     {
         await using var dbContext = CreateDbContext();
-        var repository = new ProjectRepository(dbContext);
+        var repository = CreateRepository(dbContext);
 
         for (var index = 1; index <= 8; index++)
         {
@@ -201,7 +239,7 @@ public sealed class ProjectRepositoryTests
     public async Task ListFeaturedAsync_ReturnsAtMostFiveFeaturedProjects_WhenEnoughFeaturedProjectsExist()
     {
         await using var dbContext = CreateDbContext();
-        var repository = new ProjectRepository(dbContext);
+        var repository = CreateRepository(dbContext);
 
         for (var index = 1; index <= 7; index += 1)
         {
@@ -230,7 +268,7 @@ public sealed class ProjectRepositoryTests
     public async Task ListFeaturedAsync_FillsRemainingSlotsWithMostRecentPublishedProjects_WhenFeaturedProjectsAreLimited()
     {
         await using var dbContext = CreateDbContext();
-        var repository = new ProjectRepository(dbContext);
+        var repository = CreateRepository(dbContext);
 
         await repository.AddAsync(new Project
         {
@@ -307,6 +345,14 @@ public sealed class ProjectRepositoryTests
             .Options;
 
         return new PortfolioDbContext(options);
+    }
+
+    private static ProjectRepository CreateRepository(PortfolioDbContext dbContext)
+    {
+        return new ProjectRepository(
+            dbContext,
+            new ProjectTagNormalizer(dbContext),
+            new FeaturedProjectSelector());
     }
 
     private static ProjectTag CreateProjectTag(TagCategory category, string name)

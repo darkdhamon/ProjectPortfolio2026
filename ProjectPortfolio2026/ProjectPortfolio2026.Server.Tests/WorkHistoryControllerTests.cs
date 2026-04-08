@@ -31,6 +31,13 @@ public sealed class WorkHistoryControllerTests
                     [
                         new JobRole
                         {
+                            Role = "Developer",
+                            StartDate = new DateOnly(2022, 1, 1),
+                            EndDate = new DateOnly(2023, 12, 31),
+                            DescriptionMarkdown = "Previous role"
+                        },
+                        new JobRole
+                        {
                             Role = "Senior Developer",
                             StartDate = new DateOnly(2024, 1, 1),
                             DescriptionMarkdown = "Current role",
@@ -66,7 +73,8 @@ public sealed class WorkHistoryControllerTests
             Assert.That(response.Items[0].Name, Is.EqualTo("Northwind Health"));
             Assert.That(response.Items[0].City, Is.EqualTo("Chicago"));
             Assert.That(response.Items[0].Region, Is.EqualTo("IL"));
-            Assert.That(response.Items[0].JobRoles, Has.Count.EqualTo(1));
+            Assert.That(response.Items[0].JobRoles, Has.Count.EqualTo(2));
+            Assert.That(response.Items[0].JobRoles.Select(jobRole => jobRole.Role), Is.EqualTo(new[] { "Senior Developer", "Developer" }));
             Assert.That(response.Items[0].JobRoles[0].Skills, Is.EqualTo(new[] { "API Design" }));
             Assert.That(response.Items[0].JobRoles[0].Technologies, Is.EqualTo(new[] { ".NET" }));
         });
