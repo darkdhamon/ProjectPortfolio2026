@@ -6,9 +6,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using NUnit.Framework;
 using ProjectPortfolio2026.Server.Contracts.Auth;
 using ProjectPortfolio2026.Server.Data;
+using ProjectPortfolio2026.Server.Data.SeedData;
 using ProjectPortfolio2026.Server.Domain.Identity;
 using ProjectPortfolio2026.Server.Services.Implementations;
 using System.Security.Claims;
@@ -24,7 +27,7 @@ public sealed class AuthServiceTests
         using var dbContext = CreateDbContext();
         var userManager = CreateUserManager(dbContext);
         var signInManager = CreateSignInManager(userManager);
-        var service = new AuthService(userManager, signInManager);
+        var service = new AuthService(userManager, signInManager, CreateHostEnvironment());
 
         var user = new ApplicationUser
         {
@@ -63,7 +66,7 @@ public sealed class AuthServiceTests
         using var dbContext = CreateDbContext();
         var userManager = CreateUserManager(dbContext);
         var signInManager = CreateSignInManager(userManager);
-        var service = new AuthService(userManager, signInManager);
+        var service = new AuthService(userManager, signInManager, CreateHostEnvironment());
 
         var currentUser = new ApplicationUser
         {
@@ -101,7 +104,7 @@ public sealed class AuthServiceTests
         using var dbContext = CreateDbContext();
         var userManager = CreateUserManager(dbContext);
         var signInManager = CreateSignInManager(userManager);
-        var service = new AuthService(userManager, signInManager);
+        var service = new AuthService(userManager, signInManager, CreateHostEnvironment());
 
         var user = new ApplicationUser
         {
@@ -132,6 +135,107 @@ public sealed class AuthServiceTests
             Assert.That(response.DisplayName, Is.EqualTo("current-user"));
             Assert.That(response.IsAdmin, Is.True);
         });
+    }
+
+    [Test]
+    public async Task LoginAsync_AllowsEmptyPasswordInDevelopment_WhenUserHasNoStoredPassword()
+    {
+        using var dbContext = CreateDbContext();
+        var userManager = CreateUserManager(dbContext);
+        var signInManager = CreateSignInManager(userManager);
+        var service = new AuthService(userManager, signInManager, CreateHostEnvironment());
+
+        dbContext.Roles.Add(new IdentityRole
+        {
+            Name = RoleNames.Admin,
+            NormalizedName = RoleNames.Admin.ToUpperInvariant()
+        });
+        await dbContext.SaveChangesAsync();
+
+        var user = new ApplicationUser
+        {
+            UserName = DevelopmentIdentitySeedData.SeedUserName,
+            Email = DevelopmentIdentitySeedData.SeedEmail
+        };
+
+        await userManager.CreateAsync(user);
+        await userManager.AddToRoleAsync(user, RoleNames.Admin);
+
+        var result = await service.LoginAsync(
+            new AuthLoginRequest
+            {
+                Login = DevelopmentIdentitySeedData.SeedUserName,
+                Password = string.Empty
+            });
+
+        Assert.That(result.Succeeded, Is.True);
+        Assert.That(result.User?.UserName, Is.EqualTo(DevelopmentIdentitySeedData.SeedUserName));
+    }
+
+    [Test]
+    public async Task ChangePasswordAsync_AddsPassword_WhenUserStartedWithoutPasswordAndCurrentPasswordIsEmpty()
+    {
+        using var dbContext = CreateDbContext();
+        var userManager = CreateUserManager(dbContext);
+        var signInManager = CreateSignInManager(userManager);
+        var service = new AuthService(userManager, signInManager, CreateHostEnvironment());
+
+        var user = new ApplicationUser
+        {
+            UserName = DevelopmentIdentitySeedData.SeedUserName,
+            Email = DevelopmentIdentitySeedData.SeedEmail
+        };
+
+        await userManager.CreateAsync(user);
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, user.Id)
+        ], "test"));
+
+        var result = await service.ChangePasswordAsync(
+            principal,
+            new AccountPasswordChangeRequest
+            {
+                CurrentPassword = string.Empty,
+                NewPassword = "Passw0rd!"
+            });
+
+        Assert.That(result.Succeeded, Is.True);
+        Assert.That(await userManager.HasPasswordAsync(user), Is.True);
+    }
+
+    [Test]
+    public async Task ChangePasswordAsync_RejectsNonEmptyCurrentPassword_WhenUserStartedWithoutPassword()
+    {
+        using var dbContext = CreateDbContext();
+        var userManager = CreateUserManager(dbContext);
+        var signInManager = CreateSignInManager(userManager);
+        var service = new AuthService(userManager, signInManager, CreateHostEnvironment());
+
+        var user = new ApplicationUser
+        {
+            UserName = DevelopmentIdentitySeedData.SeedUserName,
+            Email = DevelopmentIdentitySeedData.SeedEmail
+        };
+
+        await userManager.CreateAsync(user);
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, user.Id)
+        ], "test"));
+
+        var result = await service.ChangePasswordAsync(
+            principal,
+            new AccountPasswordChangeRequest
+            {
+                CurrentPassword = "wrong-value",
+                NewPassword = "Passw0rd!"
+            });
+
+        Assert.That(result.Succeeded, Is.False);
+        Assert.That(result.ValidationErrors.ContainsKey("CurrentPassword"), Is.True);
     }
 
     private static PortfolioDbContext CreateDbContext()
@@ -182,6 +286,11 @@ public sealed class AuthServiceTests
             new DefaultUserConfirmation<ApplicationUser>());
     }
 
+    private static IHostEnvironment CreateHostEnvironment()
+    {
+        return new TestHostEnvironment();
+    }
+
     private sealed class TestSignInManager : SignInManager<ApplicationUser>
     {
         public TestSignInManager(
@@ -194,6 +303,11 @@ public sealed class AuthServiceTests
             IUserConfirmation<ApplicationUser> confirmation)
             : base(userManager, contextAccessor, claimsFactory, optionsAccessor, logger, schemes, confirmation)
         {
+        }
+
+        public override Task SignInAsync(ApplicationUser user, bool isPersistent, string? authenticationMethod = null)
+        {
+            return Task.CompletedTask;
         }
 
         public override Task<SignInResult> PasswordSignInAsync(
@@ -211,5 +325,16 @@ public sealed class AuthServiceTests
         {
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class TestHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = Environments.Development;
+
+        public string ApplicationName { get; set; } = "ProjectPortfolio2026.Server.Tests";
+
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }

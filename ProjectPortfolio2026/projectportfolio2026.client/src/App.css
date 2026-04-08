@@ -131,6 +131,7 @@
 .admin-nav-group,
 .admin-subnav,
 .sidebar-footnote-block,
+.sidebar-welcome,
 .auth-page,
 .auth-card,
 .auth-intro,
@@ -202,6 +203,37 @@
 
 .sidebar-footnote-block {
     gap: 0.75rem;
+}
+
+.sidebar-welcome {
+    gap: 0.18rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(245, 183, 48, 0.16);
+    border-radius: 1.1rem;
+    background:
+        linear-gradient(180deg, rgba(24, 46, 78, 0.82), rgba(13, 29, 49, 0.88)),
+        radial-gradient(circle at top right, rgba(245, 183, 48, 0.14), transparent 42%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-welcome-label,
+.sidebar-welcome-name {
+    margin: 0;
+}
+
+.sidebar-welcome-label {
+    color: rgba(255, 215, 125, 0.82);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.sidebar-welcome-name {
+    color: #fff7e8;
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.2;
 }
 
 .sidebar-session-badge {

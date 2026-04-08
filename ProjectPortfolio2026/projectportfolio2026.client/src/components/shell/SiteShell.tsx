@@ -43,6 +43,13 @@ export function SiteShell({
                     </div>
                 </div>
 
+                {isAuthenticated ? (
+                    <div className="sidebar-welcome">
+                        <p className="sidebar-welcome-label">Welcome</p>
+                        <p className="sidebar-welcome-name">{currentUserDisplayName}</p>
+                    </div>
+                ) : null}
+
                 <nav className="site-nav" aria-label="Primary site navigation">
                     {navItems.map(item => {
                         if (item.label === 'Admin') {

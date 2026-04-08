@@ -709,6 +709,7 @@ describe('App', () => {
 
         expect(await screen.findByRole('heading', { name: 'Admin dashboard mockup' })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
+        expect(screen.queryByText('Welcome')).not.toBeInTheDocument();
         expect(window.location.pathname).toBe('/admin');
     });
 
@@ -727,6 +728,8 @@ describe('App', () => {
         expect(await screen.findByRole('heading', { name: 'Admin dashboard mockup' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Account Settings' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
+        expect(screen.getByText('Welcome')).toBeInTheDocument();
+        expect(screen.getAllByText('admin').length).toBeGreaterThan(0);
         expect(screen.getByText('Signed in as admin')).toBeInTheDocument();
         expect(window.location.pathname).toBe('/admin');
     });
@@ -757,6 +760,8 @@ describe('App', () => {
         });
         fireEvent.click(screen.getByRole('button', { name: 'Save Profile Mockup' }));
 
+        expect(screen.getByText('Welcome')).toBeInTheDocument();
+        expect(screen.getAllByText('Portfolio Owner').length).toBeGreaterThan(0);
         expect(screen.getByText('Signed in as Portfolio Owner')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Log out' }));

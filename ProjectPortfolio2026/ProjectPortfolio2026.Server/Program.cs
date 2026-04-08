@@ -133,5 +133,8 @@ static async Task MigrateAndSeedAsync(IServiceProvider services, bool isDevelopm
     if (isDevelopment)
     {
         await PortfolioSeedData.InitializeAsync(dbContext);
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        await DevelopmentIdentitySeedData.InitializeAsync(roleManager, userManager);
     }
 }
