@@ -18,16 +18,21 @@ interface NavItem {
 const navItems: readonly NavItem[] = [
     { label: 'Home', href: '/', description: 'Featured highlights and introduction.' },
     { label: 'Projects', href: '/projects', description: 'Browse shipped work and project detail stories.' },
-    { label: 'Timeline', description: 'Career milestones, education, and certifications.' },
+    { label: 'Work History', href: '/work-history', description: 'Employers, roles, and resume-ready timeline data.' },
+    { label: 'Admin', description: 'Authentication, dashboard access, and account management.' },
     { label: 'About', description: 'Background, strengths, and developer story.' },
     { label: 'Resume', description: 'Resume hub and downloadable materials.' },
-    { label: 'Contact', description: 'Direct outreach paths and social links.' },
+    { label: 'Contact', href: '/contact', description: 'Direct outreach paths and social links.' },
     { label: 'Blog', description: 'Writing, updates, and thought pieces.' }
 ] as const;
 
 interface SiteShellProps {
     activeNavLabel: string;
     content: SiteShellContent;
+    currentUserDisplayName: string;
+    isAuthenticated: boolean;
+    onAdminNavigate: () => void;
+    onLogout: () => void;
     onNavigate: NavigateFn;
     children: ReactNode;
 }
@@ -35,6 +40,10 @@ interface SiteShellProps {
 export function SiteShell({
     activeNavLabel,
     content,
+    currentUserDisplayName,
+    isAuthenticated,
+    onAdminNavigate,
+    onLogout,
     onNavigate,
     children
 }: SiteShellProps) {
@@ -53,32 +62,88 @@ export function SiteShell({
                     </div>
                 </div>
 
+                {isAuthenticated ? (
+                    <div className="sidebar-welcome">
+                        <p className="sidebar-welcome-label">Welcome</p>
+                        <p className="sidebar-welcome-name">{currentUserDisplayName}</p>
+                    </div>
+                ) : null}
+
                 <nav className="site-nav" aria-label="Primary site navigation">
-                    {navItems.map(item => item.href ? (
-                        <InternalLink
-                            key={item.label}
-                            className={`nav-link${activeNavLabel === item.label ? ' active' : ''}`}
-                            href={item.href}
-                            ariaCurrent={activeNavLabel === item.label ? 'page' : undefined}
-                            onNavigate={onNavigate}>
-                            {item.label}
-                        </InternalLink>
-                    ) : (
-                        <button
-                            key={item.label}
-                            className="nav-link nav-link-disabled"
-                            type="button"
-                            disabled
-                            aria-disabled="true">
-                            <span>{item.label}</span>
-                            <span className="coming-soon-pill">Coming Soon</span>
-                        </button>
-                    ))}
+                    {navItems.map(item => {
+                        if (item.label === 'Admin') {
+                            return (
+                                <div key={item.label} className={`admin-nav-group${activeNavLabel === item.label ? ' expanded' : ''}`}>
+                                    <button
+                                        className={`nav-link nav-link-button${activeNavLabel === item.label ? ' active' : ''}`}
+                                        type="button"
+                                        aria-current={activeNavLabel === item.label ? 'page' : undefined}
+                                        onClick={onAdminNavigate}>
+                                        <span>{item.label}</span>
+                                        <span className="coming-soon-pill admin-pill">{isAuthenticated ? 'Live' : 'Secure'}</span>
+                                    </button>
+
+                                    {isAuthenticated ? (
+                                        <div className="admin-subnav" aria-label="Admin navigation">
+                                            <InternalLink
+                                                className={`subnav-link${content.title === 'Admin Dashboard' ? ' active' : ''}`}
+                                                href="/admin"
+                                                ariaCurrent={content.title === 'Admin Dashboard' ? 'page' : undefined}
+                                                onNavigate={onNavigate}>
+                                                Dashboard
+                                            </InternalLink>
+                                            <InternalLink
+                                                className={`subnav-link${content.title === 'Account Settings' ? ' active' : ''}`}
+                                                href="/admin/account"
+                                                ariaCurrent={content.title === 'Account Settings' ? 'page' : undefined}
+                                                onNavigate={onNavigate}>
+                                                Account Settings
+                                            </InternalLink>
+                                            <button
+                                                className="subnav-link subnav-button"
+                                                type="button"
+                                                onClick={onLogout}>
+                                                Log out
+                                            </button>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            );
+                        }
+
+                        return item.href ? (
+                            <InternalLink
+                                key={item.label}
+                                className={`nav-link${activeNavLabel === item.label ? ' active' : ''}`}
+                                href={item.href}
+                                ariaCurrent={activeNavLabel === item.label ? 'page' : undefined}
+                                onNavigate={onNavigate}>
+                                {item.label}
+                            </InternalLink>
+                        ) : (
+                            <button
+                                key={item.label}
+                                className="nav-link nav-link-disabled"
+                                type="button"
+                                disabled
+                                aria-disabled="true">
+                                <span>{item.label}</span>
+                                <span className="coming-soon-pill">Coming Soon</span>
+                            </button>
+                        );
+                    })}
                 </nav>
 
-                <p className="sidebar-footnote">
-                    Resume will eventually include the Work History subsection.
-                </p>
+                <div className="sidebar-footnote-block">
+                    {isAuthenticated ? (
+                        <p className="sidebar-session-badge">
+                            Signed in as {currentUserDisplayName}
+                        </p>
+                    ) : null}
+                    <p className="sidebar-footnote">
+                        Resume will eventually include the Work History subsection.
+                    </p>
+                </div>
             </aside>
 
             <div className="site-main">

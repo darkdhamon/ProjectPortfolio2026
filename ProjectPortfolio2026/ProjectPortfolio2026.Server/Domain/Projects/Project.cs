@@ -38,9 +38,7 @@ public sealed class Project
 
     public List<ProjectDeveloperRole> DeveloperRoles { get; set; } = [];
 
-    public List<ProjectTechnology> Technologies { get; set; } = [];
-
-    public List<ProjectSkill> Skills { get; set; } = [];
+    public List<ProjectTag> ProjectTags { get; set; } = [];
 
     public List<ProjectCollaborator> Collaborators { get; set; } = [];
 

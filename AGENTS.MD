@@ -7,6 +7,9 @@
 - If no GitHub issue exists for requested code work, create one or request one before implementation begins.
 - Before making code changes, confirm the current branch is not a protected branch.
 - If currently on a protected branch, switch to or create an appropriate feature branch before editing code.
+- Feature branches must open pull requests into `dev`.
+- `stage` can only receive pull requests from `dev`.
+- `main` can only receive pull requests from `stage`.
 - Before merging, pull the latest remote branch changes into the local branch.
 - Resolve merge conflicts locally before completing the merge or opening the final pull request.
 
@@ -37,3 +40,5 @@
 - When the .NET coverage collector writes empty Cobertura files under a `TestResults` directory on Windows, switch the coverage script to a different results folder name such as `CoverageResults`.
 - If PowerShell cannot resolve `node` or `npm` on Windows, verify that the Node.js toolchain is installed before attempting frontend dependency changes or client build verification.
 - If Visual Studio deployment for the `.esproj` fails with `Value cannot be null. Parameter name: source` while referencing `launch.json`, restore or recreate `projectportfolio2026.client/.vscode/launch.json`; the JavaScript project template expects that debug profile to exist.
+- When opening this repository in Visual Studio on this machine, prefer Visual Studio 2026 Insiders at `C:\Program Files\Microsoft Visual Studio\18\Insiders\Common7\IDE\devenv.exe` instead of the default Visual Studio 2022 instance.
+- If the development app fails to start because LocalDB is still attached to an `.mdf` under an older Codex worktree path, relaunch with an explicit `ConnectionStrings__PortfolioDatabase` environment override that points `AttachDbFilename` at the current worktree's `ProjectPortfolio2026.Server\App_Data` folder and uses a unique database name for that worktree.

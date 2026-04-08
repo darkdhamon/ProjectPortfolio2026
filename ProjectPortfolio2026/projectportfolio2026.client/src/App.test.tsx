@@ -17,11 +17,30 @@ import {
 } from './appSupport';
 
 const fetchMock = vi.fn<typeof fetch>();
+type FetchMatch = string | RegExp;
+const queuedFetchResponses: Array<{ match: FetchMatch; response: Response }> = [];
 let isMobileViewport = false;
 
 describe('App', () => {
     beforeEach(() => {
         vi.stubGlobal('fetch', fetchMock);
+        fetchMock.mockImplementation(async (input: string | URL | Request) => {
+            const requestUrl = getRequestUrl(input);
+            const queuedIndex = queuedFetchResponses.findIndex(entry => matchesFetchRequest(entry.match, requestUrl));
+            if (queuedIndex >= 0) {
+                const [queuedEntry] = queuedFetchResponses.splice(queuedIndex, 1);
+                return queuedEntry.response;
+            }
+
+            if (requestUrl === '/api/auth/me') {
+                return jsonResponse({
+                    isAuthenticated: false,
+                    isAdmin: false
+                });
+            }
+
+            throw new Error(`Unexpected fetch request: ${requestUrl}`);
+        });
         vi.stubGlobal('crypto', {
             randomUUID: vi.fn(() => 'request-1')
         });
@@ -39,6 +58,7 @@ describe('App', () => {
 
     afterEach(() => {
         cleanup();
+        queuedFetchResponses.length = 0;
         window.history.replaceState({}, '', '/');
         isMobileViewport = false;
         vi.useRealTimers();
@@ -47,7 +67,7 @@ describe('App', () => {
     });
 
     it('renders the homepage carousel from the featured projects endpoint', async () => {
-        fetchMock.mockResolvedValueOnce(jsonResponse({
+        queueFetchJson('/api/projects/featured?limit=5&requestId=request-1', {
             requestId: 'request-1',
             items: [
                 {
@@ -73,7 +93,7 @@ describe('App', () => {
                     technologies: ['ASP.NET Core']
                 }
             ]
-        }));
+        });
 
         render(<App />);
 
@@ -84,8 +104,41 @@ describe('App', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/projects/featured?limit=5&requestId=request-1', expect.any(Object));
     });
 
+    it('resolves the signed-in session on public routes and shows the welcome state globally', async () => {
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'Portfolio Owner'
+        });
+        queueFetchJson('/api/projects/featured?limit=5&requestId=request-1', {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ]
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+        expect(screen.getByText('Welcome')).toBeInTheDocument();
+        expect(screen.getByText('Portfolio Owner')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
+    });
+
     it('supports desktop keyboard navigation for the homepage carousel', async () => {
-        fetchMock.mockResolvedValueOnce(jsonResponse({
+        queueFetchJson('/api/projects/featured?limit=5&requestId=request-1', {
             requestId: 'request-1',
             items: [
                 {
@@ -111,7 +164,7 @@ describe('App', () => {
                     technologies: ['ASP.NET Core']
                 }
             ]
-        }));
+        });
 
         render(<App />);
 
@@ -123,7 +176,7 @@ describe('App', () => {
 
     it('uses swipe-only mobile carousel behavior without visible arrows', async () => {
         isMobileViewport = true;
-        fetchMock.mockResolvedValueOnce(jsonResponse({
+        queueFetchJson('/api/projects/featured?limit=5&requestId=request-1', {
             requestId: 'request-1',
             items: [
                 {
@@ -149,7 +202,7 @@ describe('App', () => {
                     technologies: ['ASP.NET Core']
                 }
             ]
-        }));
+        });
 
         render(<App />);
 
@@ -168,7 +221,7 @@ describe('App', () => {
 
     it('renders published projects and summary counts for the list view', async () => {
         window.history.replaceState({}, '', '/projects');
-        fetchMock.mockResolvedValueOnce(jsonResponse({
+        queueFetchJson(/^\/api\/projects\?/, {
             requestId: 'request-1',
             items: [
                 {
@@ -199,7 +252,7 @@ describe('App', () => {
             totalCount: 2,
             hasMore: false,
             availableSkills: ['React', 'Testing']
-        }));
+        });
 
         render(<App />);
 
@@ -207,7 +260,7 @@ describe('App', () => {
         expect(screen.getByText('Published Projects')).toBeInTheDocument();
         expect(screen.getByText('Visible Cards')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('button', { name: /Timeline/i })).toBeDisabled();
+        expect(screen.getByRole('link', { name: 'Work History' })).toHaveAttribute('href', '/work-history');
         expect(screen.getAllByText('Coming Soon').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'React' })).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getByLabelText('Projects ending in Present')).toBeInTheDocument();
@@ -215,9 +268,118 @@ describe('App', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
     });
 
+    it('renders the work history page from the public endpoint', async () => {
+        window.history.replaceState({}, '', '/work-history');
+        queueFetchJson('/api/work-history?requestId=request-1', {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 7,
+                    name: 'Northwind Health',
+                    city: 'Chicago',
+                    region: 'IL',
+                    jobRoles: [
+                        {
+                            role: 'Senior Software Engineer',
+                            startDate: '2024-01-08',
+                            endDate: null,
+                            supervisorName: 'Dana Smith',
+                            descriptionMarkdown: 'Leading API delivery.',
+                            skills: ['API Design'],
+                            technologies: ['.NET 10']
+                        }
+                    ]
+                }
+            ]
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Northwind Health' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Work History' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByText('Senior Software Engineer')).toBeInTheDocument();
+        expect(screen.getByText('Chicago, IL')).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledWith('/api/work-history?requestId=request-1', expect.any(Object));
+    });
+
+    it('renders the contact page from the portfolio profile endpoint and highlights contact navigation', async () => {
+        window.history.replaceState({}, '', '/contact');
+        fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+            const url = input.toString();
+
+            if (url === '/api/auth/me') {
+                return jsonResponse({
+                    isAuthenticated: false,
+                    isAdmin: false,
+                    username: null,
+                    displayName: null,
+                    email: null
+                });
+            }
+
+            if (url === '/api/portfolio-profile?requestId=request-1') {
+                return jsonResponse({
+                    requestId: 'request-1',
+                    id: 1,
+                    displayName: 'Bronze Loft',
+                    contactHeadline: 'Choose the contact path that fits the conversation you want to have.',
+                    contactIntro: 'This portfolio frames outreach as a calm next step.',
+                    availabilityHeadline: 'Open to new opportunities',
+                    availabilitySummary: 'Focused on full-stack product engineering roles.',
+                    contactMethods: [
+                        {
+                            type: 'email',
+                            label: 'Email',
+                            value: 'bronze@example.dev',
+                            href: 'mailto:bronze@example.dev',
+                            note: 'Best for interview requests.',
+                            sortOrder: 1
+                        },
+                        {
+                            type: 'location',
+                            label: 'Location',
+                            value: 'Chicago, Illinois',
+                            href: null,
+                            note: 'Open to remote roles.',
+                            sortOrder: 2
+                        }
+                    ],
+                    socialLinks: [
+                        {
+                            platform: 'github',
+                            label: 'GitHub',
+                            url: 'https://github.com/darkdhamon',
+                            handle: '@darkdhamon',
+                            summary: 'Code samples and implementation details.',
+                            sortOrder: 1
+                        }
+                    ]
+                });
+            }
+
+            throw new Error(`Unexpected fetch request: ${url}`);
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Choose the contact path that fits the conversation you want to have.' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByRole('link', { name: 'bronze@example.dev' })).toHaveAttribute('href', 'mailto:bronze@example.dev');
+        expect(screen.getByRole('link', { name: 'bronze@example.dev' })).toHaveAttribute('target', '_blank');
+        expect(screen.getByText('Chicago, Illinois')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
+        expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('target', '_blank');
+        expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', expect.objectContaining({
+            method: 'GET'
+        }));
+        expect(fetchMock).toHaveBeenCalledWith('/api/portfolio-profile?requestId=request-1', expect.objectContaining({
+            signal: expect.any(AbortSignal)
+        }));
+    });
+
     it('shows loading and empty states for the list view', async () => {
         window.history.replaceState({}, '', '/projects');
-        fetchMock.mockResolvedValueOnce(jsonResponse({
+        queueFetchJson(/^\/api\/projects\?/, {
             requestId: 'request-1',
             items: [],
             page: 1,
@@ -225,7 +387,7 @@ describe('App', () => {
             totalCount: 0,
             hasMore: false,
             availableSkills: []
-        }));
+        });
 
         render(<App />);
 
@@ -237,112 +399,111 @@ describe('App', () => {
 
     it('updates search and skill filters from list interactions', async () => {
         window.history.replaceState({}, '', '/projects');
-        fetchMock
-            .mockResolvedValueOnce(jsonResponse({
-                requestId: 'request-1',
-                items: [
-                    {
-                        id: 42,
-                        title: 'Portfolio Refresh',
-                        startDate: '2025-01-01',
-                        endDate: null,
-                        primaryImageUrl: null,
-                        shortDescription: 'Rebuilt the public portfolio experience.',
-                        isFeatured: true,
-                        skills: ['React'],
-                        technologies: ['TypeScript']
-                    }
-                ],
-                page: 1,
-                pageSize: 6,
-                totalCount: 1,
-                hasMore: false,
-                availableSkills: ['React', 'Testing']
-            }))
-            .mockResolvedValueOnce(jsonResponse({
-                requestId: 'request-1',
-                items: [
-                    {
-                        id: 43,
-                        title: 'React Search Result',
-                        startDate: '2024-01-01',
-                        endDate: null,
-                        primaryImageUrl: null,
-                        shortDescription: 'Filtered by search.',
-                        isFeatured: false,
-                        skills: ['React'],
-                        technologies: ['TypeScript']
-                    }
-                ],
-                page: 1,
-                pageSize: 6,
-                totalCount: 1,
-                hasMore: false,
-                availableSkills: ['React', 'Testing']
-            }))
-            .mockResolvedValueOnce(jsonResponse({
-                requestId: 'request-1',
-                items: [
-                    {
-                        id: 43,
-                        title: 'React Search Result',
-                        startDate: '2024-01-01',
-                        endDate: null,
-                        primaryImageUrl: null,
-                        shortDescription: 'Filtered by search.',
-                        isFeatured: false,
-                        skills: ['React'],
-                        technologies: ['TypeScript']
-                    }
-                ],
-                page: 1,
-                pageSize: 6,
-                totalCount: 1,
-                hasMore: false,
-                availableSkills: ['React', 'Testing']
-            }))
-            .mockResolvedValueOnce(jsonResponse({
-                requestId: 'request-1',
-                items: [
-                    {
-                        id: 44,
-                        title: 'Testing Skill Result',
-                        startDate: '2023-01-01',
-                        endDate: '2023-04-01',
-                        primaryImageUrl: null,
-                        shortDescription: 'Filtered by selected skill.',
-                        isFeatured: false,
-                        skills: ['Testing'],
-                        technologies: ['TypeScript']
-                    }
-                ],
-                page: 1,
-                pageSize: 6,
-                totalCount: 1,
-                hasMore: false,
-                availableSkills: ['React', 'Testing']
-            }))
-            .mockResolvedValueOnce(jsonResponse({
-                requestId: 'request-1',
-                items: [
-                    {
-                        id: 44,
-                        title: 'Testing Skill Result',
-                        startDate: '2023-01-01',
-                        endDate: '2023-04-01',
-                        primaryImageUrl: null,
-                        shortDescription: 'Filtered by selected skill.',
-                        isFeatured: false,
-                        skills: ['Testing'],
-                        technologies: ['TypeScript']
-                    }
-                ],
-                page: 1,
-                pageSize: 6,
-                totalCount: 1,
-                hasMore: false,
-                availableSkills: ['React', 'Testing']
-            }));
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 43,
+                    title: 'React Search Result',
+                    startDate: '2024-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Filtered by search.',
+                    isFeatured: false,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 43,
+                    title: 'React Search Result',
+                    startDate: '2024-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Filtered by search.',
+                    isFeatured: false,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 44,
+                    title: 'Testing Skill Result',
+                    startDate: '2023-01-01',
+                    endDate: '2023-04-01',
+                    primaryImageUrl: null,
+                    shortDescription: 'Filtered by selected skill.',
+                    isFeatured: false,
+                    skills: ['Testing'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 44,
+                    title: 'Testing Skill Result',
+                    startDate: '2023-01-01',
+                    endDate: '2023-04-01',
+                    primaryImageUrl: null,
+                    shortDescription: 'Filtered by selected skill.',
+                    isFeatured: false,
+                    skills: ['Testing'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
 
         render(<App />);
 
@@ -364,7 +525,7 @@ describe('App', () => {
 
     it('renders the detail view and preserves list filters in the back link', async () => {
         window.history.replaceState({}, '', '/projects/42?search=react&skills=Testing');
-        fetchMock.mockResolvedValueOnce(jsonResponse({
+        queueFetchJson(/^\/api\/projects\/42\?/, {
             requestId: 'request-1',
             id: 42,
             title: 'Portfolio Refresh',
@@ -383,7 +544,7 @@ describe('App', () => {
             skills: ['Testing'],
             collaborators: [],
             milestones: []
-        }));
+        });
 
         render(<App />);
 
@@ -394,7 +555,7 @@ describe('App', () => {
 
     it('renders rich project detail sections and media fallbacks', async () => {
         window.history.replaceState({}, '', '/projects/77');
-        fetchMock.mockResolvedValueOnce(jsonResponse({
+        queueFetchJson(/^\/api\/projects\/77\?/, {
             requestId: 'request-1',
             id: 77,
             title: 'Launch Control',
@@ -445,7 +606,7 @@ describe('App', () => {
                     description: null
                 }
             ]
-        }));
+        });
 
         render(<App />);
 
@@ -489,7 +650,7 @@ describe('App', () => {
 
     it('shows only a single slide when the detail view has one screenshot', async () => {
         window.history.replaceState({}, '', '/projects/88');
-        fetchMock.mockResolvedValueOnce(jsonResponse({
+        queueFetchJson(/^\/api\/projects\/88\?/, {
             requestId: 'request-1',
             id: 88,
             title: 'Single Shot',
@@ -514,7 +675,7 @@ describe('App', () => {
             skills: [],
             collaborators: [],
             milestones: []
-        }));
+        });
 
         render(<App />);
 
@@ -527,7 +688,7 @@ describe('App', () => {
 
     it('lets the detail back link navigate to the list route without scrolling reset', async () => {
         window.history.replaceState({}, '', '/projects/42?search=react');
-        fetchMock.mockResolvedValueOnce(jsonResponse({
+        queueFetchJson(/^\/api\/projects\/42\?/, {
             requestId: 'request-1',
             id: 42,
             title: 'Portfolio Refresh',
@@ -546,7 +707,7 @@ describe('App', () => {
             skills: [],
             collaborators: [],
             milestones: []
-        }));
+        });
 
         render(<App />);
 
@@ -558,7 +719,7 @@ describe('App', () => {
 
     it('shows a not found message when the project detail endpoint returns 404', async () => {
         window.history.replaceState({}, '', '/projects/999');
-        fetchMock.mockResolvedValueOnce(new Response(null, { status: 404 }));
+        queueFetchResponse(/^\/api\/projects\/999\?/, new Response(null, { status: 404 }));
 
         render(<App />);
 
@@ -566,7 +727,7 @@ describe('App', () => {
     });
 
     it('surfaces API failures for the homepage', async () => {
-        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+        queueFetchResponse('/api/projects/featured?limit=5&requestId=request-1', new Response(JSON.stringify({
             message: 'Featured projects are temporarily unavailable.'
         }), {
             status: 400,
@@ -581,114 +742,111 @@ describe('App', () => {
     });
 
     it('retries the homepage request when the API is still starting up', async () => {
-        fetchMock
-            .mockResolvedValueOnce(new Response('<!doctype html><html><body>Starting up</body></html>', {
-                status: 503,
-                headers: {
-                    'Content-Type': 'text/html'
+        queueFetchResponse('/api/projects/featured?limit=5&requestId=request-1', new Response('<!doctype html><html><body>Starting up</body></html>', {
+            status: 503,
+            headers: {
+                'Content-Type': 'text/html'
+            }
+        }));
+        queueFetchJson('/api/projects/featured?limit=5&requestId=request-1', {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
                 }
-            }))
-            .mockResolvedValueOnce(jsonResponse({
-                requestId: 'request-1',
-                items: [
-                    {
-                        id: 42,
-                        title: 'Portfolio Refresh',
-                        startDate: '2025-01-01',
-                        endDate: null,
-                        primaryImageUrl: null,
-                        shortDescription: 'Rebuilt the public portfolio experience.',
-                        isFeatured: true,
-                        skills: ['React'],
-                        technologies: ['TypeScript']
-                    }
-                ]
-            }));
+            ]
+        });
 
         render(<App />);
 
-        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
 
         expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' }, { timeout: 5000 })).toBeInTheDocument();
-        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
     }, 7000);
 
     it('retries the project list request when startup returns invalid JSON', async () => {
         window.history.replaceState({}, '', '/projects');
-        fetchMock
-            .mockResolvedValueOnce(new Response('<!doctype html><html><body>Starting up</body></html>', {
-                status: 503,
-                headers: {
-                    'Content-Type': 'text/html'
+        queueFetchResponse(/^\/api\/projects\?/, new Response('<!doctype html><html><body>Starting up</body></html>', {
+            status: 503,
+            headers: {
+                'Content-Type': 'text/html'
+            }
+        }));
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
                 }
-            }))
-            .mockResolvedValueOnce(jsonResponse({
-                requestId: 'request-1',
-                items: [
-                    {
-                        id: 42,
-                        title: 'Portfolio Refresh',
-                        startDate: '2025-01-01',
-                        endDate: null,
-                        primaryImageUrl: null,
-                        shortDescription: 'Rebuilt the public portfolio experience.',
-                        isFeatured: true,
-                        skills: ['React'],
-                        technologies: ['TypeScript']
-                    }
-                ],
-                page: 1,
-                pageSize: 6,
-                totalCount: 1,
-                hasMore: false,
-                availableSkills: ['React']
-            }));
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React']
+        });
 
         render(<App />);
 
         expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' }, { timeout: 5000 })).toBeInTheDocument();
-        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
     }, 7000);
 
     it('retries the project detail request when startup returns invalid JSON', async () => {
         window.history.replaceState({}, '', '/projects/42');
-        fetchMock
-            .mockResolvedValueOnce(new Response('<!doctype html><html><body>Starting up</body></html>', {
-                status: 503,
-                headers: {
-                    'Content-Type': 'text/html'
-                }
-            }))
-            .mockResolvedValueOnce(jsonResponse({
-                requestId: 'request-1',
-                id: 42,
-                title: 'Portfolio Refresh',
-                startDate: '2025-01-01',
-                endDate: null,
-                primaryImageUrl: null,
-                shortDescription: 'Rebuilt the public portfolio experience.',
-                longDescriptionMarkdown: 'Overview copy',
-                gitHubUrl: null,
-                demoUrl: null,
-                isPublished: true,
-                isFeatured: true,
-                screenshots: [],
-                developerRoles: ['Frontend Engineer'],
-                technologies: ['TypeScript'],
-                skills: ['React'],
-                collaborators: [],
-                milestones: []
-            }));
+        queueFetchResponse(/^\/api\/projects\/42\?/, new Response('<!doctype html><html><body>Starting up</body></html>', {
+            status: 503,
+            headers: {
+                'Content-Type': 'text/html'
+            }
+        }));
+        queueFetchJson(/^\/api\/projects\/42\?/, {
+            requestId: 'request-1',
+            id: 42,
+            title: 'Portfolio Refresh',
+            startDate: '2025-01-01',
+            endDate: null,
+            primaryImageUrl: null,
+            shortDescription: 'Rebuilt the public portfolio experience.',
+            longDescriptionMarkdown: 'Overview copy',
+            gitHubUrl: null,
+            demoUrl: null,
+            isPublished: true,
+            isFeatured: true,
+            screenshots: [],
+            developerRoles: ['Frontend Engineer'],
+            technologies: ['TypeScript'],
+            skills: ['React'],
+            collaborators: [],
+            milestones: []
+        });
 
         render(<App />);
 
         expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' }, { timeout: 5000 })).toBeInTheDocument();
-        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
     }, 7000);
 
     it('surfaces detail API failures', async () => {
         window.history.replaceState({}, '', '/projects/404');
-        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+        queueFetchResponse(/^\/api\/projects\/404\?/, new Response(JSON.stringify({
             message: 'The project detail endpoint is unavailable.'
         }), {
             status: 400,
@@ -701,6 +859,147 @@ describe('App', () => {
 
         expect(await screen.findByText('The project detail endpoint is unavailable.')).toBeInTheDocument();
     });
+
+    it('routes signed-out admin navigation through the login page', async () => {
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: false,
+            isAdmin: false
+        });
+
+        render(<App />);
+
+        fireEvent.click(await screen.findByRole('button', { name: /Admin/ }));
+
+        expect(await screen.findByRole('heading', { name: 'Sign in through the admin entry point.' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
+        expect(screen.queryByText('Welcome')).not.toBeInTheDocument();
+        expect(window.location.pathname).toBe('/login');
+        expect(window.location.search).toBe('?redirect=%2Fadmin');
+    });
+
+    it('signs in through the mock login page and reveals admin account navigation', async () => {
+        window.history.replaceState({}, '', '/login?redirect=%2Fadmin');
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: false,
+            isAdmin: false
+        });
+        queueFetchJson('/api/auth/login', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        render(<App />);
+
+        fireEvent.change(screen.getByLabelText('Username or email'), {
+            target: { value: 'admin@example.com' }
+        });
+        fireEvent.change(screen.getByLabelText('Password'), {
+            target: { value: 'Password123!' }
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
+
+        expect(await screen.findByRole('heading', { name: 'Admin dashboard mockup' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Account Settings' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
+        expect(screen.getByText('Welcome')).toBeInTheDocument();
+        expect(screen.getAllByText('admin').length).toBeGreaterThan(0);
+        expect(screen.getByText('Signed in as admin')).toBeInTheDocument();
+        expect(window.location.pathname).toBe('/admin');
+    });
+
+    it('redirects direct account access to login when signed out', async () => {
+        window.history.replaceState({}, '', '/admin/account');
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: false,
+            isAdmin: false
+        });
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: false,
+            isAdmin: false
+        });
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Sign in through the admin entry point.' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
+        expect(window.location.pathname).toBe('/login');
+        expect(window.location.search).toBe('?redirect=%2Fadmin%2Faccount');
+    });
+
+    it('lets the signed-in admin edit account settings and log out', async () => {
+        window.history.replaceState({}, '', '/login?redirect=%2Fadmin');
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: false,
+            isAdmin: false
+        });
+        queueFetchJson('/api/auth/login', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'editor-admin',
+            email: 'admin@example.com',
+            displayName: 'Portfolio Owner'
+        });
+        queueFetchJson('/api/auth/logout', {
+            signedOut: true
+        });
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: false,
+            isAdmin: false
+        });
+        render(<App />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
+        fireEvent.click(await screen.findByRole('link', { name: 'Account Settings' }));
+
+        expect(await screen.findByRole('heading', { name: 'Manage your current admin account' })).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText('Username'), {
+            target: { value: 'editor-admin' }
+        });
+        fireEvent.change(screen.getByLabelText('Display name'), {
+            target: { value: 'Portfolio Owner' }
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Save Profile' }));
+
+        expect(await screen.findByText('Profile saved.')).toBeInTheDocument();
+        expect(screen.getByText('Welcome')).toBeInTheDocument();
+        expect(screen.getAllByText('Portfolio Owner').length).toBeGreaterThan(0);
+        expect(screen.getByText('Signed in as Portfolio Owner')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
+
+        expect(await screen.findByRole('heading', { name: 'Sign in through the admin entry point.' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
+    });
 });
 
 describe('App helpers', () => {
@@ -711,9 +1010,22 @@ describe('App helpers', () => {
         });
     });
 
-    it('parses home, list, and detail routes', () => {
+    it('parses home, list, detail, and admin routes', () => {
         expect(parseRoute({ pathname: '/', search: '?search=react' })).toEqual({
             kind: 'home'
+        });
+
+        expect(parseRoute({ pathname: '/login', search: '?redirect=%2Fadmin' })).toEqual({
+            kind: 'login',
+            redirectTo: '/admin'
+        });
+
+        expect(parseRoute({ pathname: '/admin', search: '' })).toEqual({
+            kind: 'admin'
+        });
+
+        expect(parseRoute({ pathname: '/admin/account', search: '' })).toEqual({
+            kind: 'admin-account'
         });
 
         expect(parseRoute({ pathname: '/projects', search: '?search=react' })).toEqual({
@@ -728,6 +1040,14 @@ describe('App helpers', () => {
             kind: 'detail',
             projectId: 42,
             listSearch: '?skills=React'
+        });
+
+        expect(parseRoute({ pathname: '/work-history', search: '' })).toEqual({
+            kind: 'work-history'
+        });
+
+        expect(parseRoute({ pathname: '/contact', search: '' })).toEqual({
+            kind: 'contact'
         });
     });
 
@@ -775,4 +1095,35 @@ function jsonResponse(payload: object) {
             'Content-Type': 'application/json'
         }
     });
+}
+
+function queueFetchJson(match: FetchMatch, payload: object) {
+    queueFetchResponse(match, jsonResponse(payload));
+}
+
+function queueFetchResponse(match: FetchMatch, response: Response) {
+    queuedFetchResponses.push({
+        match,
+        response
+    });
+}
+
+function getRequestUrl(input: string | URL | Request) {
+    if (typeof input === 'string') {
+        return input;
+    }
+
+    if (input instanceof URL) {
+        return input.toString();
+    }
+
+    return input.url;
+}
+
+function matchesFetchRequest(match: FetchMatch, requestUrl: string) {
+    if (typeof match === 'string') {
+        return match === requestUrl;
+    }
+
+    return match.test(requestUrl);
 }

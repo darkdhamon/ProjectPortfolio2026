@@ -34,6 +34,8 @@ public static class LocalDbDatabaseRecovery
             return false;
         }
 
+        EnsureAttachDirectoryExists(recoveryTarget.AttachDbFilePath);
+
         var masterConnectionStringBuilder = new SqlConnectionStringBuilder(connectionString)
         {
             InitialCatalog = "master",
@@ -83,6 +85,15 @@ public static class LocalDbDatabaseRecovery
     private static bool IsLocalDbConnection(SqlConnectionStringBuilder builder)
     {
         return builder.DataSource.Contains("(localdb)", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static void EnsureAttachDirectoryExists(string attachDbFilePath)
+    {
+        var attachDirectory = Path.GetDirectoryName(attachDbFilePath);
+        if (!string.IsNullOrWhiteSpace(attachDirectory))
+        {
+            Directory.CreateDirectory(attachDirectory);
+        }
     }
 
     private static string EscapeIdentifier(string value)
