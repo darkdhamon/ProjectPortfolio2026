@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using NUnit.Framework;
 using ProjectPortfolio2026.Server.Contracts.Auth;
 using ProjectPortfolio2026.Server.Controllers;
+using ProjectPortfolio2026.Server.Infrastructure.Security;
 using ProjectPortfolio2026.Server.Services.Interfaces;
 using ProjectPortfolio2026.Server.Services.ServiceModels;
 using System.Security.Claims;
@@ -19,7 +21,8 @@ public sealed class AuthControllerTests
         {
             LoginResult = new LoginResult { Succeeded = false }
         };
-        var controller = CreateController(authService);
+        var antiforgery = new StubAntiforgery();
+        var controller = CreateController(authService, antiforgery);
 
         var result = await controller.LoginAsync(
             new AuthLoginRequest
@@ -44,7 +47,8 @@ public sealed class AuthControllerTests
                 UserName = "admin"
             }
         };
-        var controller = CreateController(authService);
+        var antiforgery = new StubAntiforgery();
+        var controller = CreateController(authService, antiforgery);
 
         var result = await controller.GetCurrentUserAsync(CancellationToken.None);
         var okResult = result.Result as OkObjectResult;
@@ -56,6 +60,7 @@ public sealed class AuthControllerTests
             Assert.That(response!.IsAuthenticated, Is.True);
             Assert.That(response.IsAdmin, Is.True);
             Assert.That(response.UserName, Is.EqualTo("admin"));
+            Assert.That(antiforgery.GetAndStoreTokensCalls, Is.EqualTo(1));
         });
     }
 
@@ -70,7 +75,7 @@ public sealed class AuthControllerTests
                 UserNameConflict = true
             }
         };
-        var controller = CreateController(authService);
+        var controller = CreateController(authService, new StubAntiforgery());
 
         var result = await controller.UpdateCurrentUserAsync(
             new AccountProfileUpdateRequest
@@ -97,7 +102,7 @@ public sealed class AuthControllerTests
                 }
             }
         };
-        var controller = CreateController(authService);
+        var controller = CreateController(authService, new StubAntiforgery());
 
         var result = await controller.ChangePasswordAsync(
             new AccountPasswordChangeRequest
@@ -112,9 +117,54 @@ public sealed class AuthControllerTests
         Assert.That(objectResult?.StatusCode, Is.EqualTo(StatusCodes.Status400BadRequest));
     }
 
-    private static AuthController CreateController(IAuthService authService)
+    [Test]
+    public async Task LoginAsync_IssuesAntiforgeryToken_WhenCredentialsAreValid()
     {
-        return new AuthController(authService)
+        var authService = new StubAuthService
+        {
+            LoginResult = new LoginResult
+            {
+                Succeeded = true,
+                User = new AuthStatusResponse
+                {
+                    IsAuthenticated = true,
+                    IsAdmin = true,
+                    UserName = "admin"
+                }
+            }
+        };
+        var antiforgery = new StubAntiforgery();
+        var controller = CreateController(authService, antiforgery);
+
+        var result = await controller.LoginAsync(
+            new AuthLoginRequest
+            {
+                Login = "admin",
+                Password = "Passw0rd!"
+            },
+            CancellationToken.None);
+
+        var okResult = result.Result as OkObjectResult;
+        Assert.That(okResult?.Value, Is.InstanceOf<AuthStatusResponse>());
+        Assert.That(antiforgery.GetAndStoreTokensCalls, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task LogoutAsync_DeletesRequestTokenCookie()
+    {
+        var controller = CreateController(new StubAuthService(), new StubAntiforgery());
+
+        var result = await controller.LogoutAsync();
+
+        Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+        Assert.That(
+            controller.HttpContext.Response.Headers.SetCookie.ToString(),
+            Does.Contain($"{AntiforgeryCookieManager.RequestTokenCookieName}=;"));
+    }
+
+    private static AuthController CreateController(IAuthService authService, IAntiforgery antiforgery)
+    {
+        return new AuthController(authService, antiforgery)
         {
             ControllerContext = new ControllerContext
             {
@@ -165,6 +215,37 @@ public sealed class AuthControllerTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(UpdateResult);
+        }
+    }
+
+    private sealed class StubAntiforgery : IAntiforgery
+    {
+        public int GetAndStoreTokensCalls { get; private set; }
+
+        public AntiforgeryTokenSet GetAndStoreTokens(HttpContext httpContext)
+        {
+            GetAndStoreTokensCalls += 1;
+            return new AntiforgeryTokenSet("request-token", "cookie-token", AntiforgeryCookieManager.HeaderName, "ProjectPortfolio2026.Antiforgery");
+        }
+
+        public AntiforgeryTokenSet GetTokens(HttpContext httpContext)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> IsRequestValidAsync(HttpContext httpContext)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task ValidateRequestAsync(HttpContext httpContext)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void SetCookieTokenAndHeader(HttpContext httpContext)
+        {
+            throw new NotSupportedException();
         }
     }
 }
