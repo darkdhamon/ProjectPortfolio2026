@@ -31,7 +31,71 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Determine whether code changed
+        id: code-changes
+        run: |
+          $baseCommit = $null
+
+          if ("${{ github.event_name }}" -eq "pull_request") {
+            $baseRef = "origin/${{ github.base_ref }}"
+            git fetch origin "${{ github.base_ref }}" --depth=1
+            $baseCommit = git merge-base HEAD $baseRef
+          }
+          elseif ("${{ github.event.before }}" -and "${{ github.event.before }}" -ne "0000000000000000000000000000000000000000") {
+            $baseCommit = "${{ github.event.before }}"
+          }
+
+          $shouldRunTests = "true"
+          $changedFiles = @()
+
+          if ($baseCommit) {
+            $changedFiles = git diff --name-only $baseCommit HEAD
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Unable to determine changed files."
+            }
+
+            $codePathPatterns = @(
+              '^ProjectPortfolio2026/projectportfolio2026\.client/',
+              '^ProjectPortfolio2026/ProjectPortfolio2026\.Server/',
+              '^ProjectPortfolio2026/ProjectPortfolio2026\.Server\.Tests/'
+            )
+
+            $hasCodeChanges = $false
+
+            foreach ($file in $changedFiles) {
+              foreach ($pattern in $codePathPatterns) {
+                if ($file -match $pattern) {
+                  $hasCodeChanges = $true
+                  break
+                }
+              }
+
+              if ($hasCodeChanges) {
+                break
+              }
+            }
+
+            if (-not $hasCodeChanges) {
+              $shouldRunTests = "false"
+            }
+          }
+
+          "should_run_tests=$shouldRunTests" >> $env:GITHUB_OUTPUT
+
+          if ($changedFiles.Count -gt 0) {
+            Write-Host "Changed files detected relative to $baseCommit:"
+            $changedFiles | ForEach-Object { Write-Host " - $_" }
+          }
+          else {
+            Write-Host "No comparison base was available, or no changed files were reported."
+          }
+
+          Write-Host "Run build and test steps: $shouldRunTests"
 
       - name: Determine coverage enforcement
         id: coverage-policy
@@ -45,48 +109,57 @@ jobs:
           Write-Host "Coverage enforcement for branch '$targetBranch': $enforceCoverageGate"
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        if: steps.code-changes.outputs.should_run_tests == 'true'
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        if: steps.code-changes.outputs.should_run_tests == 'true'
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: ProjectPortfolio2026/projectportfolio2026.client/package-lock.json
 
       - name: Restore client dependencies
+        if: steps.code-changes.outputs.should_run_tests == 'true'
         working-directory: ${{ env.CLIENT_ROOT }}
         run: npm ci
 
       - name: Lint client
+        if: steps.code-changes.outputs.should_run_tests == 'true'
         working-directory: ${{ env.CLIENT_ROOT }}
         run: npm run lint
 
       - name: Build client
+        if: steps.code-changes.outputs.should_run_tests == 'true'
         working-directory: ${{ env.CLIENT_ROOT }}
         run: npm run build
 
       - name: Restore .NET solution
+        if: steps.code-changes.outputs.should_run_tests == 'true'
         run: dotnet restore $env:SOLUTION_FILE
 
       - name: Build .NET solution
+        if: steps.code-changes.outputs.should_run_tests == 'true'
         run: dotnet build $env:SOLUTION_FILE --configuration Release --no-restore
 
       - name: Run .NET tests with coverage gate
+        if: steps.code-changes.outputs.should_run_tests == 'true'
         env:
           ENFORCE_COVERAGE_GATE: ${{ steps.coverage-policy.outputs.enforce_coverage_gate }}
         run: ./.github/scripts/run-dotnet-tests-with-coverage.ps1
 
       - name: Run client tests with coverage gate
+        if: steps.code-changes.outputs.should_run_tests == 'true'
         env:
           ENFORCE_COVERAGE_GATE: ${{ steps.coverage-policy.outputs.enforce_coverage_gate }}
         run: ./.github/scripts/run-client-tests-with-coverage.ps1
 
       - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: always() && steps.code-changes.outputs.should_run_tests == 'true'
+        uses: actions/upload-artifact@v6
         with:
           name: test-results
           path: |
