@@ -3,6 +3,8 @@ export interface ApiErrorResponse {
 }
 
 export const startupRetryMessage = 'The portfolio API is still starting up. Please wait a moment and try again.';
+export const csrfHeaderName = 'X-XSRF-TOKEN';
+export const csrfCookieName = 'XSRF-TOKEN';
 const startupRetryDelayMs = 2000;
 const startupRetryAttempts = 2;
 
@@ -113,13 +115,18 @@ export async function fetchAuthJson<TPayload>(
     fallbackMessage: string,
     acceptedErrorStatuses: number[] = []
 ) {
+    const headers = new Headers(init.headers);
+    headers.set('Content-Type', 'application/json');
+
+    const csrfToken = shouldSendCsrfToken(init.method) ? readCookieValue(csrfCookieName) : null;
+    if (csrfToken) {
+        headers.set(csrfHeaderName, csrfToken);
+    }
+
     const response = await fetch(input, {
         credentials: 'include',
         ...init,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(init.headers ?? {})
-        }
+        headers
     });
 
     const payload = await readResponsePayload<TPayload>(response);
@@ -130,4 +137,25 @@ export async function fetchAuthJson<TPayload>(
     }
 
     return { response, payload };
+}
+
+function shouldSendCsrfToken(method?: string) {
+    const normalizedMethod = (method ?? 'GET').toUpperCase();
+    return !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(normalizedMethod);
+}
+
+function readCookieValue(cookieName: string) {
+    if (typeof document === 'undefined' || !document.cookie) {
+        return null;
+    }
+
+    const encodedName = `${encodeURIComponent(cookieName)}=`;
+    for (const cookieEntry of document.cookie.split(';')) {
+        const trimmedEntry = cookieEntry.trim();
+        if (trimmedEntry.startsWith(encodedName)) {
+            return decodeURIComponent(trimmedEntry.slice(encodedName.length));
+        }
+    }
+
+    return null;
 }

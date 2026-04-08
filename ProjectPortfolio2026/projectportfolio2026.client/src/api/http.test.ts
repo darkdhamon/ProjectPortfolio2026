@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    csrfHeaderName,
+    csrfCookieName,
     fetchAuthJson,
     fetchJsonWithStartupRetry,
     fetchResponsePayloadWithStartupRetry,
@@ -143,6 +145,7 @@ describe('http api helpers', () => {
 
     it('includes credentials and merged headers for auth requests', async () => {
         fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }));
+        document.cookie = `${csrfCookieName}=csrf-token-value`;
 
         await fetchAuthJson(
             '/api/auth/me',
@@ -158,11 +161,31 @@ describe('http api helpers', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', expect.objectContaining({
             credentials: 'include',
             method: 'POST',
-            headers: expect.objectContaining({
-                'Content-Type': 'application/json',
-                'X-Test': 'true'
-            })
+            headers: expect.any(Headers)
         }));
+
+        const [, options] = fetchMock.mock.calls[0];
+        const headers = options?.headers as Headers;
+        expect(headers.get('Content-Type')).toBe('application/json');
+        expect(headers.get('X-Test')).toBe('true');
+        expect(headers.get(csrfHeaderName)).toBe('csrf-token-value');
+    });
+
+    it('does not include the csrf header for safe auth requests', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }));
+        document.cookie = `${csrfCookieName}=csrf-token-value`;
+
+        await fetchAuthJson(
+            '/api/auth/me',
+            {
+                method: 'GET'
+            },
+            'Fallback'
+        );
+
+        const [, options] = fetchMock.mock.calls[0];
+        const headers = options?.headers as Headers;
+        expect(headers.get(csrfHeaderName)).toBeNull();
     });
 
     it('throws the fallback error when an auth request fails without an api message', async () => {
