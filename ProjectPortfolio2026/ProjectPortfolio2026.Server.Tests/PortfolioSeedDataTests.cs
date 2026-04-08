@@ -18,8 +18,8 @@ public sealed class PortfolioSeedDataTests
         var projects = await dbContext.Projects
             .Include(project => project.Screenshots)
             .Include(project => project.DeveloperRoles)
-            .Include(project => project.Technologies)
-            .Include(project => project.Skills)
+            .Include(project => project.ProjectTags)
+                .ThenInclude(projectTag => projectTag.Tag)
             .Include(project => project.Collaborators)
                 .ThenInclude(collaborator => collaborator.Roles)
             .Include(project => project.Milestones)
@@ -29,8 +29,8 @@ public sealed class PortfolioSeedDataTests
         Assert.That(projects.All(project => project.Screenshots.Count >= 2), Is.True);
         Assert.That(projects.Single(project => project.Title == "Project Portfolio 2026").Screenshots, Has.Count.EqualTo(6));
         Assert.That(projects.All(project => project.DeveloperRoles.Count > 0), Is.True);
-        Assert.That(projects.All(project => project.Technologies.Count > 0), Is.True);
-        Assert.That(projects.All(project => project.Skills.Count > 0), Is.True);
+        Assert.That(projects.All(project => project.ProjectTags.Any(projectTag => projectTag.Tag!.Category == ProjectPortfolio2026.Server.Domain.Tags.TagCategory.Technology)), Is.True);
+        Assert.That(projects.All(project => project.ProjectTags.Any(projectTag => projectTag.Tag!.Category == ProjectPortfolio2026.Server.Domain.Tags.TagCategory.Skill)), Is.True);
         Assert.That(projects.All(project => project.Milestones.Count > 0), Is.True);
         Assert.That(projects.Count(project => project.EndDate is null), Is.EqualTo(3));
         Assert.That(projects.Min(project => project.StartDate.Year), Is.EqualTo(2015));

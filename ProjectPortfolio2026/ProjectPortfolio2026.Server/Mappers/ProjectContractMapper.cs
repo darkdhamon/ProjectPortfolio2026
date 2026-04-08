@@ -1,5 +1,6 @@
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Domain.Projects;
+using ProjectPortfolio2026.Server.Domain.Tags;
 
 namespace ProjectPortfolio2026.Server.Mappers;
 
@@ -31,14 +32,7 @@ public static class ProjectContractMapper
                 .Where(role => !string.IsNullOrWhiteSpace(role))
                 .Select(role => new ProjectDeveloperRole { Name = role.Trim() })
                 .ToList(),
-            Technologies = (request.Technologies ?? [])
-                .Where(technology => !string.IsNullOrWhiteSpace(technology))
-                .Select(technology => new ProjectTechnology { Name = technology.Trim() })
-                .ToList(),
-            Skills = (request.Skills ?? [])
-                .Where(skill => !string.IsNullOrWhiteSpace(skill))
-                .Select(skill => new ProjectSkill { Name = skill.Trim() })
-                .ToList(),
+            ProjectTags = CreateProjectTags(request),
             Collaborators = (request.Collaborators ?? [])
                 .Select(collaborator => new ProjectCollaborator
                 {
@@ -80,8 +74,7 @@ public static class ProjectContractMapper
         project.IsFeatured = updatedProject.IsFeatured;
         project.Screenshots = updatedProject.Screenshots;
         project.DeveloperRoles = updatedProject.DeveloperRoles;
-        project.Technologies = updatedProject.Technologies;
-        project.Skills = updatedProject.Skills;
+        project.ProjectTags = updatedProject.ProjectTags;
         project.Collaborators = updatedProject.Collaborators;
         project.Milestones = updatedProject.Milestones;
     }
@@ -115,12 +108,14 @@ public static class ProjectContractMapper
                 .Select(role => role.Name)
                 .OrderBy(role => role)
                 .ToList(),
-            Technologies = project.Technologies
-                .Select(technology => technology.Name)
+            Technologies = project.ProjectTags
+                .Where(projectTag => projectTag.Tag?.Category == TagCategory.Technology)
+                .Select(projectTag => projectTag.Tag!.DisplayName)
                 .OrderBy(technology => technology)
                 .ToList(),
-            Skills = project.Skills
-                .Select(skill => skill.Name)
+            Skills = project.ProjectTags
+                .Where(projectTag => projectTag.Tag?.Category == TagCategory.Skill)
+                .Select(projectTag => projectTag.Tag!.DisplayName)
                 .OrderBy(skill => skill)
                 .ToList(),
             Collaborators = project.Collaborators
@@ -168,5 +163,34 @@ public static class ProjectContractMapper
             Skills = project.Skills.OrderBy(skill => skill).ToList(),
             Technologies = project.Technologies.OrderBy(technology => technology).ToList()
         };
+    }
+
+    private static List<ProjectTag> CreateProjectTags(ProjectRequest request)
+    {
+        return CreateProjectTags(TagCategory.Technology, request.Technologies)
+            .Concat(CreateProjectTags(TagCategory.Skill, request.Skills))
+            .ToList();
+    }
+
+    private static IEnumerable<ProjectTag> CreateProjectTags(TagCategory category, IEnumerable<string>? values)
+    {
+        return (values ?? [])
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(value => new ProjectTag
+            {
+                Tag = new Tag
+                {
+                    Category = category,
+                    DisplayName = value,
+                    NormalizedName = NormalizeTagName(value)
+                }
+            });
+    }
+
+    private static string NormalizeTagName(string value)
+    {
+        return value.Trim().ToUpperInvariant();
     }
 }

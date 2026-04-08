@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Domain.Projects;
+using ProjectPortfolio2026.Server.Domain.Tags;
 using ProjectPortfolio2026.Server.Repositories;
 
 namespace ProjectPortfolio2026.Server.Tests;
@@ -22,8 +23,11 @@ public sealed class ProjectRepositoryTests
             ShortDescription = "Developer portfolio for recruiters.",
             LongDescriptionMarkdown = "Long form description.",
             DeveloperRoles = [new ProjectDeveloperRole { Name = "Backend" }],
-            Technologies = [new ProjectTechnology { Name = ".NET" }],
-            Skills = [new ProjectSkill { Name = "API Design" }],
+            ProjectTags =
+            [
+                CreateProjectTag(TagCategory.Technology, ".NET"),
+                CreateProjectTag(TagCategory.Skill, "API Design")
+            ],
             Screenshots = [new ProjectScreenshot { ImageUrl = "https://example.test/hero.png", SortOrder = 1 }],
             Collaborators =
             [
@@ -51,8 +55,8 @@ public sealed class ProjectRepositoryTests
             Assert.That(savedProject.IsPublished, Is.False);
             Assert.That(savedProject.IsFeatured, Is.False);
             Assert.That(savedProject.DeveloperRoles.Select(role => role.Name), Is.EquivalentTo(new[] { "Backend" }));
-            Assert.That(savedProject.Technologies.Select(technology => technology.Name), Is.EquivalentTo(new[] { ".NET" }));
-            Assert.That(savedProject.Skills.Select(skill => skill.Name), Is.EquivalentTo(new[] { "API Design" }));
+            Assert.That(savedProject.ProjectTags.Where(projectTag => projectTag.Tag!.Category == TagCategory.Technology).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(new[] { ".NET" }));
+            Assert.That(savedProject.ProjectTags.Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(new[] { "API Design" }));
             Assert.That(savedProject.Collaborators, Has.Count.EqualTo(1));
             Assert.That(savedProject.Collaborators[0].Roles.Select(role => role.Name), Is.EquivalentTo(new[] { "Designer" }));
             Assert.That(savedProject.Milestones.Select(milestone => milestone.Title), Is.EquivalentTo(new[] { "MVP" }));
@@ -71,15 +75,18 @@ public sealed class ProjectRepositoryTests
             StartDate = new DateOnly(2026, 4, 1),
             ShortDescription = "Initial description.",
             LongDescriptionMarkdown = "Initial markdown.",
-            Skills = [new ProjectSkill { Name = "React" }]
+            ProjectTags = [CreateProjectTag(TagCategory.Skill, "React")]
         });
 
         project.Title = "Portfolio Platform v2";
         project.ShortDescription = "Updated description.";
         project.IsPublished = true;
         project.IsFeatured = true;
-        project.Skills = [new ProjectSkill { Name = "Entity Framework" }];
-        project.Technologies = [new ProjectTechnology { Name = "SQL Server" }];
+        project.ProjectTags =
+        [
+            CreateProjectTag(TagCategory.Skill, "Entity Framework"),
+            CreateProjectTag(TagCategory.Technology, "SQL Server")
+        ];
         project.DeveloperRoles = [new ProjectDeveloperRole { Name = "Full Stack" }];
 
         var updatedProject = await repository.UpdateAsync(project);
@@ -91,8 +98,8 @@ public sealed class ProjectRepositoryTests
             Assert.That(updatedProject.ShortDescription, Is.EqualTo("Updated description."));
             Assert.That(updatedProject.IsPublished, Is.True);
             Assert.That(updatedProject.IsFeatured, Is.True);
-            Assert.That(updatedProject.Skills.Select(skill => skill.Name), Is.EquivalentTo(new[] { "Entity Framework" }));
-            Assert.That(updatedProject.Technologies.Select(technology => technology.Name), Is.EquivalentTo(new[] { "SQL Server" }));
+            Assert.That(updatedProject.ProjectTags.Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(new[] { "Entity Framework" }));
+            Assert.That(updatedProject.ProjectTags.Where(projectTag => projectTag.Tag!.Category == TagCategory.Technology).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(new[] { "SQL Server" }));
             Assert.That(updatedProject.DeveloperRoles.Select(role => role.Name), Is.EquivalentTo(new[] { "Full Stack" }));
         });
     }
@@ -110,12 +117,12 @@ public sealed class ProjectRepositoryTests
             ShortDescription = "Searchable app platform.",
             LongDescriptionMarkdown = "Builds polished project portfolios.",
             IsPublished = true,
-            Skills =
+            ProjectTags =
             [
-                new ProjectSkill { Name = "API Design" },
-                new ProjectSkill { Name = "React" }
-            ],
-            Technologies = [new ProjectTechnology { Name = "SQL Server" }]
+                CreateProjectTag(TagCategory.Skill, "API Design"),
+                CreateProjectTag(TagCategory.Skill, "React"),
+                CreateProjectTag(TagCategory.Technology, "SQL Server")
+            ]
         });
 
         await repository.AddAsync(new Project
@@ -125,7 +132,7 @@ public sealed class ProjectRepositoryTests
             ShortDescription = "Should not appear in public list.",
             LongDescriptionMarkdown = "Unpublished work.",
             IsPublished = false,
-            Skills = [new ProjectSkill { Name = "React" }]
+            ProjectTags = [CreateProjectTag(TagCategory.Skill, "React")]
         });
 
         await repository.AddAsync(new Project
@@ -135,7 +142,7 @@ public sealed class ProjectRepositoryTests
             ShortDescription = "Visualization tools.",
             LongDescriptionMarkdown = "Focused on insights.",
             IsPublished = true,
-            Skills = [new ProjectSkill { Name = "Data Visualization" }]
+            ProjectTags = [CreateProjectTag(TagCategory.Skill, "Data Visualization")]
         });
 
         var page = await repository.ListAsync(
@@ -169,7 +176,7 @@ public sealed class ProjectRepositoryTests
                 ShortDescription = $"Summary {index}",
                 LongDescriptionMarkdown = $"Markdown {index}",
                 IsPublished = true,
-                Skills = [new ProjectSkill { Name = index % 2 == 0 ? "React" : "C#" }]
+                ProjectTags = [CreateProjectTag(TagCategory.Skill, index % 2 == 0 ? "React" : "C#")]
             });
         }
 
@@ -300,5 +307,18 @@ public sealed class ProjectRepositoryTests
             .Options;
 
         return new PortfolioDbContext(options);
+    }
+
+    private static ProjectTag CreateProjectTag(TagCategory category, string name)
+    {
+        return new ProjectTag
+        {
+            Tag = new Tag
+            {
+                Category = category,
+                DisplayName = name,
+                NormalizedName = name.Trim().ToUpperInvariant()
+            }
+        };
     }
 }

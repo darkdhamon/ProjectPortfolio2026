@@ -14,3 +14,4 @@
 - Design password reset and account recovery for local accounts without requiring email or SMS delivery. Tracked in issue #59.
 - Consider showing the logged-in user's display name in the admin navigation or header once the MVP admin shell is stable.
 - Add account lockout and related login hardening rules in a follow-up issue after the MVP authentication flow is in place.
+- Add an admin tag editor in a separate issue so shared skill and technology tags can be curated without coupling that UI to the current work history delivery scope.

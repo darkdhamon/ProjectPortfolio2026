@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProjectPortfolio2026.Server.Domain.Projects;
+using ProjectPortfolio2026.Server.Domain.Tags;
 
 namespace ProjectPortfolio2026.Server.Data.SeedData;
 
@@ -226,6 +227,7 @@ public static class PortfolioSeedData
         };
 
         projects.AddRange(CreateGeneratedProjects());
+        NormalizeProjectTags(projects);
         return projects;
     }
 
@@ -312,8 +314,9 @@ public static class PortfolioSeedData
             IsPublished = true,
             IsFeatured = title is "Project Portfolio 2026" or "TransitPulse Dashboard" or "SignalRoom Collaboration Hub" or "CivicStory Archive" or "MentorMatch Platform",
             DeveloperRoles = developerRoles.Select(role => new ProjectDeveloperRole { Name = role }).ToList(),
-            Technologies = technologies.Select(technology => new ProjectTechnology { Name = technology }).ToList(),
-            Skills = skills.Select(skill => new ProjectSkill { Name = skill }).ToList(),
+            ProjectTags = CreateProjectTags(TagCategory.Technology, technologies)
+                .Concat(CreateProjectTags(TagCategory.Skill, skills))
+                .ToList(),
             Collaborators = collaborators.ToList(),
             Milestones = milestones.ToList(),
             Screenshots = CreateScreenshots(title, slug)
@@ -414,4 +417,55 @@ public static class PortfolioSeedData
         string Label,
         IReadOnlyList<string> Technologies,
         IReadOnlyList<string> Skills);
+
+    private static IEnumerable<ProjectTag> CreateProjectTags(TagCategory category, IEnumerable<string> values)
+    {
+        return values.Select(value => new ProjectTag
+        {
+            Tag = new Tag
+            {
+                Category = category,
+                DisplayName = value,
+                NormalizedName = NormalizeTagName(value)
+            }
+        });
+    }
+
+    private static void NormalizeProjectTags(IEnumerable<Project> projects)
+    {
+        var sharedTags = new Dictionary<(TagCategory Category, string Name), Tag>();
+
+        foreach (var project in projects)
+        {
+            project.ProjectTags = project.ProjectTags
+                .Select(projectTag =>
+                {
+                    var sourceTag = projectTag.Tag ?? throw new InvalidOperationException("Seed tags must include tag metadata.");
+                    var key = (sourceTag.Category, sourceTag.NormalizedName);
+
+                    if (!sharedTags.TryGetValue(key, out var sharedTag))
+                    {
+                        sharedTag = new Tag
+                        {
+                            Category = sourceTag.Category,
+                            DisplayName = sourceTag.DisplayName,
+                            NormalizedName = sourceTag.NormalizedName
+                        };
+
+                        sharedTags[key] = sharedTag;
+                    }
+
+                    return new ProjectTag
+                    {
+                        Tag = sharedTag
+                    };
+                })
+                .ToList();
+        }
+    }
+
+    private static string NormalizeTagName(string value)
+    {
+        return value.Trim().ToUpperInvariant();
+    }
 }
