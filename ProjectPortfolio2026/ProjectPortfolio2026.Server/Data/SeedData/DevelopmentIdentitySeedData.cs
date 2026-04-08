@@ -7,6 +7,8 @@ public static class DevelopmentIdentitySeedData
 {
     public const string SeedUserName = "admin";
     public const string SeedEmail = "admin@example.com";
+    // This development-only fallback credential is intentionally limited to local Development startup.
+    // Program.cs only invokes this seeder when isDevelopment is true, so it does not run for live deployments.
     public const string SeedPassword = "Password@1";
 
     public static async Task InitializeAsync(

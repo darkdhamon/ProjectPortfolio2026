@@ -333,16 +333,13 @@ function App() {
     };
 
     useEffect(() => {
-        if (!isAdminRoute && route.kind !== 'login') {
-            return;
-        }
-
         const controller = new AbortController();
+        const shouldReportSessionErrors = isAdminRoute || route.kind === 'login';
         setAuthError(null);
-        void loadCurrentUser(controller.signal);
+        void loadCurrentUser(controller.signal, shouldReportSessionErrors);
 
         return () => controller.abort();
-    }, [isAdminRoute, route.kind]);
+    }, [isAdminRoute, route.kind, location.pathname, location.search]);
 
     useEffect(() => {
         if (!isAdminRoute || !isAuthResolved) {
@@ -355,7 +352,7 @@ function App() {
         }
     }, [currentUser, isAdminRoute, isAuthResolved, location.pathname, location.search]);
 
-    async function loadCurrentUser(signal?: AbortSignal) {
+    async function loadCurrentUser(signal?: AbortSignal, reportErrors = true) {
         try {
             const { payload } = await fetchAuthJson<AuthStatusResponse>(
                 '/api/auth/me',
@@ -374,7 +371,10 @@ function App() {
                 return null;
             }
 
-            setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to check the current session.');
+            if (reportErrors) {
+                setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to check the current session.');
+            }
+
             setCurrentUser(null);
             return null;
         } finally {
