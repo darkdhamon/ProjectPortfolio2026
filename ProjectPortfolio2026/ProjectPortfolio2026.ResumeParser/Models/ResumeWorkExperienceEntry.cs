@@ -1,14 +1,14 @@
-namespace ProjectPortfolio2026.Server.Services.ServiceModels;
+namespace ProjectPortfolio2026.ResumeParser.Models;
 
-public sealed class ParsedWorkHistoryEntry
+public sealed class ResumeWorkExperienceEntry
 {
     public string? EmployerName { get; init; }
 
-    public ParsedLocation? EmployerLocation { get; init; }
+    public ResumeLocation? EmployerLocation { get; init; }
 
     public string? JobTitle { get; init; }
 
-    public ParsedDateRange EmploymentDates { get; init; } = new();
+    public ResumeDateRange EmploymentDates { get; init; } = new();
 
     public string? EmploymentType { get; init; }
 
@@ -24,7 +24,7 @@ public sealed class ParsedWorkHistoryEntry
 
     public List<string> Tags { get; init; } = [];
 
-    public string? RawRoleText { get; init; }
+    public string? RawText { get; init; }
 
-    public Dictionary<string, string?> RawFields { get; init; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string?> Metadata { get; init; } = new(StringComparer.Ordinal);
 }

@@ -1,6 +1,6 @@
 namespace ProjectPortfolio2026.Server.Services.ServiceModels;
 
-public sealed class ResumeParseResult
+public sealed class ResumeImportParseResult
 {
     public ParsedPerson? Person { get; init; }
 

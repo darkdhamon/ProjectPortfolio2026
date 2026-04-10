@@ -1,6 +1,6 @@
-namespace ProjectPortfolio2026.Server.Services.ServiceModels;
+namespace ProjectPortfolio2026.ResumeParser.Models;
 
-public sealed class ParsedPerson
+public sealed class ResumeHeader
 {
     public string? FullName { get; init; }
 
@@ -16,7 +16,7 @@ public sealed class ParsedPerson
 
     public List<string> PhoneNumbers { get; init; } = [];
 
-    public ParsedLocation? Location { get; init; }
+    public ResumeLocation? Location { get; init; }
 
-    public List<string> SocialProfiles { get; init; } = [];
+    public List<ResumeProfileLink> Profiles { get; init; } = [];
 }

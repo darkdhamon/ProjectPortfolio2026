@@ -4,7 +4,7 @@ namespace ProjectPortfolio2026.Server.Services.Interfaces;
 
 public interface IResumeParserService
 {
-    Task<ResumeParseResult> ParseAsync(
+    Task<ResumeImportParseResult> ParseAsync(
         Stream content,
         string fileName,
         CancellationToken cancellationToken = default);
