@@ -10,6 +10,23 @@ public static class ResumeParserServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        services.AddScoped<IResumeTextExtractor, DocxResumeTextExtractor>();
+        services.AddScoped<IResumeTextExtractor, PdfResumeTextExtractor>();
+        services.AddScoped<IResumeTextExtractor, PlainTextResumeTextExtractor>();
+        services.AddScoped<IResumeSectionClassifier, HeuristicResumeSectionClassifier>();
+        services.AddScoped<IResumeSectionParser, HeaderResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, ProfessionalSummaryResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, WorkExperienceResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, EducationResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, SkillsResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, CertificationsResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, ProjectsResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, LanguagesResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, AwardsResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, VolunteerExperienceResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, PublicationsResumeSectionParser>();
+        services.AddScoped<IResumeSectionParser, ReferencesResumeSectionParser>();
+        services.AddScoped<IResumeAdditionalSectionParser, AdditionalResumeSectionParser>();
         services.AddScoped<IResumeDocumentParser, HeuristicResumeDocumentParser>();
         return services;
     }
