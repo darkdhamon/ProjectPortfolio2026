@@ -14,8 +14,7 @@ public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParse
     private static readonly HashSet<string> TextExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".txt",
-        ".md",
-        ".rtf"
+        ".md"
     };
 
     private static readonly HashSet<string> CustomHeadingKeywords = new(StringComparer.OrdinalIgnoreCase)
@@ -164,13 +163,18 @@ public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParse
             return ExtractPdfText(buffer);
         }
 
-        if (TextExtensions.Contains(extension) || LooksLikeTextContent(buffer))
+        if (TextExtensions.Contains(extension))
+        {
+            return ReadTextBuffer(buffer);
+        }
+
+        if (string.IsNullOrEmpty(extension) && LooksLikeUtf8TextContent(buffer))
         {
             return ReadTextBuffer(buffer);
         }
 
         throw new NotSupportedException(
-            $"The resume parser does not support '{extension}' files yet. Supported formats currently include .docx, .pdf, and plain text.");
+            $"The resume parser does not support '{extension}' files yet. Supported formats currently include .docx, .pdf, .txt, and .md.");
     }
 
     private static string ExtractPdfText(Stream content)
@@ -214,7 +218,7 @@ public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParse
         return string.Join(Environment.NewLine, extracted);
     }
 
-    private static bool LooksLikeTextContent(MemoryStream content)
+    private static bool LooksLikeUtf8TextContent(MemoryStream content)
     {
         var buffer = content.ToArray();
         if (buffer.Length == 0)
@@ -222,23 +226,27 @@ public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParse
             return true;
         }
 
-        var sampleLength = Math.Min(buffer.Length, 4096);
-        var printableCount = 0;
-        for (var index = 0; index < sampleLength; index++)
+        try
         {
-            var value = buffer[index];
-            if (value == 0)
+            var strictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+            var text = strictUtf8.GetString(buffer);
+            if (string.IsNullOrWhiteSpace(text))
             {
                 return false;
             }
 
-            if (value is 9 or 10 or 13 || (value >= 32 && value <= 126) || value >= 128)
-            {
-                printableCount++;
-            }
-        }
+            var sampleLength = Math.Min(text.Length, 4096);
+            var textSample = text[..sampleLength];
+            var letterCount = textSample.Count(char.IsLetter);
+            var disallowedControlCount = textSample.Count(character => char.IsControl(character) &&
+                                                                       character is not '\r' and not '\n' and not '\t');
 
-        return printableCount >= sampleLength * 0.85;
+            return letterCount > 0 && disallowedControlCount == 0;
+        }
+        catch (DecoderFallbackException)
+        {
+            return false;
+        }
     }
 
     private static string ExtractDocxText(Stream content)

@@ -244,6 +244,28 @@ public sealed class HeuristicResumeDocumentParserTests
     }
 
     [Test]
+    public void ParseAsync_HighByteBinaryFormat_ThrowsNotSupportedException()
+    {
+        var parser = new HeuristicResumeDocumentParser();
+        using var stream = new MemoryStream([0xFF, 0xD8, 0xE0, 0xAA, 0xFE, 0xF1, 0xC0, 0xAF]);
+
+        var act = async () => await parser.ParseAsync(stream, "resume.dat");
+
+        Assert.That(act, Throws.TypeOf<NotSupportedException>());
+    }
+
+    [Test]
+    public void ParseAsync_RtfFile_ThrowsNotSupportedExceptionUntilRtfExtractionExists()
+    {
+        var parser = new HeuristicResumeDocumentParser();
+        using var stream = CreateTextStream(@"{\rtf1\ansi Jane Example\par Senior Engineer}");
+
+        var act = async () => await parser.ParseAsync(stream, "resume.rtf");
+
+        Assert.That(act, Throws.TypeOf<NotSupportedException>());
+    }
+
+    [Test]
     public async Task ParseAsync_MultiWordCustomSection_PreservesAdditionalSection()
     {
         var parser = new HeuristicResumeDocumentParser();
