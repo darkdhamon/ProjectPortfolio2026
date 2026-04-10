@@ -26,6 +26,7 @@
     <ProjectReference Include="..\projectportfolio2026.client\projectportfolio2026.client.esproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+    <ProjectReference Include="..\ProjectPortfolio2026.ResumeParser\ProjectPortfolio2026.ResumeParser.csproj" />
   </ItemGroup>
 
 </Project>
