@@ -1,15 +1,36 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using ProjectPortfolio2026.ResumeParser.Interfaces;
 using ProjectPortfolio2026.ResumeParser.Models;
+using UglyToad.PdfPig;
 
 namespace ProjectPortfolio2026.ResumeParser.Implementations;
 
 public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParser
 {
+    private static readonly HashSet<string> TextExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".txt",
+        ".md",
+        ".rtf"
+    };
+
+    private static readonly HashSet<string> CustomHeadingKeywords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "activities",
+        "affiliations",
+        "contributions",
+        "experience",
+        "interests",
+        "involvement",
+        "leadership",
+        "organizations",
+        "service"
+    };
+
     private static readonly string[] HeaderSectionOrder =
     [
         "summary",
@@ -138,7 +159,86 @@ public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParse
             return ExtractDocxText(buffer);
         }
 
-        return ReadTextBuffer(buffer);
+        if (extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            return ExtractPdfText(buffer);
+        }
+
+        if (TextExtensions.Contains(extension) || LooksLikeTextContent(buffer))
+        {
+            return ReadTextBuffer(buffer);
+        }
+
+        throw new NotSupportedException(
+            $"The resume parser does not support '{extension}' files yet. Supported formats currently include .docx, .pdf, and plain text.");
+    }
+
+    private static string ExtractPdfText(Stream content)
+    {
+        byte[] rawBytes;
+        if (content.CanSeek)
+        {
+            content.Seek(0, SeekOrigin.Begin);
+        }
+
+        if (content is MemoryStream memoryStream)
+        {
+            rawBytes = memoryStream.ToArray();
+        }
+        else
+        {
+            using var capture = new MemoryStream();
+            content.CopyTo(capture);
+            rawBytes = capture.ToArray();
+            content.Seek(0, SeekOrigin.Begin);
+        }
+
+        using var document = PdfDocument.Open(content);
+        var pageText = document.GetPages()
+            .Select(page => page.Text)
+            .Where(static text => !string.IsNullOrWhiteSpace(text))
+            .ToList();
+
+        if (pageText.Count > 0)
+        {
+            return string.Join(Environment.NewLine + Environment.NewLine, pageText);
+        }
+
+        var rawPdf = Encoding.ASCII.GetString(rawBytes);
+        var matches = PdfLiteralTextRegex().Matches(rawPdf);
+        var extracted = matches
+            .Select(match => Regex.Unescape(match.Groups["text"].Value))
+            .Where(static text => !string.IsNullOrWhiteSpace(text))
+            .ToList();
+
+        return string.Join(Environment.NewLine, extracted);
+    }
+
+    private static bool LooksLikeTextContent(MemoryStream content)
+    {
+        var buffer = content.ToArray();
+        if (buffer.Length == 0)
+        {
+            return true;
+        }
+
+        var sampleLength = Math.Min(buffer.Length, 4096);
+        var printableCount = 0;
+        for (var index = 0; index < sampleLength; index++)
+        {
+            var value = buffer[index];
+            if (value == 0)
+            {
+                return false;
+            }
+
+            if (value is 9 or 10 or 13 || (value >= 32 && value <= 126) || value >= 128)
+            {
+                printableCount++;
+            }
+        }
+
+        return printableCount >= sampleLength * 0.85;
     }
 
     private static string ExtractDocxText(Stream content)
@@ -820,7 +920,7 @@ public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParse
         }
 
         return text
-            .Split([",", ";", "|", "•"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Split([",", ";", "|", "\u2022"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(CollapseWhitespace)
             .Where(static item => !string.IsNullOrWhiteSpace(item))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -1037,18 +1137,29 @@ public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParse
             return false;
         }
 
-        var wordCount = value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-        return wordCount == 1 &&
-               value.Any(char.IsLetter) &&
-               char.IsUpper(value[0]) &&
-               value.Equals(value.Trim(), StringComparison.Ordinal);
+        var words = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 1)
+        {
+            return value.Any(char.IsLetter) &&
+                   char.IsUpper(value[0]) &&
+                   value.Equals(value.Trim(), StringComparison.Ordinal);
+        }
+
+        if (words.Length > 4)
+        {
+            return false;
+        }
+
+        var lastWord = words[^1];
+        return CustomHeadingKeywords.Contains(lastWord) &&
+               words.All(word => char.IsUpper(word[0]));
     }
 
     private static bool IsBulletLine(string line)
     {
         return line.StartsWith("- ", StringComparison.Ordinal) ||
                line.StartsWith("* ", StringComparison.Ordinal) ||
-               line.StartsWith("•", StringComparison.Ordinal) ||
+               line.StartsWith("\u2022", StringComparison.Ordinal) ||
                BulletNumberRegex().IsMatch(line);
     }
 
@@ -1081,6 +1192,7 @@ public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParse
         return Path.GetExtension(fileName).ToLowerInvariant() switch
         {
             ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".pdf" => "application/pdf",
             ".txt" => "text/plain",
             ".md" => "text/markdown",
             _ => "application/octet-stream"
@@ -1093,7 +1205,7 @@ public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParse
     [GeneratedRegex(@"\n{3,}")]
     private static partial Regex MultipleBlankLineRegex();
 
-    [GeneratedRegex(@"(?<start>(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{1,2}/)?\s?\d{4})\s*(?:-|–|to)\s*(?<end>(?:present|current|now|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{1,2}/)?\s?\d{4}))", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(?<start>(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{1,2}/)?\s?\d{4})\s*(?:-|\u2013|to)\s*(?<end>(?:present|current|now|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{1,2}/)?\s?\d{4}))", RegexOptions.IgnoreCase)]
     private static partial Regex DateRangeRegex();
 
     [GeneratedRegex(@"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", RegexOptions.IgnoreCase)]
@@ -1105,9 +1217,13 @@ public sealed partial class HeuristicResumeDocumentParser : IResumeDocumentParse
     [GeneratedRegex(@"https?://[^\s|]+", RegexOptions.IgnoreCase)]
     private static partial Regex UrlRegex();
 
+    [GeneratedRegex(@"\((?<text>(?:\\.|[^\\)])*)\)\s*Tj", RegexOptions.IgnoreCase)]
+    private static partial Regex PdfLiteralTextRegex();
+
     [GeneratedRegex(@"^\d+\.\s+")]
     private static partial Regex BulletNumberRegex();
 
-    [GeneratedRegex(@"^(?:[-*]\s+|•\s*|\d+\.\s+)")]
+    [GeneratedRegex(@"^(?:[-*]\s+|\u2022\s*|\d+\.\s+)")]
     private static partial Regex BulletPrefixRegex();
 }
+

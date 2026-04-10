@@ -155,6 +155,38 @@ public sealed class HeuristicResumeDocumentParserTests
     }
 
     [Test]
+    public async Task ParseAsync_UnicodeBulletResume_RecognizesBulletDescriptionsAndDelimitedSkills()
+    {
+        var parser = new HeuristicResumeDocumentParser();
+        var content = """
+            Taylor Example
+            taylor@example.com
+
+            Work Experience
+            Senior Engineer at Northwind
+            Jan 2022 – Present
+            • Led delivery of a portfolio refresh.
+            • Partnered with design and recruiting teams.
+            Technologies: C# • SQL • Azure
+
+            Skills
+            Platforms: Azure • GitHub Actions • Docker
+            """;
+
+        await using var stream = CreateTextStream(content);
+
+        var document = await parser.ParseAsync(stream, "unicode-bullets.txt");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.WorkExperience, Has.Count.EqualTo(1));
+            Assert.That(document.WorkExperience[0].DescriptionLines, Has.Count.EqualTo(2));
+            Assert.That(document.WorkExperience[0].Technologies, Does.Contain("Azure"));
+            Assert.That(document.Skills.SelectMany(section => section.Items), Does.Contain("GitHub Actions"));
+        });
+    }
+
+    [Test]
     public async Task ParseAsync_DocxResume_ExtractsWordDocumentText()
     {
         var parser = new HeuristicResumeDocumentParser();
@@ -175,6 +207,69 @@ public sealed class HeuristicResumeDocumentParserTests
             Assert.That(document.WorkExperience, Has.Count.EqualTo(1));
             Assert.That(document.WorkExperience[0].EmployerName, Is.EqualTo("Fabrikam"));
             Assert.That(document.Metadata["contentType"], Does.Contain("officedocument"));
+        });
+    }
+
+    [Test]
+    public async Task ParseAsync_PdfResume_ExtractsPdfText()
+    {
+        var parser = new HeuristicResumeDocumentParser();
+        await using var stream = CreatePdfStream(
+        [
+            "Morgan Resume",
+            "morgan@example.com",
+            "Work Experience",
+            "Principal Engineer at Adventure Works",
+            "Jan 2021 - Present"
+        ]);
+
+        var document = await parser.ParseAsync(stream, "resume.pdf");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.Metadata["contentType"], Is.EqualTo("application/pdf"));
+            Assert.That(document.RawText, Does.Not.Contain("%PDF"));
+        });
+    }
+
+    [Test]
+    public void ParseAsync_UnsupportedBinaryFormat_ThrowsNotSupportedException()
+    {
+        var parser = new HeuristicResumeDocumentParser();
+        using var stream = new MemoryStream([0x50, 0x4B, 0x03, 0x04, 0x00, 0x01, 0x02, 0x03]);
+
+        var act = async () => await parser.ParseAsync(stream, "resume.bin");
+
+        Assert.That(act, Throws.TypeOf<NotSupportedException>());
+    }
+
+    [Test]
+    public async Task ParseAsync_MultiWordCustomSection_PreservesAdditionalSection()
+    {
+        var parser = new HeuristicResumeDocumentParser();
+        var content = """
+            Riley Example
+            riley@example.com
+
+            Work Experience
+            Staff Engineer at Fabrikam
+            2020 - Present
+            - Led API modernization work.
+
+            Open Source Contributions
+            Maintainer for internal NuGet packages
+            Speaker at .NET user groups
+            """;
+
+        await using var stream = CreateTextStream(content);
+
+        var document = await parser.ParseAsync(stream, "custom-sections.txt");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.AdditionalSections, Has.Count.EqualTo(1));
+            Assert.That(document.AdditionalSections[0].Title, Is.EqualTo("Open Source Contributions"));
+            Assert.That(document.AdditionalSections[0].Items, Does.Contain("Maintainer for internal NuGet packages"));
         });
     }
 
@@ -215,5 +310,67 @@ public sealed class HeuristicResumeDocumentParserTests
 
         stream.Seek(0, SeekOrigin.Begin);
         return stream;
+    }
+
+    private static MemoryStream CreatePdfStream(IReadOnlyList<string> lines)
+    {
+        static string EscapePdfText(string value) => value.Replace(@"\", @"\\").Replace("(", @"\(").Replace(")", @"\)");
+
+        var contentBuilder = new StringBuilder();
+        contentBuilder.AppendLine("BT");
+        contentBuilder.AppendLine("/F1 12 Tf");
+        contentBuilder.AppendLine("72 720 Td");
+        for (var index = 0; index < lines.Count; index++)
+        {
+            if (index > 0)
+            {
+                contentBuilder.AppendLine("T*");
+            }
+
+            contentBuilder.Append('(').Append(EscapePdfText(lines[index])).AppendLine(") Tj");
+        }
+
+        contentBuilder.AppendLine("ET");
+
+        var streamContent = contentBuilder.ToString();
+        var objects = new[]
+        {
+            "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
+            "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
+            "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >> endobj",
+            $"4 0 obj << /Length {Encoding.ASCII.GetByteCount(streamContent)} >> stream\n{streamContent}endstream\nendobj",
+            "5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj"
+        };
+
+        using var writerStream = new MemoryStream();
+        using (var writer = new StreamWriter(writerStream, Encoding.ASCII, leaveOpen: true))
+        {
+            writer.NewLine = "\n";
+            writer.WriteLine("%PDF-1.4");
+            writer.Flush();
+            var offsets = new List<long> { 0 };
+            foreach (var obj in objects)
+            {
+                offsets.Add(writerStream.Position);
+                writer.WriteLine(obj);
+                writer.Flush();
+            }
+
+            var xrefOffset = writerStream.Position;
+            writer.WriteLine($"xref\n0 {objects.Length + 1}");
+            writer.WriteLine("0000000000 65535 f ");
+            foreach (var offset in offsets.Skip(1))
+            {
+                writer.WriteLine($"{offset:D10} 00000 n ");
+            }
+
+            writer.WriteLine($"trailer << /Size {objects.Length + 1} /Root 1 0 R >>");
+            writer.WriteLine("startxref");
+            writer.WriteLine(xrefOffset.ToString());
+            writer.Write("%%EOF");
+            writer.Flush();
+        }
+
+        return new MemoryStream(writerStream.ToArray());
     }
 }
