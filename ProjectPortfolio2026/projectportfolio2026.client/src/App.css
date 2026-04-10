@@ -318,6 +318,236 @@
     padding: 2rem;
 }
 
+.resume-page,
+.resume-grid,
+.resume-panel,
+.resume-panel-heading,
+.resume-link-list,
+.resume-link-card,
+.resume-timeline,
+.resume-timeline-item,
+.resume-timeline-heading,
+.resume-action-area,
+.resume-action-grid,
+.resume-action-card,
+.resume-action-button,
+.resume-action-copy,
+.resume-shell-note,
+.resume-hero,
+.resume-hero-copy,
+.resume-hero-meta {
+    display: grid;
+}
+
+.resume-page {
+    gap: 1.5rem;
+    padding: 2rem;
+}
+
+.resume-hero {
+    grid-template-columns: minmax(0, 1.15fr) minmax(19rem, 0.85fr);
+    gap: 1.5rem;
+    padding: 1.5rem;
+}
+
+.resume-hero-copy,
+.resume-hero-meta,
+.resume-panel,
+.resume-shell-note,
+.resume-link-card,
+.resume-action-card {
+    gap: 0.9rem;
+}
+
+.resume-hero-meta {
+    align-content: start;
+}
+
+.resume-callout-card,
+.resume-panel,
+.resume-link-card,
+.resume-timeline-item,
+.resume-action-card {
+    border: 1px solid rgba(111, 137, 171, 0.16);
+    border-radius: 1.3rem;
+    background:
+        linear-gradient(180deg, rgba(13, 29, 49, 0.88), rgba(9, 21, 36, 0.9)),
+        radial-gradient(circle at top right, rgba(99, 222, 255, 0.08), transparent 40%);
+    box-shadow: 0 18px 50px rgba(7, 16, 30, 0.18);
+}
+
+.resume-callout-card {
+    display: grid;
+    gap: 0.55rem;
+    padding: 1.1rem 1.15rem;
+    border-color: rgba(245, 183, 48, 0.2);
+    background:
+        linear-gradient(180deg, rgba(31, 48, 75, 0.92), rgba(14, 28, 47, 0.92)),
+        radial-gradient(circle at top right, rgba(245, 183, 48, 0.16), transparent 45%);
+}
+
+.resume-callout-card strong,
+.resume-panel h2,
+.resume-timeline-heading h3,
+.resume-action-card strong {
+    margin: 0;
+    color: #fff7e8;
+}
+
+.resume-callout-card strong {
+    font-size: 1.15rem;
+    line-height: 1.35;
+}
+
+.resume-callout-card p,
+.resume-link-card p,
+.resume-shell-note p,
+.resume-action-card p,
+.resume-date-range,
+.resume-timeline-heading p {
+    margin: 0;
+    color: rgba(219, 230, 243, 0.82);
+    line-height: 1.65;
+}
+
+.resume-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.resume-grid-secondary {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+}
+
+.resume-panel {
+    gap: 1rem;
+    padding: 1.35rem;
+}
+
+.resume-panel-emphasis {
+    background:
+        linear-gradient(180deg, rgba(16, 34, 58, 0.94), rgba(11, 24, 41, 0.92)),
+        radial-gradient(circle at top right, rgba(245, 183, 48, 0.14), transparent 42%);
+}
+
+.resume-panel-heading {
+    gap: 0.35rem;
+}
+
+.resume-panel-heading .eyebrow {
+    margin-bottom: 0;
+}
+
+.resume-link-list,
+.resume-action-grid {
+    grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+    gap: 0.7rem;
+}
+
+.resume-link-card,
+.resume-action-card {
+    padding: 1rem;
+    text-decoration: none;
+}
+
+.resume-action-card {
+    gap: 0.55rem;
+    padding: 0.75rem 0.8rem;
+}
+
+.resume-action-copy {
+    gap: 0.15rem;
+}
+
+.resume-action-note {
+    color: #f0d796;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.resume-action-copy .meta-label {
+    color: #d7e2f1;
+}
+
+.resume-action-button {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 2.35rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid rgba(245, 183, 48, 0.18);
+    border-radius: 0.95rem;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 247, 232, 0.76);
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: not-allowed;
+}
+
+.resume-action-button:disabled {
+    opacity: 1;
+}
+
+.resume-link-card strong {
+    color: #eff7ff;
+}
+
+.resume-link-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(126, 233, 255, 0.22);
+}
+
+.resume-shell-note {
+    min-height: 100%;
+    padding: 1rem 1.05rem;
+    border-radius: 1.1rem;
+    border: 1px dashed rgba(111, 137, 171, 0.22);
+    background: rgba(9, 21, 36, 0.42);
+}
+
+.resume-timeline {
+    gap: 0.85rem;
+}
+
+.resume-timeline-item {
+    gap: 0.75rem;
+    padding: 1rem 1.05rem;
+}
+
+.resume-timeline-heading {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.85rem;
+    align-items: start;
+}
+
+.resume-date-range {
+    justify-self: end;
+    white-space: nowrap;
+    font-size: 0.92rem;
+}
+
+.resume-action-area {
+    gap: 1rem;
+    position: sticky;
+    top: 1rem;
+    z-index: 12;
+}
+
+.resume-action-panel {
+    gap: 0.85rem;
+    padding: 0.95rem 1rem;
+    background:
+        linear-gradient(180deg, rgba(17, 37, 63, 0.94), rgba(11, 23, 39, 0.92)),
+        radial-gradient(circle at top left, rgba(99, 222, 255, 0.12), transparent 38%);
+    box-shadow:
+        0 18px 50px rgba(7, 16, 30, 0.24),
+        0 0 0 1px rgba(126, 233, 255, 0.04);
+}
+
 .auth-page {
     align-content: start;
 }
@@ -1928,7 +2158,10 @@
     .contact-hero,
     .work-role-heading,
     .contact-grid,
-    .contact-grid-secondary {
+    .contact-grid-secondary,
+    .resume-grid,
+    .resume-grid-secondary,
+    .resume-hero {
         grid-template-columns: 1fr;
     }
 
@@ -1984,6 +2217,7 @@
     .site-header,
     .home-page,
     .portfolio-page,
+    .resume-page,
     .auth-page,
     .admin-page {
         padding: 1rem;
@@ -2008,12 +2242,31 @@
     .featured-panel,
     .detail-hero,
     .contact-hero,
+    .resume-hero,
     .contact-panel {
         padding: 1.35rem;
     }
 
     .hero-stats {
         grid-template-columns: 1fr;
+    }
+
+    .resume-link-list,
+    .resume-action-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .resume-action-area {
+        position: static;
+    }
+
+    .resume-timeline-heading {
+        grid-template-columns: 1fr;
+    }
+
+    .resume-date-range {
+        justify-self: start;
+        white-space: normal;
     }
 
     .toolbar,

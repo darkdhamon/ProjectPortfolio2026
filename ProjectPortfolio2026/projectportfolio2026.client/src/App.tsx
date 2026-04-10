@@ -10,6 +10,7 @@ import { ContactPage } from './features/contact/ContactPage';
 import { HomePage } from './features/home/HomePage';
 import { ProjectDetailPage } from './features/projects/ProjectDetailPage';
 import { ProjectListPage } from './features/projects/ProjectListPage';
+import { ResumePage } from './features/resume/ResumePage';
 import { WorkHistoryPage } from './features/workHistory/WorkHistoryPage';
 import { useAuthSession } from './hooks/useAuthSession';
 import './App.css';
@@ -52,6 +53,8 @@ function App() {
             ? 'Projects'
             : route.kind === 'work-history'
                 ? 'Work History'
+            : route.kind === 'resume'
+                ? 'Resume'
             : route.kind === 'login' || route.kind === 'admin' || route.kind === 'admin-account'
                 ? 'Admin'
                 : route.kind === 'contact'
@@ -69,6 +72,12 @@ function App() {
                 kicker: 'Career Timeline',
                 title: 'Work History',
                 summary: 'Review employers, role progression, and the categorized skills and technologies connected to each chapter of the resume timeline.'
+            } satisfies SiteShellContent
+        : route.kind === 'resume'
+            ? {
+                kicker: 'Recruiter Snapshot',
+                title: 'Resume',
+                summary: 'Scan the candidate summary, contact signals, and structured work-history foundation in a format designed for fast recruiter review.'
             } satisfies SiteShellContent
         : route.kind === 'detail'
             ? {
@@ -185,6 +194,8 @@ function App() {
                 <HomePage onNavigate={navigate} />
             ) : route.kind === 'work-history' ? (
                 <WorkHistoryPage />
+            ) : route.kind === 'resume' ? (
+                <ResumePage />
             ) : route.kind === 'detail' ? (
                 <ProjectDetailPage
                     projectId={route.projectId}

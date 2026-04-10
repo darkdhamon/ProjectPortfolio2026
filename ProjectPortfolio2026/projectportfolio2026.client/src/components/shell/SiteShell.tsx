@@ -21,7 +21,7 @@ const navItems: readonly NavItem[] = [
     { label: 'Work History', href: '/work-history', description: 'Employers, roles, and resume-ready timeline data.' },
     { label: 'Admin', description: 'Authentication, dashboard access, and account management.' },
     { label: 'About', description: 'Background, strengths, and developer story.' },
-    { label: 'Resume', description: 'Resume hub and downloadable materials.' },
+    { label: 'Resume', href: '/resume', description: 'Recruiter-focused resume layout and career snapshot.' },
     { label: 'Contact', href: '/contact', description: 'Direct outreach paths and social links.' },
     { label: 'Blog', description: 'Writing, updates, and thought pieces.' }
 ] as const;

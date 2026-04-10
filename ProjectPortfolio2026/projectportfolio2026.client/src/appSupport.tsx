@@ -14,6 +14,7 @@ const adminRoutePattern = /^\/admin\/?$/;
 const adminAccountRoutePattern = /^\/admin\/account\/?$/;
 const listRoutePattern = /^\/projects\/?$/;
 const workHistoryRoutePattern = /^\/work-history\/?$/;
+const resumeRoutePattern = /^\/resume\/?$/;
 const detailRoutePattern = /^\/projects\/(?<id>\d+)\/?$/;
 const contactRoutePattern = /^\/contact\/?$/;
 
@@ -46,6 +47,12 @@ export function parseRoute(location: AppLocation) {
     if (workHistoryRoutePattern.test(location.pathname)) {
         return {
             kind: 'work-history' as const
+        };
+    }
+
+    if (resumeRoutePattern.test(location.pathname)) {
+        return {
+            kind: 'resume' as const
         };
     }
 

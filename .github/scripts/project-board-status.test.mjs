@@ -6,7 +6,7 @@ import {
   extractIssueNumbers,
 } from "./project-board-status.mjs";
 
-test("extractIssueNumbers reads issue numbers from the Included Issues section only", () => {
+test("extractIssueNumbers reads issue numbers from the Included Issues section", () => {
   const body = `## Summary
 Promote changes.
 
@@ -21,12 +21,12 @@ Promote changes.
   assert.deepEqual(extractIssueNumbers(body), [5, 60]);
 });
 
-test("extractIssueNumbers falls back to generic references when no Included Issues section exists", () => {
+test("extractIssueNumbers captures supported closing keywords only", () => {
   const body = `Closes #6
 Refs #33
 Fixes #70`;
 
-  assert.deepEqual(extractIssueNumbers(body), [6, 33, 70]);
+  assert.deepEqual(extractIssueNumbers(body), [6, 70]);
 });
 
 test("extractIssueNumbers ignores pull request references in prose", () => {
@@ -43,12 +43,39 @@ Promote dev to stage.
   assert.deepEqual(extractIssueNumbers(body), [69]);
 });
 
-test("extractIssueNumbers reads issue references outside Included Issues without capturing PR numbers", () => {
-  const body = `Issue #6 is ready for review.
+test("extractIssueNumbers ignores non-closing issue references", () => {
+  const body = `Related to #61
+Issue #6 is ready for review.
 See #33 for follow-up work.
 Merged PR #70 already shipped separately.`;
 
-  assert.deepEqual(extractIssueNumbers(body), [6, 33]);
+  assert.deepEqual(extractIssueNumbers(body), []);
+});
+
+test("extractIssueNumbers merges Included Issues with closing references", () => {
+  const body = `## Included Issues
+- #12: promote shell changes
+
+Closes #85
+Related to #61`;
+
+  assert.deepEqual(extractIssueNumbers(body), [12, 85]);
+});
+
+test("extractIssueNumbers supports multiple closing references in one statement", () => {
+  const body = `Resolves #12, #13 and darkdhamon/ProjectPortfolio2026#14`;
+
+  assert.deepEqual(extractIssueNumbers(body, "darkdhamon/ProjectPortfolio2026"), [
+    12,
+    13,
+    14,
+  ]);
+});
+
+test("extractIssueNumbers ignores cross-repo closing references", () => {
+  const body = `Resolves #12 and other-org/other-repo#14`;
+
+  assert.deepEqual(extractIssueNumbers(body, "darkdhamon/ProjectPortfolio2026"), [12]);
 });
 
 test("determineStatusName maps open PR activity to In review", () => {
