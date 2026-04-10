@@ -302,6 +302,88 @@ describe('App', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/work-history?requestId=request-1', expect.any(Object));
     });
 
+    it('renders the resume page route and highlights resume navigation', async () => {
+        window.history.replaceState({}, '', '/resume');
+        fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+            const url = input.toString();
+
+            if (url === '/api/auth/me') {
+                return jsonResponse({
+                    isAuthenticated: false,
+                    isAdmin: false
+                });
+            }
+
+            if (url === '/api/portfolio-profile?requestId=request-1') {
+                return jsonResponse({
+                    requestId: 'request-1',
+                    id: 1,
+                    displayName: 'Bronze Loft',
+                    contactHeadline: 'Choose the contact path that fits the conversation you want to have.',
+                    contactIntro: 'Full-stack engineer focused on reliable delivery and clear communication.',
+                    availabilityHeadline: 'Open to senior full-stack roles',
+                    availabilitySummary: 'Remote-friendly and recruiter-ready.',
+                    contactMethods: [
+                        {
+                            type: 'email',
+                            label: 'Email',
+                            value: 'bronze@example.dev',
+                            href: 'mailto:bronze@example.dev',
+                            note: 'Best for interviews and hiring conversations.',
+                            sortOrder: 1
+                        }
+                    ],
+                    socialLinks: [
+                        {
+                            platform: 'github',
+                            label: 'GitHub',
+                            url: 'https://github.com/darkdhamon',
+                            handle: '@darkdhamon',
+                            summary: 'Public code samples and implementation details.',
+                            sortOrder: 1
+                        }
+                    ]
+                });
+            }
+
+            if (url === '/api/work-history?requestId=request-1') {
+                return jsonResponse({
+                    requestId: 'request-1',
+                    items: [
+                        {
+                            id: 7,
+                            name: 'Northwind Health',
+                            city: 'Chicago',
+                            region: 'IL',
+                            jobRoles: [
+                                {
+                                    role: 'Senior Software Engineer',
+                                    startDate: '2024-01-08',
+                                    endDate: null,
+                                    supervisorName: 'Dana Smith',
+                                    descriptionMarkdown: 'Leading API delivery.',
+                                    skills: ['API Design'],
+                                    technologies: ['.NET 10']
+                                }
+                            ]
+                        }
+                    ]
+                });
+            }
+
+            throw new Error(`Unexpected fetch request: ${url}`);
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Bronze Loft' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Resume' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByText('Open to senior full-stack roles')).toBeInTheDocument();
+        expect(screen.getByText('Senior Software Engineer')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /bronze@example\.dev/i })).toHaveAttribute('href', 'mailto:bronze@example.dev');
+        expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
+    });
+
     it('renders the contact page from the portfolio profile endpoint and highlights contact navigation', async () => {
         window.history.replaceState({}, '', '/contact');
         fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
@@ -1010,7 +1092,7 @@ describe('App helpers', () => {
         });
     });
 
-    it('parses home, list, detail, and admin routes', () => {
+    it('parses home, list, detail, resume, and admin routes', () => {
         expect(parseRoute({ pathname: '/', search: '?search=react' })).toEqual({
             kind: 'home'
         });
@@ -1044,6 +1126,10 @@ describe('App helpers', () => {
 
         expect(parseRoute({ pathname: '/work-history', search: '' })).toEqual({
             kind: 'work-history'
+        });
+
+        expect(parseRoute({ pathname: '/resume', search: '' })).toEqual({
+            kind: 'resume'
         });
 
         expect(parseRoute({ pathname: '/contact', search: '' })).toEqual({
