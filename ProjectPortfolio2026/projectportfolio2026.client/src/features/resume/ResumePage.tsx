@@ -90,6 +90,74 @@ export function ResumePage() {
                 </div>
             </section>
 
+            <section className="resume-action-area">
+                <article className="resume-panel resume-action-panel">
+                    <p className="eyebrow">Resume Actions</p>
+                    <div className="resume-action-grid">
+                        <div className="resume-action-card">
+                            <div className="resume-action-copy">
+                                <span className="meta-label">Resume Filters</span>
+                                <span className="resume-action-note">Issue #87</span>
+                            </div>
+                            <button
+                                className="resume-action-button"
+                                type="button"
+                                disabled
+                                aria-disabled="true"
+                                aria-label="Filter Resume">
+                                <span>Filter Resume</span>
+                                <span className="coming-soon-pill">Coming Soon</span>
+                            </button>
+                        </div>
+                        <div className="resume-action-card">
+                            <div className="resume-action-copy">
+                                <span className="meta-label">Skill Highlights</span>
+                                <span className="resume-action-note">Issue #87</span>
+                            </div>
+                            <button
+                                className="resume-action-button"
+                                type="button"
+                                disabled
+                                aria-disabled="true"
+                                aria-label="Highlight Skills">
+                                <span>Highlight Skills</span>
+                                <span className="coming-soon-pill">Coming Soon</span>
+                            </button>
+                        </div>
+                        <div className="resume-action-card">
+                            <div className="resume-action-copy">
+                                <span className="meta-label">PDF Export</span>
+                                <span className="resume-action-note">Issue #88</span>
+                            </div>
+                            <button
+                                className="resume-action-button"
+                                type="button"
+                                disabled
+                                aria-disabled="true"
+                                aria-label="Download PDF">
+                                <span>Download PDF</span>
+                                <span className="coming-soon-pill">Coming Soon</span>
+                            </button>
+                        </div>
+                        <div className="resume-action-card">
+                            <div className="resume-action-copy">
+                                <span className="meta-label">Static Resume Link</span>
+                                <span className="resume-action-note">{isProfileMissing ? 'Needs config' : 'Planned'}</span>
+                            </div>
+                            <button
+                                className="resume-action-button"
+                                type="button"
+                                disabled
+                                aria-disabled="true"
+                                aria-label="Open Static Resume">
+                                <span>Open Static Resume</span>
+                                <span className="coming-soon-pill">Coming Soon</span>
+                            </button>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
             <section className="resume-grid">
                 <article className="resume-panel resume-panel-emphasis">
                     <div className="resume-panel-heading">
@@ -205,28 +273,6 @@ export function ResumePage() {
                         <p>
                             Skill and technology emphasis will plug into this panel after the richer structured resume rendering work is complete.
                         </p>
-                    </div>
-                </article>
-            </section>
-
-            <section className="resume-action-area">
-                <article className="resume-panel resume-action-panel">
-                    <div className="resume-panel-heading">
-                        <p className="eyebrow">Action Area</p>
-                        <h2>Future actions already have a home.</h2>
-                    </div>
-
-                    <div className="resume-action-grid">
-                        <div className="resume-action-card">
-                            <span className="meta-label">PDF Export</span>
-                            <strong>Planned under issue #88</strong>
-                            <p>An ATS-friendly export action will attach to this shell without changing the page structure.</p>
-                        </div>
-                        <div className="resume-action-card">
-                            <span className="meta-label">Static Resume Link</span>
-                            <strong>{isProfileMissing ? 'Not configured' : 'Awaiting configuration support'}</strong>
-                            <p>Optional external resume delivery will surface here once the admin configuration work is available.</p>
-                        </div>
                     </div>
                 </article>
             </section>

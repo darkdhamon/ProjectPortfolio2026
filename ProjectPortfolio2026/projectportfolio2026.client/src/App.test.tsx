@@ -382,6 +382,10 @@ describe('App', () => {
         expect(screen.getByText('Senior Software Engineer')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /bronze@example\.dev/i })).toHaveAttribute('href', 'mailto:bronze@example.dev');
         expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
+        expect(screen.getByRole('button', { name: 'Filter Resume' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Highlight Skills' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Download PDF' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Open Static Resume' })).toBeDisabled();
     });
 
     it('renders the contact page from the portfolio profile endpoint and highlights contact navigation', async () => {
