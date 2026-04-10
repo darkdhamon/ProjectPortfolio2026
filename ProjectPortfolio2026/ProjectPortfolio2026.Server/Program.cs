@@ -88,6 +88,7 @@ builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IEmployerRepository, EmployerRepository>();
 builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IResumeParserService, DeferredResumeParserService>();
 builder.Services.AddScoped<RequestTrackingFilter>();
 
 var app = builder.Build();
