@@ -19,40 +19,21 @@ export function extractIssueNumbers(body) {
     return [];
   }
 
-  const lines = body.split(/\r?\n/);
-  const includedIssuesHeaderIndex = lines.findIndex((line) =>
-    /^## Included Issues\b/.test(line),
-  );
-  let sourceText = body;
-
-  if (includedIssuesHeaderIndex >= 0) {
-    const includedIssueLines = [];
-
-    for (let index = includedIssuesHeaderIndex + 1; index < lines.length; index += 1) {
-      if (/^##\s/.test(lines[index])) {
-        break;
-      }
-
-      includedIssueLines.push(lines[index]);
-    }
-
-    sourceText = includedIssueLines.join("\n");
-  }
-
-  return collectIssueNumbers(sourceText);
+  return collectClosingIssueNumbers(body);
 }
 
-function collectIssueNumbers(sourceText) {
+function collectClosingIssueNumbers(sourceText) {
   const issueNumbers = new Set();
-  const issueReferencePattern =
-    /(?:^|[\s(])(?:-\s*)?(?:(issues?)\s*:?\s*|(pull\s+request|pr)\s*:?\s*)?#(\d+)\b/gi;
+  const closingReferencePattern =
+    /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s*((?:(?:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)?#\d+\b(?:\s*(?:,|and)\s*)?)*)/gi;
 
-  for (const match of sourceText.matchAll(issueReferencePattern)) {
-    if (match[2]) {
-      continue;
+  for (const match of sourceText.matchAll(closingReferencePattern)) {
+    const references = match[1] ?? "";
+    const issueReferencePattern = /(?:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)?#(\d+)\b/g;
+
+    for (const issueMatch of references.matchAll(issueReferencePattern)) {
+      issueNumbers.add(Number(issueMatch[1]));
     }
-
-    issueNumbers.add(Number(match[3]));
   }
 
   return [...issueNumbers];
