@@ -14,14 +14,14 @@ const DEFAULT_CONFIG = {
   },
 };
 
-export function extractIssueNumbers(body) {
+export function extractIssueNumbers(body, repositoryFullName = null) {
   if (!body) {
     return [];
   }
 
   const issueNumbers = new Set([
     ...collectIncludedIssueNumbers(body),
-    ...collectClosingIssueNumbers(body),
+    ...collectClosingIssueNumbers(body, repositoryFullName),
   ]);
 
   return [...issueNumbers];
@@ -53,17 +53,28 @@ function collectIncludedIssueNumbers(body) {
   return collectDirectIssueNumbers(includedIssueLines.join("\n"));
 }
 
-function collectClosingIssueNumbers(sourceText) {
+function collectClosingIssueNumbers(sourceText, repositoryFullName) {
   const issueNumbers = new Set();
   const closingReferencePattern =
     /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s*([^\r\n]+)/gi;
 
   for (const match of sourceText.matchAll(closingReferencePattern)) {
     const references = match[1] ?? "";
-    const issueReferencePattern = /(?:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)?#(\d+)\b/g;
+    const issueReferencePattern =
+      /(?:(?<repository>[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+))?#(?<issueNumber>\d+)\b/g;
 
     for (const issueMatch of references.matchAll(issueReferencePattern)) {
-      issueNumbers.add(Number(issueMatch[1]));
+      const referencedRepository = issueMatch.groups?.repository ?? null;
+
+      if (
+        referencedRepository &&
+        (!repositoryFullName ||
+          referencedRepository.toLowerCase() !== repositoryFullName.toLowerCase())
+      ) {
+        continue;
+      }
+
+      issueNumbers.add(Number(issueMatch.groups?.issueNumber));
     }
   }
 
@@ -270,7 +281,10 @@ export async function run({
     return;
   }
 
-  const issueNumbers = extractIssueNumbers(pullRequest?.body ?? "");
+  const issueNumbers = extractIssueNumbers(
+    pullRequest?.body ?? "",
+    `${owner}/${repo}`,
+  );
 
   if (issueNumbers.length === 0) {
     console.log(

@@ -63,9 +63,19 @@ Related to #61`;
 });
 
 test("extractIssueNumbers supports multiple closing references in one statement", () => {
-  const body = `Resolves #12, #13 and owner/repo#14`;
+  const body = `Resolves #12, #13 and darkdhamon/ProjectPortfolio2026#14`;
 
-  assert.deepEqual(extractIssueNumbers(body), [12, 13, 14]);
+  assert.deepEqual(extractIssueNumbers(body, "darkdhamon/ProjectPortfolio2026"), [
+    12,
+    13,
+    14,
+  ]);
+});
+
+test("extractIssueNumbers ignores cross-repo closing references", () => {
+  const body = `Resolves #12 and other-org/other-repo#14`;
+
+  assert.deepEqual(extractIssueNumbers(body, "darkdhamon/ProjectPortfolio2026"), [12]);
 });
 
 test("determineStatusName maps open PR activity to In review", () => {
