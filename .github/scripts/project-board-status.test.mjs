@@ -6,7 +6,7 @@ import {
   extractIssueNumbers,
 } from "./project-board-status.mjs";
 
-test("extractIssueNumbers reads only closing issue references", () => {
+test("extractIssueNumbers reads issue numbers from the Included Issues section", () => {
   const body = `## Summary
 Promote changes.
 
@@ -14,13 +14,11 @@ Promote changes.
 - #5: implement auth
 - #60: implement work history
 
-Closes #70
-
 ## Release Notes
 - references merged PR #74 for context
 `;
 
-  assert.deepEqual(extractIssueNumbers(body), [70]);
+  assert.deepEqual(extractIssueNumbers(body), [5, 60]);
 });
 
 test("extractIssueNumbers captures supported closing keywords only", () => {
@@ -42,7 +40,7 @@ Promote dev to stage.
 - Includes Issue #69 via merged PR #81
 `;
 
-  assert.deepEqual(extractIssueNumbers(body), []);
+  assert.deepEqual(extractIssueNumbers(body), [69]);
 });
 
 test("extractIssueNumbers ignores non-closing issue references", () => {
@@ -52,6 +50,16 @@ See #33 for follow-up work.
 Merged PR #70 already shipped separately.`;
 
   assert.deepEqual(extractIssueNumbers(body), []);
+});
+
+test("extractIssueNumbers merges Included Issues with closing references", () => {
+  const body = `## Included Issues
+- #12: promote shell changes
+
+Closes #85
+Related to #61`;
+
+  assert.deepEqual(extractIssueNumbers(body), [12, 85]);
 });
 
 test("extractIssueNumbers supports multiple closing references in one statement", () => {

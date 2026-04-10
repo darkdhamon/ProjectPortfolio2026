@@ -19,13 +19,44 @@ export function extractIssueNumbers(body) {
     return [];
   }
 
-  return collectClosingIssueNumbers(body);
+  const issueNumbers = new Set([
+    ...collectIncludedIssueNumbers(body),
+    ...collectClosingIssueNumbers(body),
+  ]);
+
+  return [...issueNumbers];
+}
+
+function collectIncludedIssueNumbers(body) {
+  const lines = body.split(/\r?\n/);
+  const includedIssuesHeaderIndex = lines.findIndex((line) =>
+    /^## Included Issues\b/.test(line),
+  );
+
+  if (includedIssuesHeaderIndex < 0) {
+    return [];
+  }
+
+  const includedIssueLines = [];
+  const includedIssueLinePattern = /^\s*(?:-\s*)?(?:issues?\s*:?\s*)?#\d+\b/i;
+
+  for (let index = includedIssuesHeaderIndex + 1; index < lines.length; index += 1) {
+    if (/^##\s/.test(lines[index])) {
+      break;
+    }
+
+    if (includedIssueLinePattern.test(lines[index])) {
+      includedIssueLines.push(lines[index]);
+    }
+  }
+
+  return collectDirectIssueNumbers(includedIssueLines.join("\n"));
 }
 
 function collectClosingIssueNumbers(sourceText) {
   const issueNumbers = new Set();
   const closingReferencePattern =
-    /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s*((?:(?:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)?#\d+\b(?:\s*(?:,|and)\s*)?)*)/gi;
+    /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s*([^\r\n]+)/gi;
 
   for (const match of sourceText.matchAll(closingReferencePattern)) {
     const references = match[1] ?? "";
@@ -34,6 +65,22 @@ function collectClosingIssueNumbers(sourceText) {
     for (const issueMatch of references.matchAll(issueReferencePattern)) {
       issueNumbers.add(Number(issueMatch[1]));
     }
+  }
+
+  return [...issueNumbers];
+}
+
+function collectDirectIssueNumbers(sourceText) {
+  const issueNumbers = new Set();
+  const issueReferencePattern =
+    /(?:^|[\s(])(?:-\s*)?(?:(issues?)\s*:?\s*|(pull\s+request|pr)\s*:?\s*)?#(\d+)\b/gi;
+
+  for (const match of sourceText.matchAll(issueReferencePattern)) {
+    if (match[2]) {
+      continue;
+    }
+
+    issueNumbers.add(Number(match[3]));
   }
 
   return [...issueNumbers];
