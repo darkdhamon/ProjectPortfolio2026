@@ -28,6 +28,9 @@ internal static partial class ResumeParsingUtilities
             .Replace("\r\n", "\n", StringComparison.Ordinal)
             .Replace('\r', '\n')
             .Replace('\u00A0', ' ')
+            .Replace("â€¢", "\u2022", StringComparison.Ordinal)
+            .Replace("â€“", "\u2013", StringComparison.Ordinal)
+            .Replace("â€”", "\u2014", StringComparison.Ordinal)
             .Replace("\t", " ", StringComparison.Ordinal);
 
         normalized = MultipleSpaceRegex().Replace(normalized, " ");

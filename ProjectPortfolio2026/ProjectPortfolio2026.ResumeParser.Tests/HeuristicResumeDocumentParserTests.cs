@@ -180,6 +180,40 @@ public sealed class HeuristicResumeDocumentParserTests
         Assert.Multiple(() =>
         {
             Assert.That(document.WorkExperience, Has.Count.EqualTo(1));
+            Assert.That(document.WorkExperience[0].EmploymentDates.IsCurrent, Is.True);
+            Assert.That(document.WorkExperience[0].DescriptionLines, Has.Count.EqualTo(2));
+            Assert.That(document.WorkExperience[0].Technologies, Does.Contain("Azure"));
+            Assert.That(document.Skills.SelectMany(section => section.Items), Does.Contain("GitHub Actions"));
+        });
+    }
+
+    [Test]
+    public async Task ParseAsync_MojibakeBulletResume_NormalizesCommonExtractedBulletArtifacts()
+    {
+        var parser = new HeuristicResumeDocumentParser();
+        var content = """
+            Taylor Example
+            taylor@example.com
+
+            Work Experience
+            Senior Engineer at Northwind
+            Jan 2022 â€“ Present
+            â€¢ Led delivery of a portfolio refresh.
+            â€¢ Partnered with design and recruiting teams.
+            Technologies: C# â€¢ SQL â€¢ Azure
+
+            Skills
+            Platforms: Azure â€¢ GitHub Actions â€¢ Docker
+            """;
+
+        await using var stream = CreateTextStream(content);
+
+        var document = await parser.ParseAsync(stream, "mojibake-bullets.txt");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.WorkExperience, Has.Count.EqualTo(1));
+            Assert.That(document.WorkExperience[0].EmploymentDates.IsCurrent, Is.True);
             Assert.That(document.WorkExperience[0].DescriptionLines, Has.Count.EqualTo(2));
             Assert.That(document.WorkExperience[0].Technologies, Does.Contain("Azure"));
             Assert.That(document.Skills.SelectMany(section => section.Items), Does.Contain("GitHub Actions"));
