@@ -1,3 +1,4 @@
+import type { JobRole } from '../../app/types';
 import { formatProjectDates } from '../../appSupport';
 import { usePortfolioProfile } from '../../hooks/usePortfolioProfile';
 import { useWorkHistory } from '../../hooks/useWorkHistory';
@@ -18,6 +19,42 @@ function getResumeContactHref(value: string) {
     return '';
 }
 
+function getOrderedUniqueValues(values: string[]) {
+    const seen = new Set<string>();
+
+    return values.filter(value => {
+        const trimmedValue = value.trim();
+        if (!trimmedValue || seen.has(trimmedValue)) {
+            return false;
+        }
+
+        seen.add(trimmedValue);
+        return true;
+    });
+}
+
+function getLocationLabel(city?: string | null, region?: string | null) {
+    const parts = [city?.trim(), region?.trim()].filter(part => part && part.length > 0);
+    return parts.length > 0 ? parts.join(', ') : null;
+}
+
+function getEmployerDateRange(jobRoles: JobRole[]) {
+    if (jobRoles.length === 0) {
+        return null;
+    }
+
+    const newestRole = jobRoles[0];
+    const oldestRole = jobRoles[jobRoles.length - 1];
+    return formatProjectDates(oldestRole.startDate, newestRole.endDate);
+}
+
+function getDescriptionSummary(markdown: string) {
+    return markdown
+        .split(/\r?\n\r?\n/)
+        .map(paragraph => paragraph.trim().replace(/^#+\s*/, ''))
+        .find(paragraph => paragraph.length > 0) ?? '';
+}
+
 export function ResumePage() {
     const {
         profile,
@@ -31,14 +68,25 @@ export function ResumePage() {
         error: workHistoryError
     } = useWorkHistory();
 
-    const roleCount = employers.reduce((total, employer) => total + employer.jobRoles.length, 0);
+    const roleRecords = employers.flatMap(employer => employer.jobRoles.map(jobRole => ({
+        employer,
+        jobRole
+    })));
+    const roleCount = roleRecords.length;
+    const primaryRole = roleRecords.find(record => record.jobRole.role.trim().length > 0)?.jobRole;
     const location = employers
-        .map(employer => [employer.city, employer.region].filter(Boolean).join(', '))
-        .find(value => value.length > 0);
-    const primaryRole = employers.flatMap(employer => employer.jobRoles).find(role => role.role.trim().length > 0);
+        .map(employer => getLocationLabel(employer.city, employer.region))
+        .find(Boolean);
     const contactMethods = (profile?.contactMethods ?? []).slice(0, 3);
     const socialLinks = (profile?.socialLinks ?? []).slice(0, 2);
-    const sampleEmployers = employers.slice(0, 3);
+    const contactChannelCount = contactMethods.length + socialLinks.length;
+    const summaryParagraphs = [profile?.contactIntro?.trim(), profile?.availabilitySummary?.trim()].filter(
+        (value): value is string => Boolean(value && value.length > 0)
+    );
+    const skillHighlights = getOrderedUniqueValues(roleRecords.flatMap(record => record.jobRole.skills)).slice(0, 8);
+    const technologyHighlights = getOrderedUniqueValues(roleRecords.flatMap(record => record.jobRole.technologies)).slice(0, 8);
+    const hasSummarySection = Boolean(profile?.contactHeadline?.trim() || profile?.availabilityHeadline?.trim() || summaryParagraphs.length > 0);
+    const hasSkillsSection = skillHighlights.length > 0 || technologyHighlights.length > 0;
     const isLoading = isProfileLoading || isWorkHistoryLoading;
     const errors = [profileError, workHistoryError].filter(Boolean);
 
@@ -48,7 +96,7 @@ export function ResumePage() {
                 <p key={error} className="status-banner error">{error}</p>
             ))}
             {!errors.length && isLoading ? (
-                <p className="status-banner">Loading resume shell...</p>
+                <p className="status-banner">Loading resume...</p>
             ) : null}
 
             <section className="hero-panel resume-hero">
@@ -56,9 +104,11 @@ export function ResumePage() {
                     <p className="eyebrow">Public Resume</p>
                     <h1>{profile?.displayName ?? 'Resume shell ready for public portfolio data.'}</h1>
                     <p className="hero-description">
-                        {primaryRole?.role
-                            ? `${primaryRole.role}${location ? ` based in ${location}` : ''}. This recruiter-focused view is built to stay concise, skimmable, and ready for richer structured sections.`
-                            : 'This page establishes the recruiter-focused resume shell so structured sections, filtering, and export actions can plug in without reworking the layout.'}
+                        {profile?.contactHeadline?.trim()
+                            ? profile.contactHeadline
+                            : primaryRole?.role
+                                ? `${primaryRole.role}${location ? ` based in ${location}` : ''}. This recruiter-focused view stays concise while turning published portfolio data into a skimmable resume.`
+                                : 'This page turns published profile and work-history data into a recruiter-facing resume layout once those records are available.'}
                     </p>
                 </div>
 
@@ -67,7 +117,7 @@ export function ResumePage() {
                         <span className="stat-label">Resume Snapshot</span>
                         <strong>{roleCount > 0 ? getRoleCount(employers.length, roleCount) : 'Waiting for published resume data'}</strong>
                         <p>
-                            {profile?.availabilityHeadline
+                            {profile?.availabilityHeadline?.trim()
                                 ? profile.availabilityHeadline
                                 : 'Publish public profile and work history records to turn this shell into a complete recruiter-facing resume.'}
                         </p>
@@ -84,7 +134,7 @@ export function ResumePage() {
                         </div>
                         <div className="stat-card">
                             <span className="stat-label">Contact Channels</span>
-                            <strong>{contactMethods.length + socialLinks.length}</strong>
+                            <strong>{contactChannelCount}</strong>
                         </div>
                     </div>
                 </div>
@@ -162,7 +212,7 @@ export function ResumePage() {
                 <article className="resume-panel resume-panel-emphasis">
                     <div className="resume-panel-heading">
                         <p className="eyebrow">Header</p>
-                        <h2>Recruiter essentials up front.</h2>
+                        <h2>Contact and portfolio links.</h2>
                     </div>
 
                     {contactMethods.length > 0 || socialLinks.length > 0 ? (
@@ -209,49 +259,97 @@ export function ResumePage() {
                     )}
                 </article>
 
-                <article className="resume-panel">
-                    <div className="resume-panel-heading">
-                        <p className="eyebrow">Profile Section</p>
-                        <h2>Summary area reserved for concise positioning.</h2>
-                    </div>
+                {hasSummarySection ? (
+                    <article className="resume-panel">
+                        <div className="resume-panel-heading">
+                            <p className="eyebrow">Career Summary</p>
+                            <h2>Positioning for recruiters and hiring teams.</h2>
+                        </div>
 
-                    <div className="resume-shell-note">
-                        <p>
-                            {profile?.contactIntro
-                                ? profile.contactIntro
-                                : 'A short recruiter-facing profile summary will land here once the public portfolio profile is ready for resume presentation.'}
-                        </p>
-                    </div>
-                </article>
+                        <div className="resume-summary-stack">
+                            {profile?.contactHeadline?.trim() ? (
+                                <div className="resume-summary-card">
+                                    <span className="meta-label">Headline</span>
+                                    <strong>{profile.contactHeadline}</strong>
+                                </div>
+                            ) : null}
+                            {profile?.availabilityHeadline?.trim() ? (
+                                <div className="resume-summary-card">
+                                    <span className="meta-label">Availability</span>
+                                    <strong>{profile.availabilityHeadline}</strong>
+                                </div>
+                            ) : null}
+                            {summaryParagraphs.map(paragraph => (
+                                <p key={paragraph} className="secondary-copy">{paragraph}</p>
+                            ))}
+                        </div>
+                    </article>
+                ) : null}
             </section>
 
             <section className="resume-grid resume-grid-secondary">
                 <article className="resume-panel">
                     <div className="resume-panel-heading">
-                        <p className="eyebrow">Experience Shell</p>
-                        <h2>Space reserved for condensed role history.</h2>
+                        <p className="eyebrow">Experience</p>
+                        <h2>Condensed work history.</h2>
                     </div>
 
-                    {sampleEmployers.length > 0 ? (
-                        <div className="resume-timeline">
-                            {sampleEmployers.map(employer => {
-                                const latestRole = employer.jobRoles[0];
+                    {employers.length > 0 ? (
+                        <div className="resume-experience-list">
+                            {employers.map(employer => {
+                                const employerLocation = getLocationLabel(employer.city, employer.region);
+                                const employerRange = getEmployerDateRange(employer.jobRoles);
+
                                 return (
-                                    <section key={employer.id} className="resume-timeline-item">
-                                        <div className="resume-timeline-heading">
+                                    <section key={employer.id} className="resume-experience-group">
+                                        <div className="resume-experience-header">
                                             <div>
                                                 <h3>{employer.name}</h3>
-                                                <p>{latestRole?.role ?? 'Published role details will appear here.'}</p>
+                                                {employerLocation ? <p>{employerLocation}</p> : null}
                                             </div>
-                                            {latestRole ? (
-                                                <span className="resume-date-range">
-                                                    {formatProjectDates(latestRole.startDate, latestRole.endDate)}
-                                                </span>
+                                            {employerRange ? (
+                                                <span className="resume-date-range">{employerRange}</span>
                                             ) : null}
                                         </div>
-                                        <p className="helper-copy">
-                                            Full recruiter-focused role bullets, skill highlights, and optional sections are intentionally deferred to the next resume issue.
-                                        </p>
+
+                                        <div className="resume-experience-role-list">
+                                            {employer.jobRoles.map(jobRole => {
+                                                const summary = getDescriptionSummary(jobRole.descriptionMarkdown);
+
+                                                return (
+                                                    <article
+                                                        key={`${employer.id}-${jobRole.role}-${jobRole.startDate}`}
+                                                        className="resume-experience-role">
+                                                        <div className="resume-role-meta">
+                                                            <div>
+                                                                <strong>{jobRole.role}</strong>
+                                                                <p>{formatProjectDates(jobRole.startDate, jobRole.endDate)}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {summary ? (
+                                                            <p className="resume-role-copy">{summary}</p>
+                                                        ) : null}
+
+                                                        {jobRole.skills.length > 0 ? (
+                                                            <div className="tag-group" aria-label={`${jobRole.role} skills`}>
+                                                                {jobRole.skills.map(skill => (
+                                                                    <span key={skill} className="tag skill">{skill}</span>
+                                                                ))}
+                                                            </div>
+                                                        ) : null}
+
+                                                        {jobRole.technologies.length > 0 ? (
+                                                            <div className="tag-group secondary" aria-label={`${jobRole.role} technologies`}>
+                                                                {jobRole.technologies.map(technology => (
+                                                                    <span key={technology} className="tag technology">{technology}</span>
+                                                                ))}
+                                                            </div>
+                                                        ) : null}
+                                                    </article>
+                                                );
+                                            })}
+                                        </div>
                                     </section>
                                 );
                             })}
@@ -263,18 +361,38 @@ export function ResumePage() {
                     )}
                 </article>
 
-                <article className="resume-panel">
-                    <div className="resume-panel-heading">
-                        <p className="eyebrow">Skills Shell</p>
-                        <h2>Reserved for scan-friendly capability highlights.</h2>
-                    </div>
+                {hasSkillsSection ? (
+                    <article className="resume-panel">
+                        <div className="resume-panel-heading">
+                            <p className="eyebrow">Skills</p>
+                            <h2>Core skills and technologies.</h2>
+                        </div>
 
-                    <div className="resume-shell-note">
-                        <p>
-                            Skill and technology emphasis will plug into this panel after the richer structured resume rendering work is complete.
-                        </p>
-                    </div>
-                </article>
+                        <div className="resume-highlight-list">
+                            {skillHighlights.length > 0 ? (
+                                <section className="resume-highlight-group">
+                                    <span className="meta-label">Skills</span>
+                                    <div className="tag-group" aria-label="Resume skills">
+                                        {skillHighlights.map(skill => (
+                                            <span key={skill} className="tag skill">{skill}</span>
+                                        ))}
+                                    </div>
+                                </section>
+                            ) : null}
+
+                            {technologyHighlights.length > 0 ? (
+                                <section className="resume-highlight-group">
+                                    <span className="meta-label">Technologies</span>
+                                    <div className="tag-group secondary" aria-label="Resume technologies">
+                                        {technologyHighlights.map(technology => (
+                                            <span key={technology} className="tag technology">{technology}</span>
+                                        ))}
+                                    </div>
+                                </section>
+                            ) : null}
+                        </div>
+                    </article>
+                ) : null}
             </section>
         </main>
     );
