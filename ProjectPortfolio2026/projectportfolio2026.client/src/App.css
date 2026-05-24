@@ -335,7 +335,17 @@
 .resume-shell-note,
 .resume-hero,
 .resume-hero-copy,
-.resume-hero-meta {
+.resume-hero-meta,
+.resume-summary-stack,
+.resume-summary-card,
+.resume-experience-list,
+.resume-experience-group,
+.resume-experience-header,
+.resume-experience-role-list,
+.resume-experience-role,
+.resume-role-meta,
+.resume-highlight-list,
+.resume-highlight-group {
     display: grid;
 }
 
@@ -355,7 +365,15 @@
 .resume-panel,
 .resume-shell-note,
 .resume-link-card,
-.resume-action-card {
+.resume-action-card,
+.resume-summary-stack,
+.resume-summary-card,
+.resume-experience-list,
+.resume-experience-group,
+.resume-experience-role-list,
+.resume-experience-role,
+.resume-highlight-list,
+.resume-highlight-group {
     gap: 0.9rem;
 }
 
@@ -389,7 +407,10 @@
 .resume-callout-card strong,
 .resume-panel h2,
 .resume-timeline-heading h3,
-.resume-action-card strong {
+.resume-action-card strong,
+.resume-summary-card strong,
+.resume-experience-header h3,
+.resume-role-meta strong {
     margin: 0;
     color: #fff7e8;
 }
@@ -404,7 +425,11 @@
 .resume-shell-note p,
 .resume-action-card p,
 .resume-date-range,
-.resume-timeline-heading p {
+.resume-role-date,
+.resume-timeline-heading p,
+.resume-experience-header p,
+.resume-role-meta p,
+.resume-role-copy {
     margin: 0;
     color: rgba(219, 230, 243, 0.82);
     line-height: 1.65;
@@ -501,6 +526,50 @@
     border-color: rgba(126, 233, 255, 0.22);
 }
 
+.resume-summary-card,
+.resume-experience-role {
+    padding: 1rem 1.05rem;
+    border-radius: 1.05rem;
+    border: 1px solid rgba(111, 137, 171, 0.18);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.resume-summary-card {
+    gap: 0.35rem;
+}
+
+.resume-experience-list {
+    gap: 1rem;
+}
+
+.resume-experience-group {
+    gap: 0.95rem;
+    padding: 1rem 1.05rem;
+    border-radius: 1.15rem;
+    border: 1px solid rgba(111, 137, 171, 0.16);
+    background:
+        linear-gradient(180deg, rgba(10, 24, 40, 0.7), rgba(8, 19, 33, 0.72)),
+        radial-gradient(circle at top right, rgba(99, 222, 255, 0.06), transparent 38%);
+}
+
+.resume-experience-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.85rem;
+    align-items: start;
+}
+
+.resume-experience-role {
+    gap: 0.75rem;
+}
+
+.resume-role-meta {
+    gap: 0.2rem;
+}
+
+.resume-highlight-group {
+    gap: 0.55rem;
+}
+
 .resume-shell-note {
     min-height: 100%;
     padding: 1rem 1.05rem;
@@ -527,6 +596,18 @@
 .resume-date-range {
     justify-self: end;
     white-space: nowrap;
+    font-size: 0.92rem;
+}
+
+.resume-date-range,
+.resume-role-date {
+    text-decoration: underline dotted rgba(245, 183, 48, 0.45);
+    text-underline-offset: 0.22rem;
+    cursor: help;
+}
+
+.resume-role-date {
+    display: inline-block;
     font-size: 0.92rem;
 }
 
@@ -2260,7 +2341,8 @@
         position: static;
     }
 
-    .resume-timeline-heading {
+    .resume-timeline-heading,
+    .resume-experience-header {
         grid-template-columns: 1fr;
     }
 

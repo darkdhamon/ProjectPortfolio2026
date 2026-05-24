@@ -21,10 +21,10 @@ function createProfile(overrides: Partial<PortfolioProfile> = {}): PortfolioProf
     return {
         id: 1,
         displayName: 'Bronze Loft',
-        contactHeadline: 'Reach out.',
-        contactIntro: 'Profile summary.',
-        availabilityHeadline: 'Available now',
-        availabilitySummary: 'Ready for the next role.',
+        contactHeadline: 'Full-stack engineer focused on dependable delivery.',
+        contactIntro: 'I build portfolio, product, and platform experiences that stay usable under real operating pressure.',
+        availabilityHeadline: 'Open to senior product engineering roles',
+        availabilitySummary: 'Remote-friendly, collaborative, and comfortable owning delivery from API to UI polish.',
         contactMethods: [],
         socialLinks: [],
         ...overrides
@@ -42,9 +42,9 @@ function createEmployer(id: number, overrides: Partial<Employer> = {}): Employer
                 role: `Role ${id}`,
                 startDate: '2024-01-08',
                 endDate: null,
-                descriptionMarkdown: 'Built and shipped product work.',
-                skills: [],
-                technologies: []
+                descriptionMarkdown: 'Built and shipped product work.\n\nPartnered with stakeholders to keep the roadmap moving.',
+                skills: [`Skill ${id}`],
+                technologies: [`Technology ${id}`]
             }
         ],
         ...overrides
@@ -54,9 +54,12 @@ function createEmployer(id: number, overrides: Partial<Employer> = {}): Employer
 describe('ResumePage', () => {
     afterEach(() => {
         cleanup();
+        vi.useRealTimers();
     });
 
     beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-05-24T12:00:00Z'));
         mockUsePortfolioProfile.mockReturnValue({
             profile: createProfile(),
             isLoading: false,
@@ -114,7 +117,7 @@ describe('ResumePage', () => {
         expect(within(signalCard as HTMLElement).queryByRole('link')).not.toBeInTheDocument();
     });
 
-    it('shows empty-state copy and missing-config action state when public data is unavailable', () => {
+    it('shows empty-state copy and hides optional sections when public data is unavailable', () => {
         mockUsePortfolioProfile.mockReturnValue({
             profile: null,
             isLoading: false,
@@ -135,23 +138,103 @@ describe('ResumePage', () => {
         expect(screen.getByText('Needs config')).toBeInTheDocument();
         expect(screen.getByText('Public contact and social links will appear here once the portfolio profile is configured.')).toBeInTheDocument();
         expect(screen.getByText('Published work history will appear here once employer and job-role records are available.')).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Positioning for recruiters and hiring teams.' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Core skills and technologies.' })).not.toBeInTheDocument();
     });
 
-    it('limits the experience shell to the first three employers', () => {
+    it('renders structured summary, skill highlights, and full experience history', () => {
         mockUseWorkHistory.mockReturnValue({
-            employers: [createEmployer(1), createEmployer(2), createEmployer(3), createEmployer(4)],
+            employers: [
+                createEmployer(1),
+                createEmployer(2, {
+                    city: 'Austin',
+                    region: 'TX',
+                    jobRoles: [
+                        {
+                            role: 'Principal Engineer',
+                            startDate: '2021-05-03',
+                            endDate: '2023-12-15',
+                            descriptionMarkdown: 'Directed architecture strategy and delivery planning.',
+                            skills: ['Architecture', 'Leadership'],
+                            technologies: ['React', '.NET 10']
+                        },
+                        {
+                            role: 'Senior Engineer',
+                            startDate: '2019-02-11',
+                            endDate: '2021-05-01',
+                            descriptionMarkdown: 'Led service migrations and performance work.',
+                            skills: ['Performance'],
+                            technologies: ['SQL Server']
+                        }
+                    ]
+                }),
+                createEmployer(3),
+                createEmployer(4)
+            ],
             isLoading: false,
             error: null
         });
 
         render(<ResumePage />);
 
-        const experiencePanel = screen.getByText('Experience Shell').closest('article');
-        expect(experiencePanel).not.toBeNull();
+        const summaryPanel = screen.getByRole('heading', { name: 'Positioning for recruiters and hiring teams.' }).closest('article');
+        expect(summaryPanel).not.toBeNull();
+        expect(within(summaryPanel as HTMLElement).getByText('Full-stack engineer focused on dependable delivery.')).toBeInTheDocument();
+        expect(within(summaryPanel as HTMLElement).getByText('Remote-friendly, collaborative, and comfortable owning delivery from API to UI polish.')).toBeInTheDocument();
 
+        expect(screen.getByRole('heading', { name: 'Core skills and technologies.' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Resume skills')).toHaveTextContent('Skill 1');
+        expect(screen.getByLabelText('Resume skills')).toHaveTextContent('Architecture');
+        expect(screen.getByLabelText('Resume technologies')).toHaveTextContent('.NET 10');
+        expect(screen.getByLabelText('Resume technologies')).toHaveTextContent('React');
+
+        const experiencePanel = screen.getByRole('heading', { name: 'Condensed work history.' }).closest('article');
+        expect(experiencePanel).not.toBeNull();
         expect(within(experiencePanel as HTMLElement).getByRole('heading', { name: 'Employer 1' })).toBeInTheDocument();
         expect(within(experiencePanel as HTMLElement).getByRole('heading', { name: 'Employer 2' })).toBeInTheDocument();
         expect(within(experiencePanel as HTMLElement).getByRole('heading', { name: 'Employer 3' })).toBeInTheDocument();
-        expect(within(experiencePanel as HTMLElement).queryByRole('heading', { name: 'Employer 4' })).not.toBeInTheDocument();
+        expect(within(experiencePanel as HTMLElement).getByRole('heading', { name: 'Employer 4' })).toBeInTheDocument();
+        expect(within(experiencePanel as HTMLElement).getByText('Directed architecture strategy and delivery planning.')).toBeInTheDocument();
+        expect(within(experiencePanel as HTMLElement).getByLabelText('Principal Engineer skills')).toHaveTextContent('Architecture');
+        expect(within(experiencePanel as HTMLElement).getByLabelText('Principal Engineer technologies')).toHaveTextContent('.NET 10');
+        expect(within(experiencePanel as HTMLElement).getByText('Feb 2019 to Dec 2023')).toHaveAttribute('title', 'Time at Employer 2: 4 years, 11 months');
+        expect(within(experiencePanel as HTMLElement).getByText('May 2021 to Dec 2023')).toHaveAttribute('title', 'Time in role: 2 years, 8 months');
+        expect(within(experiencePanel as HTMLElement).getByText('Feb 2019 to May 2021')).toHaveAttribute('title', 'Time in role: 2 years, 4 months');
+    });
+
+    it('avoids duplicate key warnings when role titles and start dates repeat', () => {
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        mockUseWorkHistory.mockReturnValue({
+            employers: [
+                createEmployer(1, {
+                    jobRoles: [
+                        {
+                            role: 'Software Engineer',
+                            startDate: '2022-01-10',
+                            endDate: '2022-12-20',
+                            descriptionMarkdown: 'Supported release work.',
+                            skills: ['Testing'],
+                            technologies: ['React']
+                        },
+                        {
+                            role: 'Software Engineer',
+                            startDate: '2022-01-10',
+                            endDate: '2023-06-15',
+                            descriptionMarkdown: 'Expanded platform ownership.',
+                            skills: ['Architecture'],
+                            technologies: ['.NET 10']
+                        }
+                    ]
+                })
+            ],
+            isLoading: false,
+            error: null
+        });
+
+        render(<ResumePage />);
+
+        expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('Encountered two children with the same key'));
+        consoleErrorSpy.mockRestore();
     });
 });
