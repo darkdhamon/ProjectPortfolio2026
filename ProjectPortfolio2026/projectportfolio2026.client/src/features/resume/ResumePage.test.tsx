@@ -54,9 +54,12 @@ function createEmployer(id: number, overrides: Partial<Employer> = {}): Employer
 describe('ResumePage', () => {
     afterEach(() => {
         cleanup();
+        vi.useRealTimers();
     });
 
     beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-05-24T12:00:00Z'));
         mockUsePortfolioProfile.mockReturnValue({
             profile: createProfile(),
             isLoading: false,
@@ -194,5 +197,44 @@ describe('ResumePage', () => {
         expect(within(experiencePanel as HTMLElement).getByText('Directed architecture strategy and delivery planning.')).toBeInTheDocument();
         expect(within(experiencePanel as HTMLElement).getByLabelText('Principal Engineer skills')).toHaveTextContent('Architecture');
         expect(within(experiencePanel as HTMLElement).getByLabelText('Principal Engineer technologies')).toHaveTextContent('.NET 10');
+        expect(within(experiencePanel as HTMLElement).getByText('Feb 2019 to Dec 2023')).toHaveAttribute('title', 'Time at Employer 2: 4 years, 11 months');
+        expect(within(experiencePanel as HTMLElement).getByText('May 2021 to Dec 2023')).toHaveAttribute('title', 'Time in role: 2 years, 8 months');
+        expect(within(experiencePanel as HTMLElement).getByText('Feb 2019 to May 2021')).toHaveAttribute('title', 'Time in role: 2 years, 4 months');
+    });
+
+    it('avoids duplicate key warnings when role titles and start dates repeat', () => {
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        mockUseWorkHistory.mockReturnValue({
+            employers: [
+                createEmployer(1, {
+                    jobRoles: [
+                        {
+                            role: 'Software Engineer',
+                            startDate: '2022-01-10',
+                            endDate: '2022-12-20',
+                            descriptionMarkdown: 'Supported release work.',
+                            skills: ['Testing'],
+                            technologies: ['React']
+                        },
+                        {
+                            role: 'Software Engineer',
+                            startDate: '2022-01-10',
+                            endDate: '2023-06-15',
+                            descriptionMarkdown: 'Expanded platform ownership.',
+                            skills: ['Architecture'],
+                            technologies: ['.NET 10']
+                        }
+                    ]
+                })
+            ],
+            isLoading: false,
+            error: null
+        });
+
+        render(<ResumePage />);
+
+        expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('Encountered two children with the same key'));
+        consoleErrorSpy.mockRestore();
     });
 });

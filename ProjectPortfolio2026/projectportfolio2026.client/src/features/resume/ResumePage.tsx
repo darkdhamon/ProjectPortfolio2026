@@ -3,6 +3,17 @@ import { formatProjectDates } from '../../appSupport';
 import { usePortfolioProfile } from '../../hooks/usePortfolioProfile';
 import { useWorkHistory } from '../../hooks/useWorkHistory';
 
+interface ResumeDateValue {
+    label: string;
+    title: string;
+}
+
+interface ResumeRoleEntry {
+    jobRole: JobRole;
+    key: string;
+    dateValue: ResumeDateValue;
+}
+
 function getRoleCount(employerCount: number, roleCount: number) {
     return `${roleCount} role${roleCount === 1 ? '' : 's'} across ${employerCount} employer${employerCount === 1 ? '' : 's'}`;
 }
@@ -38,14 +49,68 @@ function getLocationLabel(city?: string | null, region?: string | null) {
     return parts.length > 0 ? parts.join(', ') : null;
 }
 
-function getEmployerDateRange(jobRoles: JobRole[]) {
+function getDateMonthValue(value: string) {
+    const [year, month] = value.split('-').map(Number);
+    return {
+        year,
+        month
+    };
+}
+
+function getMonthDistance(startDate: string, endDate?: string | null) {
+    const start = getDateMonthValue(startDate);
+    const end = endDate ? getDateMonthValue(endDate) : {
+        year: new Date().getFullYear(),
+        month: new Date().getMonth() + 1
+    };
+
+    return Math.max(0, ((end.year - start.year) * 12) + (end.month - start.month) + 1);
+}
+
+function formatDurationLabel(totalMonths: number) {
+    const years = Math.floor(totalMonths / 12);
+    const months = totalMonths % 12;
+    const parts: string[] = [];
+
+    if (years > 0) {
+        parts.push(`${years} year${years === 1 ? '' : 's'}`);
+    }
+
+    if (months > 0 || parts.length === 0) {
+        parts.push(`${months} month${months === 1 ? '' : 's'}`);
+    }
+
+    return parts.join(', ');
+}
+
+function createDateValue(startDate: string, endDate: string | null | undefined, titlePrefix: string): ResumeDateValue {
+    return {
+        label: formatProjectDates(startDate, endDate),
+        title: `${titlePrefix}: ${formatDurationLabel(getMonthDistance(startDate, endDate))}`
+    };
+}
+
+function getEmployerDateValue(employerName: string, jobRoles: JobRole[]) {
     if (jobRoles.length === 0) {
         return null;
     }
 
-    const newestRole = jobRoles[0];
-    const oldestRole = jobRoles[jobRoles.length - 1];
-    return formatProjectDates(oldestRole.startDate, newestRole.endDate);
+    const earliestRole = jobRoles.reduce((currentEarliest, role) => role.startDate < currentEarliest.startDate ? role : currentEarliest);
+    const activeRole = jobRoles.find(role => !role.endDate);
+    const latestCompletedRole = jobRoles.reduce((currentLatest, role) => {
+        if (!role.endDate) {
+            return currentLatest;
+        }
+
+        if (!currentLatest || role.endDate > (currentLatest.endDate ?? '')) {
+            return role;
+        }
+
+        return currentLatest;
+    }, null as JobRole | null);
+    const latestEndDate = activeRole ? null : latestCompletedRole?.endDate;
+
+    return createDateValue(earliestRole.startDate, latestEndDate, `Time at ${employerName}`);
 }
 
 function getDescriptionSummary(markdown: string) {
@@ -53,6 +118,34 @@ function getDescriptionSummary(markdown: string) {
         .split(/\r?\n\r?\n/)
         .map(paragraph => paragraph.trim().replace(/^#+\s*/, ''))
         .find(paragraph => paragraph.length > 0) ?? '';
+}
+
+function getJobRoleKeySignature(jobRole: JobRole) {
+    return [
+        jobRole.role,
+        jobRole.startDate,
+        jobRole.endDate ?? 'present',
+        jobRole.supervisorName ?? '',
+        jobRole.descriptionMarkdown,
+        jobRole.skills.join(','),
+        jobRole.technologies.join(',')
+    ].join('|');
+}
+
+function buildResumeRoleEntries(jobRoles: JobRole[]) {
+    const seenSignatures = new Map<string, number>();
+
+    return jobRoles.map(jobRole => {
+        const signature = getJobRoleKeySignature(jobRole);
+        const occurrence = (seenSignatures.get(signature) ?? 0) + 1;
+        seenSignatures.set(signature, occurrence);
+
+        return {
+            jobRole,
+            key: `${signature}|${occurrence}`,
+            dateValue: createDateValue(jobRole.startDate, jobRole.endDate, 'Time in role')
+        };
+    });
 }
 
 export function ResumePage() {
@@ -298,7 +391,8 @@ export function ResumePage() {
                         <div className="resume-experience-list">
                             {employers.map(employer => {
                                 const employerLocation = getLocationLabel(employer.city, employer.region);
-                                const employerRange = getEmployerDateRange(employer.jobRoles);
+                                const employerDateValue = getEmployerDateValue(employer.name, employer.jobRoles);
+                                const roleEntries = buildResumeRoleEntries(employer.jobRoles);
 
                                 return (
                                     <section key={employer.id} className="resume-experience-group">
@@ -307,23 +401,27 @@ export function ResumePage() {
                                                 <h3>{employer.name}</h3>
                                                 {employerLocation ? <p>{employerLocation}</p> : null}
                                             </div>
-                                            {employerRange ? (
-                                                <span className="resume-date-range">{employerRange}</span>
+                                            {employerDateValue ? (
+                                                <abbr className="resume-date-range" title={employerDateValue.title}>
+                                                    {employerDateValue.label}
+                                                </abbr>
                                             ) : null}
                                         </div>
 
                                         <div className="resume-experience-role-list">
-                                            {employer.jobRoles.map(jobRole => {
+                                            {roleEntries.map(({ jobRole, key, dateValue }: ResumeRoleEntry) => {
                                                 const summary = getDescriptionSummary(jobRole.descriptionMarkdown);
 
                                                 return (
                                                     <article
-                                                        key={`${employer.id}-${jobRole.role}-${jobRole.startDate}`}
+                                                        key={`${employer.id}-${key}`}
                                                         className="resume-experience-role">
                                                         <div className="resume-role-meta">
                                                             <div>
                                                                 <strong>{jobRole.role}</strong>
-                                                                <p>{formatProjectDates(jobRole.startDate, jobRole.endDate)}</p>
+                                                                <abbr className="resume-role-date" title={dateValue.title}>
+                                                                    {dateValue.label}
+                                                                </abbr>
                                                             </div>
                                                         </div>
 

@@ -425,6 +425,7 @@
 .resume-shell-note p,
 .resume-action-card p,
 .resume-date-range,
+.resume-role-date,
 .resume-timeline-heading p,
 .resume-experience-header p,
 .resume-role-meta p,
@@ -595,6 +596,18 @@
 .resume-date-range {
     justify-self: end;
     white-space: nowrap;
+    font-size: 0.92rem;
+}
+
+.resume-date-range,
+.resume-role-date {
+    text-decoration: underline dotted rgba(245, 183, 48, 0.45);
+    text-underline-offset: 0.22rem;
+    cursor: help;
+}
+
+.resume-role-date {
+    display: inline-block;
     font-size: 0.92rem;
 }
 
