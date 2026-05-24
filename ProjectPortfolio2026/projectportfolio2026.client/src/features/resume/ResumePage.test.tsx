@@ -237,4 +237,81 @@ describe('ResumePage', () => {
         expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('Encountered two children with the same key'));
         consoleErrorSpy.mockRestore();
     });
+
+    it('uses present-tense duration titles when an employer still has an active role', () => {
+        mockUseWorkHistory.mockReturnValue({
+            employers: [
+                createEmployer(1, {
+                    name: 'Northwind Health',
+                    city: 'Seattle',
+                    region: 'WA',
+                    jobRoles: [
+                        {
+                            role: 'Senior Engineer',
+                            startDate: '2022-03-14',
+                            endDate: null,
+                            descriptionMarkdown: '## Led modernization\n\nDirected the current platform roadmap.',
+                            skills: ['Leadership'],
+                            technologies: ['TypeScript']
+                        },
+                        {
+                            role: 'Engineer',
+                            startDate: '2020-01-06',
+                            endDate: '2022-03-01',
+                            descriptionMarkdown: 'Built internal APIs.',
+                            skills: ['APIs'],
+                            technologies: ['.NET 10']
+                        }
+                    ]
+                })
+            ],
+            isLoading: false,
+            error: null
+        });
+
+        render(<ResumePage />);
+
+        const experiencePanel = screen.getByRole('heading', { name: 'Condensed work history.' }).closest('article');
+        expect(experiencePanel).not.toBeNull();
+        expect(within(experiencePanel as HTMLElement).getByText('Jan 2020 to Present')).toHaveAttribute('title', 'Time at Northwind Health: 6 years, 5 months');
+        expect(within(experiencePanel as HTMLElement).getByText('Mar 2022 to Present')).toHaveAttribute('title', 'Time in role: 4 years, 3 months');
+        expect(within(experiencePanel as HTMLElement).getByText('Led modernization')).toBeInTheDocument();
+    });
+
+    it('keeps repeated identical roles renderable without duplicate key warnings', () => {
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        mockUseWorkHistory.mockReturnValue({
+            employers: [
+                createEmployer(1, {
+                    jobRoles: [
+                        {
+                            role: 'Software Engineer',
+                            startDate: '2022-01-10',
+                            endDate: '2022-12-20',
+                            descriptionMarkdown: 'Supported release work.',
+                            skills: ['Testing'],
+                            technologies: ['React']
+                        },
+                        {
+                            role: 'Software Engineer',
+                            startDate: '2022-01-10',
+                            endDate: '2022-12-20',
+                            descriptionMarkdown: 'Supported release work.',
+                            skills: ['Testing'],
+                            technologies: ['React']
+                        }
+                    ]
+                })
+            ],
+            isLoading: false,
+            error: null
+        });
+
+        render(<ResumePage />);
+
+        expect(screen.getAllByText('Software Engineer')).toHaveLength(2);
+        expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('Encountered two children with the same key'));
+        consoleErrorSpy.mockRestore();
+    });
 });
