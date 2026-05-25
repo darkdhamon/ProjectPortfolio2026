@@ -98,7 +98,15 @@ describe('ResumePage', () => {
                         sortOrder: 3
                     }
                 ],
-                socialLinks: []
+                socialLinks: [
+                    {
+                        platform: 'github',
+                        label: 'GitHub',
+                        url: 'https://github.com/darkdhamon',
+                        summary: 'Implementation history and public code.',
+                        sortOrder: 1
+                    }
+                ]
             }),
             isLoading: false,
             error: null,
@@ -115,6 +123,8 @@ describe('ResumePage', () => {
         expect(within(signalCard as HTMLElement).getByText('signal:bronze-loft')).toBeInTheDocument();
         expect(within(signalCard as HTMLElement).getByText('Shared on request.')).toBeInTheDocument();
         expect(within(signalCard as HTMLElement).queryByRole('link')).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /GitHub.*GitHub/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
+        expect(screen.getByText('Implementation history and public code.')).toBeInTheDocument();
     });
 
     it('shows empty-state copy and hides optional sections when public data is unavailable', () => {
@@ -285,6 +295,85 @@ describe('ResumePage', () => {
         expect(screen.getByRole('button', { name: 'Top 3' })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByText('Visible Employers')).toBeInTheDocument();
         expect(screen.getByText('Active Filters')).toBeInTheDocument();
+    });
+
+    it('falls back to overall role and location context when filters hide every visible employer', () => {
+        mockUsePortfolioProfile.mockReturnValue({
+            profile: createProfile({
+                contactHeadline: '',
+                availabilityHeadline: '',
+                availabilitySummary: ''
+            }),
+            isLoading: false,
+            error: null,
+            isMissing: false
+        });
+
+        mockUseWorkHistory.mockReturnValue({
+            employers: [
+                createEmployer(1, {
+                    city: 'Madison',
+                    region: 'WI',
+                    jobRoles: [
+                        {
+                            role: 'Principal Engineer',
+                            startDate: '2016-02-01',
+                            endDate: '2018-01-31',
+                            descriptionMarkdown: 'Archived platform leadership work.',
+                            skills: ['Architecture'],
+                            technologies: ['Azure']
+                        }
+                    ]
+                })
+            ],
+            isLoading: false,
+            error: null
+        });
+
+        render(<ResumePage />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Last 5 years' }));
+
+        expect(screen.getByText(/Principal Engineer based in Madison, WI\./i)).toBeInTheDocument();
+        expect(screen.getByText('No roles match the current resume filters')).toBeInTheDocument();
+        expect(screen.getByText('No published roles match the active resume filters yet. Expand the time window or increase the employer count to bring older experience back into view.')).toBeInTheDocument();
+        expect(screen.getByText('No published roles match the current resume filters. Expand the time window or increase the employer count to bring older experience back into view.')).toBeInTheDocument();
+    });
+
+    it('shows loading and error banners from the public resume hooks', () => {
+        mockUsePortfolioProfile.mockReturnValue({
+            profile: null,
+            isLoading: true,
+            error: null,
+            isMissing: false
+        });
+        mockUseWorkHistory.mockReturnValue({
+            employers: [],
+            isLoading: true,
+            error: null
+        });
+
+        const { rerender } = render(<ResumePage />);
+
+        expect(screen.getByText('Loading resume...')).toBeInTheDocument();
+
+        mockUsePortfolioProfile.mockReturnValue({
+            profile: null,
+            isLoading: false,
+            error: 'Profile request failed.',
+            isMissing: false
+        });
+        mockUseWorkHistory.mockReturnValue({
+            employers: [],
+            isLoading: false,
+            error: 'Work history request failed.'
+        });
+
+        rerender(<ResumePage />);
+
+        expect(screen.queryByText('Loading resume...')).not.toBeInTheDocument();
+        expect(screen.getByText('Profile request failed.')).toBeInTheDocument();
+        expect(screen.getByText('Work history request failed.')).toBeInTheDocument();
     });
 
     it('avoids duplicate key warnings when role titles and start dates repeat', () => {
