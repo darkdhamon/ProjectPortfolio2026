@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { JobRole } from '../../app/types';
 import { formatProjectDates } from '../../appSupport';
 import { usePortfolioProfile } from '../../hooks/usePortfolioProfile';
@@ -14,6 +15,66 @@ interface ResumeRoleEntry {
     dateValue: ResumeDateValue;
 }
 
+interface ResumeHighlight {
+    count: number;
+    label: string;
+}
+
+type ResumeTimeFilterKey = 'all' | 'last10Years' | 'last5Years';
+type ResumeEmployerLimitKey = 'all' | '3' | '5';
+
+const resumeTimeFilters: ReadonlyArray<{
+    description: string;
+    key: ResumeTimeFilterKey;
+    label: string;
+    years: number | null;
+}> = [
+    {
+        key: 'all',
+        label: 'Full history',
+        years: null,
+        description: 'Every published role and employer.'
+    },
+    {
+        key: 'last10Years',
+        label: 'Last 10 years',
+        years: 10,
+        description: 'Roles active within the last decade.'
+    },
+    {
+        key: 'last5Years',
+        label: 'Last 5 years',
+        years: 5,
+        description: 'Recent experience for fast recruiter scans.'
+    }
+];
+
+const resumeEmployerLimits: ReadonlyArray<{
+    description: string;
+    key: ResumeEmployerLimitKey;
+    label: string;
+    limit: number | null;
+}> = [
+    {
+        key: 'all',
+        label: 'All employers',
+        limit: null,
+        description: 'Show every employer in the active time window.'
+    },
+    {
+        key: '3',
+        label: 'Top 3',
+        limit: 3,
+        description: 'Focus on the three most recent employers.'
+    },
+    {
+        key: '5',
+        label: 'Top 5',
+        limit: 5,
+        description: 'Keep the resume compact without hiding too much depth.'
+    }
+];
+
 function getRoleCount(employerCount: number, roleCount: number) {
     return `${roleCount} role${roleCount === 1 ? '' : 's'} across ${employerCount} employer${employerCount === 1 ? '' : 's'}`;
 }
@@ -28,20 +89,6 @@ function getResumeContactHref(value: string) {
     }
 
     return '';
-}
-
-function getOrderedUniqueValues(values: string[]) {
-    const seen = new Set<string>();
-
-    return values.filter(value => {
-        const trimmedValue = value.trim();
-        if (!trimmedValue || seen.has(trimmedValue)) {
-            return false;
-        }
-
-        seen.add(trimmedValue);
-        return true;
-    });
 }
 
 function getLocationLabel(city?: string | null, region?: string | null) {
@@ -65,6 +112,18 @@ function getMonthDistance(startDate: string, endDate?: string | null) {
     };
 
     return Math.max(0, ((end.year - start.year) * 12) + (end.month - start.month) + 1);
+}
+
+function getMonthIndex(value: string) {
+    const { year, month } = getDateMonthValue(value);
+    return (year * 12) + month;
+}
+
+function formatDateKey(date: Date) {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function formatDurationLabel(totalMonths: number) {
@@ -148,7 +207,96 @@ function buildResumeRoleEntries(jobRoles: JobRole[]) {
     });
 }
 
+function roleMatchesTimeFilter(jobRole: JobRole, cutoffDateKey: string | null, currentDateKey: string) {
+    if (!cutoffDateKey) {
+        return true;
+    }
+
+    const roleEndDateKey = jobRole.endDate ?? currentDateKey;
+    return roleEndDateKey >= cutoffDateKey;
+}
+
+function getEmployerRecencyScore(jobRoles: JobRole[], currentMonthIndex: number) {
+    return jobRoles.reduce((highestScore, jobRole) => {
+        const roleScore = jobRole.endDate ? getMonthIndex(jobRole.endDate) : currentMonthIndex;
+        return Math.max(highestScore, roleScore);
+    }, 0);
+}
+
+function buildResumeHighlights(
+    roleEntries: Array<{ jobRole: JobRole }>,
+    getValues: (jobRole: JobRole) => string[],
+    limit: number
+) {
+    const counts = new Map<string, { count: number; firstSeenAt: number }>();
+
+    roleEntries.forEach((entry, entryIndex) => {
+        getValues(entry.jobRole).forEach(value => {
+            const trimmedValue = value.trim();
+            if (!trimmedValue) {
+                return;
+            }
+
+            const currentValue = counts.get(trimmedValue);
+            if (currentValue) {
+                currentValue.count += 1;
+                return;
+            }
+
+            counts.set(trimmedValue, {
+                count: 1,
+                firstSeenAt: entryIndex
+            });
+        });
+    });
+
+    return [...counts.entries()]
+        .sort((left, right) => {
+            if (right[1].count !== left[1].count) {
+                return right[1].count - left[1].count;
+            }
+
+            if (left[1].firstSeenAt !== right[1].firstSeenAt) {
+                return left[1].firstSeenAt - right[1].firstSeenAt;
+            }
+
+            return left[0].localeCompare(right[0]);
+        })
+        .slice(0, limit)
+        .map(([label, metadata]) => ({
+            label,
+            count: metadata.count
+        } satisfies ResumeHighlight));
+}
+
+function getResumeViewSummary(
+    selectedTimeFilter: { description: string; key: ResumeTimeFilterKey; label: string },
+    selectedEmployerLimit: { description: string; key: ResumeEmployerLimitKey; label: string; limit: number | null },
+    employerCount: number,
+    roleCount: number,
+    totalRoleCount: number
+) {
+    if (totalRoleCount === 0) {
+        return 'Publish public profile and work history records to turn this shell into a complete recruiter-facing resume.';
+    }
+
+    if (roleCount === 0) {
+        return 'No published roles match the active resume filters yet. Expand the time window or increase the employer count to bring older experience back into view.';
+    }
+
+    const timeSummary = selectedTimeFilter.key === 'all'
+        ? 'Showing full published history.'
+        : `Showing ${selectedTimeFilter.label.toLowerCase()}.`;
+    const employerSummary = selectedEmployerLimit.limit === null
+        ? 'All matching employers remain visible.'
+        : `Limited to the ${employerCount} most recent matching employer${employerCount === 1 ? '' : 's'}.`;
+
+    return `${timeSummary} ${employerSummary} ${getRoleCount(employerCount, roleCount)} remain in view.`;
+}
+
 export function ResumePage() {
+    const [selectedTimeFilterKey, setSelectedTimeFilterKey] = useState<ResumeTimeFilterKey>('all');
+    const [selectedEmployerLimitKey, setSelectedEmployerLimitKey] = useState<ResumeEmployerLimitKey>('all');
     const {
         profile,
         isLoading: isProfileLoading,
@@ -161,27 +309,66 @@ export function ResumePage() {
         error: workHistoryError
     } = useWorkHistory();
 
+    const currentDate = new Date();
+    const currentMonthIndex = (currentDate.getFullYear() * 12) + currentDate.getMonth() + 1;
+    const selectedTimeFilter = resumeTimeFilters.find(filter => filter.key === selectedTimeFilterKey) ?? resumeTimeFilters[0];
+    const selectedEmployerLimit = resumeEmployerLimits.find(limit => limit.key === selectedEmployerLimitKey) ?? resumeEmployerLimits[0];
+    const cutoffDate = selectedTimeFilter.years === null
+        ? null
+        : new Date(currentDate.getFullYear() - selectedTimeFilter.years, currentDate.getMonth(), currentDate.getDate());
+    const cutoffDateKey = cutoffDate ? formatDateKey(cutoffDate) : null;
+    const currentDateKey = formatDateKey(currentDate);
+    const employersInTimeView = employers
+        .map(employer => ({
+            ...employer,
+            jobRoles: employer.jobRoles.filter(jobRole => roleMatchesTimeFilter(jobRole, cutoffDateKey, currentDateKey))
+        }))
+        .filter(employer => employer.jobRoles.length > 0)
+        .sort((left, right) => getEmployerRecencyScore(right.jobRoles, currentMonthIndex) - getEmployerRecencyScore(left.jobRoles, currentMonthIndex));
+    const filteredEmployers = selectedEmployerLimit.limit === null
+        ? employersInTimeView
+        : employersInTimeView.slice(0, selectedEmployerLimit.limit);
     const roleRecords = employers.flatMap(employer => employer.jobRoles.map(jobRole => ({
         employer,
         jobRole
     })));
-    const roleCount = roleRecords.length;
-    const primaryRole = roleRecords.find(record => record.jobRole.role.trim().length > 0)?.jobRole;
-    const location = employers
+    const filteredRoleRecords = filteredEmployers.flatMap(employer => employer.jobRoles.map(jobRole => ({
+        employer,
+        jobRole
+    })));
+    const totalEmployerCount = employers.length;
+    const totalRoleCount = roleRecords.length;
+    const filteredRoleCount = filteredRoleRecords.length;
+    const primaryRole = filteredRoleRecords.find(record => record.jobRole.role.trim().length > 0)?.jobRole
+        ?? roleRecords.find(record => record.jobRole.role.trim().length > 0)?.jobRole;
+    const location = filteredEmployers
         .map(employer => getLocationLabel(employer.city, employer.region))
-        .find(Boolean);
+        .find(Boolean)
+        ?? employers
+            .map(employer => getLocationLabel(employer.city, employer.region))
+            .find(Boolean);
     const contactMethods = (profile?.contactMethods ?? []).slice(0, 3);
     const socialLinks = (profile?.socialLinks ?? []).slice(0, 2);
     const contactChannelCount = contactMethods.length + socialLinks.length;
     const summaryParagraphs = [profile?.contactIntro?.trim(), profile?.availabilitySummary?.trim()].filter(
         (value): value is string => Boolean(value && value.length > 0)
     );
-    const skillHighlights = getOrderedUniqueValues(roleRecords.flatMap(record => record.jobRole.skills)).slice(0, 8);
-    const technologyHighlights = getOrderedUniqueValues(roleRecords.flatMap(record => record.jobRole.technologies)).slice(0, 8);
+    const skillHighlights = buildResumeHighlights(filteredRoleRecords, jobRole => jobRole.skills, 6);
+    const technologyHighlights = buildResumeHighlights(filteredRoleRecords, jobRole => jobRole.technologies, 6);
+    const highlightedSkillSet = new Set(skillHighlights.map(highlight => highlight.label));
+    const highlightedTechnologySet = new Set(technologyHighlights.map(highlight => highlight.label));
     const hasSummarySection = Boolean(profile?.contactHeadline?.trim() || profile?.availabilityHeadline?.trim() || summaryParagraphs.length > 0);
     const hasSkillsSection = skillHighlights.length > 0 || technologyHighlights.length > 0;
     const isLoading = isProfileLoading || isWorkHistoryLoading;
     const errors = [profileError, workHistoryError].filter(Boolean);
+    const activeFilterCount = (selectedTimeFilter.key === 'all' ? 0 : 1) + (selectedEmployerLimit.key === 'all' ? 0 : 1);
+    const resumeViewSummary = getResumeViewSummary(
+        selectedTimeFilter,
+        selectedEmployerLimit,
+        filteredEmployers.length,
+        filteredRoleCount,
+        totalRoleCount
+    );
 
     return (
         <main className="resume-page">
@@ -208,26 +395,26 @@ export function ResumePage() {
                 <div className="resume-hero-meta">
                     <section className="resume-callout-card" aria-label="Resume summary">
                         <span className="stat-label">Resume Snapshot</span>
-                        <strong>{roleCount > 0 ? getRoleCount(employers.length, roleCount) : 'Waiting for published resume data'}</strong>
+                        <strong>{filteredRoleCount > 0 ? getRoleCount(filteredEmployers.length, filteredRoleCount) : totalRoleCount > 0 ? 'No roles match the current resume filters' : 'Waiting for published resume data'}</strong>
                         <p>
                             {profile?.availabilityHeadline?.trim()
                                 ? profile.availabilityHeadline
-                                : 'Publish public profile and work history records to turn this shell into a complete recruiter-facing resume.'}
+                                : resumeViewSummary}
                         </p>
                     </section>
 
                     <div className="hero-stats" aria-label="Resume summary stats">
                         <div className="stat-card">
-                            <span className="stat-label">Employers</span>
-                            <strong>{employers.length}</strong>
+                            <span className="stat-label">{activeFilterCount > 0 ? 'Visible Employers' : 'Employers'}</span>
+                            <strong>{filteredEmployers.length}</strong>
                         </div>
                         <div className="stat-card">
-                            <span className="stat-label">Roles</span>
-                            <strong>{roleCount}</strong>
+                            <span className="stat-label">{activeFilterCount > 0 ? 'Visible Roles' : 'Roles'}</span>
+                            <strong>{filteredRoleCount}</strong>
                         </div>
                         <div className="stat-card">
-                            <span className="stat-label">Contact Channels</span>
-                            <strong>{contactChannelCount}</strong>
+                            <span className="stat-label">{activeFilterCount > 0 ? 'Active Filters' : 'Contact Channels'}</span>
+                            <strong>{activeFilterCount > 0 ? activeFilterCount : contactChannelCount}</strong>
                         </div>
                     </div>
                 </div>
@@ -235,37 +422,73 @@ export function ResumePage() {
 
             <section className="resume-action-area">
                 <article className="resume-panel resume-action-panel">
-                    <p className="eyebrow">Resume Actions</p>
+                    <p className="eyebrow">Resume Controls</p>
                     <div className="resume-action-grid">
                         <div className="resume-action-card">
                             <div className="resume-action-copy">
-                                <span className="meta-label">Resume Filters</span>
-                                <span className="resume-action-note">Issue #87</span>
+                                <span className="meta-label">Time Window</span>
+                                <span className="resume-action-note">{selectedTimeFilter.description}</span>
                             </div>
-                            <button
-                                className="resume-action-button"
-                                type="button"
-                                disabled
-                                aria-disabled="true"
-                                aria-label="Filter Resume">
-                                <span>Filter Resume</span>
-                                <span className="coming-soon-pill">Coming Soon</span>
-                            </button>
+                            <div className="resume-filter-chip-list" role="group" aria-label="Resume time filters">
+                                {resumeTimeFilters.map(filter => {
+                                    const isSelected = filter.key === selectedTimeFilter.key;
+                                    return (
+                                        <button
+                                            key={filter.key}
+                                            className={`resume-filter-chip${isSelected ? ' selected' : ''}`}
+                                            type="button"
+                                            onClick={() => setSelectedTimeFilterKey(filter.key)}
+                                            aria-pressed={isSelected}>
+                                            {filter.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                         <div className="resume-action-card">
                             <div className="resume-action-copy">
-                                <span className="meta-label">Skill Highlights</span>
+                                <span className="meta-label">Recent Employers</span>
+                                <span className="resume-action-note">{selectedEmployerLimit.description}</span>
+                            </div>
+                            <div className="resume-filter-chip-list" role="group" aria-label="Resume employer filters">
+                                {resumeEmployerLimits.map(limit => {
+                                    const isSelected = limit.key === selectedEmployerLimit.key;
+                                    return (
+                                        <button
+                                            key={limit.key}
+                                            className={`resume-filter-chip${isSelected ? ' selected' : ''}`}
+                                            type="button"
+                                            onClick={() => setSelectedEmployerLimitKey(limit.key)}
+                                            aria-pressed={isSelected}>
+                                            {limit.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="resume-action-card">
+                            <div className="resume-action-copy">
+                                <span className="meta-label">Highlight Preview</span>
                                 <span className="resume-action-note">Issue #87</span>
                             </div>
-                            <button
-                                className="resume-action-button"
-                                type="button"
-                                disabled
-                                aria-disabled="true"
-                                aria-label="Highlight Skills">
-                                <span>Highlight Skills</span>
-                                <span className="coming-soon-pill">Coming Soon</span>
-                            </button>
+                            {hasSkillsSection ? (
+                                <div className="resume-highlight-preview" aria-label="Resume highlight preview">
+                                    {skillHighlights.slice(0, 3).map(highlight => (
+                                        <span key={`skill-${highlight.label}`} className="resume-highlight-pill skill">
+                                            <strong>{highlight.label}</strong>
+                                            <span>{highlight.count} role{highlight.count === 1 ? '' : 's'}</span>
+                                        </span>
+                                    ))}
+                                    {technologyHighlights.slice(0, 3).map(highlight => (
+                                        <span key={`technology-${highlight.label}`} className="resume-highlight-pill technology">
+                                            <strong>{highlight.label}</strong>
+                                            <span>{highlight.count} role{highlight.count === 1 ? '' : 's'}</span>
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p>Visible skills and technologies will promote here as resume data becomes available.</p>
+                            )}
                         </div>
                         <div className="resume-action-card">
                             <div className="resume-action-copy">
@@ -387,9 +610,9 @@ export function ResumePage() {
                         <h2>Condensed work history.</h2>
                     </div>
 
-                    {employers.length > 0 ? (
+                    {filteredEmployers.length > 0 ? (
                         <div className="resume-experience-list">
-                            {employers.map(employer => {
+                            {filteredEmployers.map(employer => {
                                 const employerLocation = getLocationLabel(employer.city, employer.region);
                                 const employerDateValue = getEmployerDateValue(employer.name, employer.jobRoles);
                                 const roleEntries = buildResumeRoleEntries(employer.jobRoles);
@@ -432,7 +655,7 @@ export function ResumePage() {
                                                         {jobRole.skills.length > 0 ? (
                                                             <div className="tag-group" aria-label={`${jobRole.role} skills`}>
                                                                 {jobRole.skills.map(skill => (
-                                                                    <span key={skill} className="tag skill">{skill}</span>
+                                                                    <span key={skill} className={`tag skill${highlightedSkillSet.has(skill) ? ' promoted' : ''}`}>{skill}</span>
                                                                 ))}
                                                             </div>
                                                         ) : null}
@@ -440,7 +663,7 @@ export function ResumePage() {
                                                         {jobRole.technologies.length > 0 ? (
                                                             <div className="tag-group secondary" aria-label={`${jobRole.role} technologies`}>
                                                                 {jobRole.technologies.map(technology => (
-                                                                    <span key={technology} className="tag technology">{technology}</span>
+                                                                    <span key={technology} className={`tag technology${highlightedTechnologySet.has(technology) ? ' promoted' : ''}`}>{technology}</span>
                                                                 ))}
                                                             </div>
                                                         ) : null}
@@ -454,7 +677,9 @@ export function ResumePage() {
                         </div>
                     ) : (
                         <p className="secondary-copy">
-                            Published work history will appear here once employer and job-role records are available.
+                            {totalEmployerCount > 0
+                                ? 'No published roles match the current resume filters. Expand the time window or increase the employer count to bring older experience back into view.'
+                                : 'Published work history will appear here once employer and job-role records are available.'}
                         </p>
                     )}
                 </article>
@@ -463,16 +688,19 @@ export function ResumePage() {
                     <article className="resume-panel">
                         <div className="resume-panel-heading">
                             <p className="eyebrow">Skills</p>
-                            <h2>Core skills and technologies.</h2>
+                            <h2>Highlighted skills and technologies.</h2>
                         </div>
 
                         <div className="resume-highlight-list">
                             {skillHighlights.length > 0 ? (
                                 <section className="resume-highlight-group">
                                     <span className="meta-label">Skills</span>
-                                    <div className="tag-group" aria-label="Resume skills">
+                                    <div className="resume-highlight-grid" aria-label="Resume skills">
                                         {skillHighlights.map(skill => (
-                                            <span key={skill} className="tag skill">{skill}</span>
+                                            <article key={skill.label} className="resume-highlight-card skill">
+                                                <strong>{skill.label}</strong>
+                                                <p>Appears in {skill.count} visible role{skill.count === 1 ? '' : 's'}.</p>
+                                            </article>
                                         ))}
                                     </div>
                                 </section>
@@ -481,9 +709,12 @@ export function ResumePage() {
                             {technologyHighlights.length > 0 ? (
                                 <section className="resume-highlight-group">
                                     <span className="meta-label">Technologies</span>
-                                    <div className="tag-group secondary" aria-label="Resume technologies">
+                                    <div className="resume-highlight-grid" aria-label="Resume technologies">
                                         {technologyHighlights.map(technology => (
-                                            <span key={technology} className="tag technology">{technology}</span>
+                                            <article key={technology.label} className="resume-highlight-card technology">
+                                                <strong>{technology.label}</strong>
+                                                <p>Appears in {technology.count} visible role{technology.count === 1 ? '' : 's'}.</p>
+                                            </article>
                                         ))}
                                     </div>
                                 </section>

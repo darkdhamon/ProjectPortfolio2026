@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Employer, PortfolioProfile } from '../../app/types';
 import { ResumePage } from './ResumePage';
@@ -139,7 +139,7 @@ describe('ResumePage', () => {
         expect(screen.getByText('Public contact and social links will appear here once the portfolio profile is configured.')).toBeInTheDocument();
         expect(screen.getByText('Published work history will appear here once employer and job-role records are available.')).toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'Positioning for recruiters and hiring teams.' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('heading', { name: 'Core skills and technologies.' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Highlighted skills and technologies.' })).not.toBeInTheDocument();
     });
 
     it('renders structured summary, skill highlights, and full experience history', () => {
@@ -182,11 +182,12 @@ describe('ResumePage', () => {
         expect(within(summaryPanel as HTMLElement).getByText('Full-stack engineer focused on dependable delivery.')).toBeInTheDocument();
         expect(within(summaryPanel as HTMLElement).getByText('Remote-friendly, collaborative, and comfortable owning delivery from API to UI polish.')).toBeInTheDocument();
 
-        expect(screen.getByRole('heading', { name: 'Core skills and technologies.' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Highlighted skills and technologies.' })).toBeInTheDocument();
         expect(screen.getByLabelText('Resume skills')).toHaveTextContent('Skill 1');
         expect(screen.getByLabelText('Resume skills')).toHaveTextContent('Architecture');
         expect(screen.getByLabelText('Resume technologies')).toHaveTextContent('.NET 10');
         expect(screen.getByLabelText('Resume technologies')).toHaveTextContent('React');
+        expect(screen.getAllByText('Appears in 1 visible role.').length).toBeGreaterThan(0);
 
         const experiencePanel = screen.getByRole('heading', { name: 'Condensed work history.' }).closest('article');
         expect(experiencePanel).not.toBeNull();
@@ -200,6 +201,90 @@ describe('ResumePage', () => {
         expect(within(experiencePanel as HTMLElement).getByText('Feb 2019 to Dec 2023')).toHaveAttribute('title', 'Time at Employer 2: 4 years, 11 months');
         expect(within(experiencePanel as HTMLElement).getByText('May 2021 to Dec 2023')).toHaveAttribute('title', 'Time in role: 2 years, 8 months');
         expect(within(experiencePanel as HTMLElement).getByText('Feb 2019 to May 2021')).toHaveAttribute('title', 'Time in role: 2 years, 4 months');
+    });
+
+    it('filters the resume by time window and recent employer count', () => {
+        vi.setSystemTime(new Date('2026-05-24T12:00:00Z'));
+
+        mockUseWorkHistory.mockReturnValue({
+            employers: [
+                createEmployer(1, {
+                    name: 'Current Employer',
+                    jobRoles: [
+                        {
+                            role: 'Staff Engineer',
+                            startDate: '2024-02-01',
+                            endDate: null,
+                            descriptionMarkdown: 'Owning platform and delivery work.',
+                            skills: ['Leadership'],
+                            technologies: ['React']
+                        }
+                    ]
+                }),
+                createEmployer(2, {
+                    name: 'Recent Employer',
+                    jobRoles: [
+                        {
+                            role: 'Senior Engineer',
+                            startDate: '2022-03-01',
+                            endDate: '2024-01-15',
+                            descriptionMarkdown: 'Drove modernization initiatives.',
+                            skills: ['Architecture'],
+                            technologies: ['.NET 10']
+                        }
+                    ]
+                }),
+                createEmployer(3, {
+                    name: 'Bridge Employer',
+                    jobRoles: [
+                        {
+                            role: 'Engineer',
+                            startDate: '2020-01-01',
+                            endDate: '2021-08-15',
+                            descriptionMarkdown: 'Supported platform transitions.',
+                            skills: ['Testing'],
+                            technologies: ['Azure']
+                        }
+                    ]
+                }),
+                createEmployer(4, {
+                    name: 'Legacy Employer',
+                    jobRoles: [
+                        {
+                            role: 'Analyst',
+                            startDate: '2015-01-01',
+                            endDate: '2017-12-20',
+                            descriptionMarkdown: 'Early delivery work.',
+                            skills: ['Support'],
+                            technologies: ['SQL Server']
+                        }
+                    ]
+                })
+            ],
+            isLoading: false,
+            error: null
+        });
+
+        render(<ResumePage />);
+
+        expect(screen.getByText('Current Employer')).toBeInTheDocument();
+        expect(screen.getByText('Recent Employer')).toBeInTheDocument();
+        expect(screen.getByText('Bridge Employer')).toBeInTheDocument();
+        expect(screen.getByText('Legacy Employer')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Last 5 years' }));
+
+        expect(screen.getByText('Current Employer')).toBeInTheDocument();
+        expect(screen.getByText('Recent Employer')).toBeInTheDocument();
+        expect(screen.getByText('Bridge Employer')).toBeInTheDocument();
+        expect(screen.queryByText('Legacy Employer')).not.toBeInTheDocument();
+        expect(screen.getByText('3 roles across 3 employers')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Top 3' }));
+
+        expect(screen.getByRole('button', { name: 'Top 3' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByText('Visible Employers')).toBeInTheDocument();
+        expect(screen.getByText('Active Filters')).toBeInTheDocument();
     });
 
     it('avoids duplicate key warnings when role titles and start dates repeat', () => {

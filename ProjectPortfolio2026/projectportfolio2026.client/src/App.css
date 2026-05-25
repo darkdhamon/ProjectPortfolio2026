@@ -470,6 +470,13 @@
     gap: 0.7rem;
 }
 
+.resume-filter-chip-list,
+.resume-highlight-preview {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
 .resume-link-card,
 .resume-action-card {
     padding: 1rem;
@@ -496,6 +503,32 @@
 
 .resume-action-copy .meta-label {
     color: #d7e2f1;
+}
+
+.resume-filter-chip {
+    min-height: 2.35rem;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid rgba(111, 137, 171, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #dce7f5;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.resume-filter-chip:hover {
+    transform: translateY(-1px);
+    border-color: rgba(126, 233, 255, 0.34);
+}
+
+.resume-filter-chip.selected {
+    border-color: rgba(245, 183, 48, 0.42);
+    background:
+        linear-gradient(135deg, rgba(245, 183, 48, 0.18), rgba(255, 255, 255, 0.08));
+    color: #fff2cc;
+    box-shadow: inset 0 0 0 1px rgba(255, 223, 143, 0.12);
 }
 
 .resume-action-button {
@@ -568,6 +601,95 @@
 
 .resume-highlight-group {
     gap: 0.55rem;
+}
+
+.resume-highlight-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.7rem;
+}
+
+.resume-highlight-card {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.95rem 1rem;
+    border: 1px solid rgba(111, 137, 171, 0.16);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.resume-highlight-card.skill {
+    border-color: rgba(245, 183, 48, 0.24);
+    background:
+        linear-gradient(180deg, rgba(255, 216, 111, 0.12), rgba(255, 255, 255, 0.03));
+}
+
+.resume-highlight-card.technology {
+    border-color: rgba(126, 233, 255, 0.18);
+    background:
+        linear-gradient(180deg, rgba(99, 222, 255, 0.12), rgba(255, 255, 255, 0.03));
+}
+
+.resume-highlight-card p,
+.resume-highlight-card strong {
+    margin: 0;
+}
+
+.resume-highlight-card strong {
+    color: #fff7e8;
+}
+
+.resume-highlight-card p {
+    color: rgba(219, 230, 243, 0.82);
+}
+
+.resume-highlight-pill {
+    display: inline-grid;
+    gap: 0.15rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgba(111, 137, 171, 0.18);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.resume-highlight-pill strong,
+.resume-highlight-pill span {
+    margin: 0;
+}
+
+.resume-highlight-pill strong {
+    color: #fff7e8;
+    font-size: 0.84rem;
+}
+
+.resume-highlight-pill span {
+    color: rgba(219, 230, 243, 0.78);
+    font-size: 0.76rem;
+}
+
+.resume-highlight-pill.skill {
+    border-color: rgba(245, 183, 48, 0.24);
+}
+
+.resume-highlight-pill.technology {
+    border-color: rgba(126, 233, 255, 0.2);
+}
+
+.resume-page .tag.promoted {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 10px 18px rgba(7, 16, 30, 0.18);
+}
+
+.resume-page .tag.skill.promoted {
+    background: rgba(245, 183, 48, 0.28);
+    color: #fff1bf;
+}
+
+.resume-page .tag.technology.promoted {
+    background: rgba(126, 233, 255, 0.14);
+    color: #f2fbff;
 }
 
 .resume-shell-note {

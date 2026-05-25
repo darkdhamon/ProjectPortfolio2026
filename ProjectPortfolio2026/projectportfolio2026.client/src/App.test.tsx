@@ -379,11 +379,15 @@ describe('App', () => {
         expect(await screen.findByRole('heading', { name: 'Bronze Loft' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Resume' })).toHaveAttribute('aria-current', 'page');
         expect(screen.getAllByText('Open to senior full-stack roles')).toHaveLength(2);
-        expect(screen.getByText('Senior Software Engineer')).toBeInTheDocument();
+        expect(await screen.findByText('Senior Software Engineer')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /bronze@example\.dev/i })).toHaveAttribute('href', 'mailto:bronze@example.dev');
         expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
-        expect(screen.getByRole('button', { name: 'Filter Resume' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Highlight Skills' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Full history' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Last 10 years' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'Last 5 years' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'All employers' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Top 3' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'Top 5' })).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getByRole('button', { name: 'Download PDF' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Open Static Resume' })).toBeDisabled();
     });
