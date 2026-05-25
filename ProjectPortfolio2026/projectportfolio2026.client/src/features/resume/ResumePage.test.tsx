@@ -204,6 +204,8 @@ describe('ResumePage', () => {
     });
 
     it('filters the resume by time window and recent employer count', () => {
+        vi.setSystemTime(new Date('2026-05-24T12:00:00Z'));
+
         mockUseWorkHistory.mockReturnValue({
             employers: [
                 createEmployer(1, {

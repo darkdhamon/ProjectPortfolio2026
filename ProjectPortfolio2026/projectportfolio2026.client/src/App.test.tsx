@@ -379,7 +379,7 @@ describe('App', () => {
         expect(await screen.findByRole('heading', { name: 'Bronze Loft' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Resume' })).toHaveAttribute('aria-current', 'page');
         expect(screen.getAllByText('Open to senior full-stack roles')).toHaveLength(2);
-        expect(screen.getByText('Senior Software Engineer')).toBeInTheDocument();
+        expect(await screen.findByText('Senior Software Engineer')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /bronze@example\.dev/i })).toHaveAttribute('href', 'mailto:bronze@example.dev');
         expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
         expect(screen.getByRole('button', { name: 'Full history' })).toHaveAttribute('aria-pressed', 'true');

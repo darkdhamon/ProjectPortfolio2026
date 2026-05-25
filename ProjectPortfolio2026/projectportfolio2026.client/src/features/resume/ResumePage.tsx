@@ -119,6 +119,13 @@ function getMonthIndex(value: string) {
     return (year * 12) + month;
 }
 
+function formatDateKey(date: Date) {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function formatDurationLabel(totalMonths: number) {
     const years = Math.floor(totalMonths / 12);
     const months = totalMonths % 12;
@@ -200,13 +207,13 @@ function buildResumeRoleEntries(jobRoles: JobRole[]) {
     });
 }
 
-function roleMatchesTimeFilter(jobRole: JobRole, cutoffDate: Date | null, currentDate: Date) {
-    if (!cutoffDate) {
+function roleMatchesTimeFilter(jobRole: JobRole, cutoffDateKey: string | null, currentDateKey: string) {
+    if (!cutoffDateKey) {
         return true;
     }
 
-    const roleEndDate = jobRole.endDate ? new Date(jobRole.endDate) : currentDate;
-    return roleEndDate >= cutoffDate;
+    const roleEndDateKey = jobRole.endDate ?? currentDateKey;
+    return roleEndDateKey >= cutoffDateKey;
 }
 
 function getEmployerRecencyScore(jobRoles: JobRole[], currentMonthIndex: number) {
@@ -309,10 +316,12 @@ export function ResumePage() {
     const cutoffDate = selectedTimeFilter.years === null
         ? null
         : new Date(currentDate.getFullYear() - selectedTimeFilter.years, currentDate.getMonth(), currentDate.getDate());
+    const cutoffDateKey = cutoffDate ? formatDateKey(cutoffDate) : null;
+    const currentDateKey = formatDateKey(currentDate);
     const employersInTimeView = employers
         .map(employer => ({
             ...employer,
-            jobRoles: employer.jobRoles.filter(jobRole => roleMatchesTimeFilter(jobRole, cutoffDate, currentDate))
+            jobRoles: employer.jobRoles.filter(jobRole => roleMatchesTimeFilter(jobRole, cutoffDateKey, currentDateKey))
         }))
         .filter(employer => employer.jobRoles.length > 0)
         .sort((left, right) => getEmployerRecencyScore(right.jobRoles, currentMonthIndex) - getEmployerRecencyScore(left.jobRoles, currentMonthIndex));
