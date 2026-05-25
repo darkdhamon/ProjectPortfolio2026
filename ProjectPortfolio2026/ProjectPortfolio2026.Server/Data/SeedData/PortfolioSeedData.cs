@@ -48,11 +48,11 @@ public static class PortfolioSeedData
     {
         return new PortfolioProfile
         {
-            DisplayName = "Bronze Loft",
-            ContactHeadline = "Choose the contact path that fits the conversation you want to have.",
-            ContactIntro = "This portfolio frames outreach as a calm next step. Recruiters, collaborators, and hiring teams should be able to find the right channel quickly without sorting through hardcoded one-off content.",
-            AvailabilityHeadline = "Open to new opportunities",
-            AvailabilitySummary = "Focused on full-stack product engineering roles where API design, thoughtful UI, and maintainable delivery all matter.",
+            DisplayName = "Bronze Harold Brown",
+            ContactHeadline = "Senior .NET Cloud & AI-Integrated Engineer",
+            ContactIntro = "Senior .NET engineer with 12+ years of experience designing, building, testing, deploying, and supporting software solutions across healthcare, insurance, finance, and music technology. Strongest depth is in backend C#/.NET development, API design, data integration, debugging, production troubleshooting, and SQL-backed business systems, with growing hands-on React experience through current project work.",
+            AvailabilityHeadline = "Open to senior .NET, full-stack, cloud, and AI-integrated engineering roles.",
+            AvailabilitySummary = "Best fit is backend-heavy C#/.NET work with room to contribute across the stack, deepen frontend experience, support architecture and mentorship, and use AI tools responsibly as part of practical software delivery.",
             IsPublic = true,
             ContactMethods =
             [
@@ -60,8 +60,8 @@ public static class PortfolioSeedData
                 {
                     Type = "email",
                     Label = "Email",
-                    Value = "bronze@example.dev",
-                    Note = "Best for interview requests, consulting inquiries, and longer-form conversations.",
+                    Value = "Bronze.H.Brown@gmail.com",
+                    Note = "Best for interview requests, consulting inquiries, and recruiter conversations.",
                     SortOrder = 1,
                     IsVisible = true
                 },
@@ -69,8 +69,8 @@ public static class PortfolioSeedData
                 {
                     Type = "phone",
                     Label = "Phone",
-                    Value = "(312) 555-0147",
-                    Note = "Available for scheduled calls on weekdays between 9 AM and 5 PM Central.",
+                    Value = "(240) 758-6723",
+                    Note = "Available for scheduled calls and follow-up conversations.",
                     SortOrder = 2,
                     IsVisible = true
                 },
@@ -78,8 +78,8 @@ public static class PortfolioSeedData
                 {
                     Type = "location",
                     Label = "Location",
-                    Value = "Chicago, Illinois",
-                    Note = "Open to remote roles, hybrid collaboration, and select on-site visits.",
+                    Value = "Madison Lake, Minnesota",
+                    Note = "Open to remote roles and broader engineering collaboration.",
                     SortOrder = 3,
                     IsVisible = true
                 }
@@ -92,7 +92,7 @@ public static class PortfolioSeedData
                     Label = "GitHub",
                     Url = "https://github.com/darkdhamon",
                     Handle = "@darkdhamon",
-                    Summary = "Code samples, ongoing portfolio work, and implementation details.",
+                    Summary = "Public source code, current portfolio work, and implementation details.",
                     SortOrder = 1,
                     IsVisible = true
                 },
@@ -100,20 +100,10 @@ public static class PortfolioSeedData
                 {
                     Platform = "linkedin",
                     Label = "LinkedIn",
-                    Url = "https://www.linkedin.com/in/bronze-loft",
-                    Handle = "Bronze Loft",
-                    Summary = "Professional background, role history, and recruiter-friendly context.",
+                    Url = "https://www.linkedin.com/in/bronzeharoldbrown/",
+                    Handle = "Bronze Harold Brown",
+                    Summary = "Professional background, role history, and recruiter-facing context.",
                     SortOrder = 2,
-                    IsVisible = true
-                },
-                new PortfolioSocialLink
-                {
-                    Platform = "calendly",
-                    Label = "Calendly",
-                    Url = "https://calendly.com/bronze-loft/portfolio-intro",
-                    Handle = "Schedule an intro",
-                    Summary = "A lightweight path for a first conversation without email back-and-forth.",
-                    SortOrder = 3,
                     IsVisible = true
                 }
             ]
@@ -525,56 +515,347 @@ public static class PortfolioSeedData
         [
             new Employer
             {
-                Name = "Northwind Health",
-                City = "Chicago",
-                Region = "IL",
+                Name = "Axl Protocol Music",
+                City = "Madison Lake",
+                Region = "MN",
                 Country = "USA",
                 IsPublished = true,
                 JobRoles =
                 [
                     CreateJobRole(
-                        "Senior Software Engineer",
-                        new DateOnly(2024, 1, 8),
+                        ".NET Full-Stack Cloud Engineer",
+                        new DateOnly(2024, 10, 1),
                         null,
-                        "Dana Smith",
+                        null,
                         """
-                        Leading API delivery, platform refactoring, and public-facing portfolio architecture work.
+                        Led the architecture and delivery of a .NET 10 Blazor web application with interactive server rendering, backed by MongoDB and deployed to Azure App Service.
 
-                        Partnering with product and design stakeholders to align engineering implementation with recruiting and resume-generation goals.
+                        Owned the full software development lifecycle from concept and requirements through implementation, testing, deployment, support, CI quality gates, analytics, and OpenAI-assisted platform features under my technical direction.
                         """,
-                        skills: ["API Design", "Technical Writing"],
-                        technologies: [".NET 10", "SQL Server"]),
-                    CreateJobRole(
-                        "Software Engineer",
-                        new DateOnly(2022, 4, 4),
-                        new DateOnly(2023, 12, 29),
-                        "Dana Smith",
-                        """
-                        Delivered internal business applications and improved deployment reliability for line-of-business systems.
-                        """,
-                        skills: ["Workflow Design", "Testing"],
-                        technologies: ["ASP.NET Core", "Azure DevOps"])
+                        skills: ["Application Architecture", "AI Integration", "CI/CD", "Content Management", "Analytics"],
+                        technologies: [".NET 10", "Blazor", "ASP.NET Core", "MongoDB", "Azure App Service", "GitHub Actions", "OpenAI Responses API"])
                 ]
             },
             new Employer
             {
-                Name = "Blue Ocean Labs",
-                City = "Austin",
-                Region = "TX",
+                Name = "Tata Consultancy Services (TCS)",
+                City = null,
+                Region = null,
                 Country = "USA",
                 IsPublished = true,
                 JobRoles =
                 [
                     CreateJobRole(
-                        "Platform Engineer",
-                        new DateOnly(2020, 6, 1),
-                        new DateOnly(2022, 3, 18),
-                        "Morgan Patel",
+                        "Software Engineering Consultant",
+                        new DateOnly(2024, 3, 1),
+                        new DateOnly(2025, 8, 31),
+                        null,
                         """
-                        Built shared backend components and supported product teams with data access and deployment tooling improvements.
+                        Contributed to a new ASP.NET MVC healthcare application for Humana Military, building MVC and Razor forms, supporting business logic, and collaborating with analysts and product owners.
+
+                        Supported production operations, issue triage, documentation review, escalation workflows, and Agile team delivery across multiple client engagements.
                         """,
-                        skills: ["Data Modeling", "Performance Tuning"],
-                        technologies: ["C#", "SQL Server"])
+                        skills: ["MVC Development", "Production Support", "Agile Delivery"],
+                        technologies: ["C#", "ASP.NET MVC", "Razor", "Web API", "Azure DevOps"])
+                ]
+            },
+            new Employer
+            {
+                Name = "TEKsystems",
+                City = null,
+                Region = null,
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Software Engineering Contractor (ORAU)",
+                        new DateOnly(2023, 5, 1),
+                        new DateOnly(2023, 8, 31),
+                        null,
+                        """
+                        Engineered new application features using .NET 7, C#, and ASP.NET MVC while collaborating in an Agile and Azure DevOps workflow.
+
+                        Debugged complex issues, reviewed CI/CD logs, and supported defect isolation across development and QA environments.
+                        """,
+                        skills: ["Debugging", "Agile Delivery", "CI/CD"],
+                        technologies: ["C#", ".NET 7", "ASP.NET MVC", "T-SQL", "Azure DevOps"]),
+                    CreateJobRole(
+                        "Senior Software Engineer Contractor (Availity)",
+                        new DateOnly(2022, 11, 1),
+                        new DateOnly(2023, 2, 28),
+                        null,
+                        """
+                        Led debugging and feature work for insurance-related ASP.NET MVC applications while partnering with analysts around EDI-aligned business requirements.
+
+                        Authored unit tests and delivered .NET 6 changes within an Azure DevOps and Agile delivery model.
+                        """,
+                        skills: ["Unit Testing", "EDI Domain Support", "Debugging"],
+                        technologies: ["C#", ".NET 6", "ASP.NET MVC", "Azure DevOps", "PL/SQL"])
+                ]
+            },
+            new Employer
+            {
+                Name = "Robert Half",
+                City = "Pittsburgh",
+                Region = "PA",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Senior Software Engineer Consultant",
+                        new DateOnly(2021, 3, 1),
+                        new DateOnly(2022, 10, 31),
+                        null,
+                        """
+                        Developed and deployed RESTful APIs and ASP.NET MVC application features across multiple consulting engagements while adapting quickly to varied domains and client needs.
+
+                        Helped clients with planning, estimates, code reviews, and end-to-end software delivery using C#, .NET Core, Entity Framework, and Azure DevOps.
+                        """,
+                        skills: ["REST API Design", "Consulting", "Project Planning"],
+                        technologies: ["C#", ".NET Core", "ASP.NET MVC", "ASP.NET Web API", "Entity Framework Core", "Azure DevOps"])
+                ]
+            },
+            new Employer
+            {
+                Name = "Delta Care RX",
+                City = "Pittsburgh",
+                Region = "PA",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Software Engineer",
+                        new DateOnly(2019, 9, 1),
+                        new DateOnly(2021, 1, 31),
+                        null,
+                        """
+                        Led architecture and development of a Vue.js patient identity-confirmation application and implemented secure REST APIs with JWT authentication.
+
+                        Managed MySQL data access, supported PDF-based document workflows, and improved reliability through debugging, testing, and custom JavaScript maintenance.
+                        """,
+                        skills: ["REST API Design", "JWT Authentication", "Frontend Development"],
+                        technologies: ["C#", "ASP.NET Core", "ASP.NET Web API", "Vue.js", "MySQL", "Entity Framework Core"])
+                ]
+            },
+            new Employer
+            {
+                Name = "Sentara Health Care",
+                City = "Virginia Beach",
+                Region = "VA",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Software Engineer",
+                        new DateOnly(2018, 3, 1),
+                        new DateOnly(2019, 9, 30),
+                        null,
+                        """
+                        Designed RESTful APIs and middleware integrations, including Epic InterConnect transformation work and ETL processes for CSV and FTP-delivered healthcare data.
+
+                        Supported Swagger and AutoRest-based client generation, SQL Server data access, Jenkins and Azure DevOps delivery workflows, and 24/7 on-call production support.
+                        """,
+                        skills: ["ETL", "API Integration", "On-Call Support"],
+                        technologies: ["C#", "ASP.NET Core", "SQL Server", "Azure", "Swagger", "AutoRest", "Jenkins"])
+                ]
+            },
+            new Employer
+            {
+                Name = "IMPAQ International",
+                City = "Columbia",
+                Region = "MD",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Software Developer",
+                        new DateOnly(2017, 5, 1),
+                        new DateOnly(2018, 2, 28),
+                        null,
+                        """
+                        Maintained and enhanced ASP.NET applications, implemented new features, and authored unit tests to improve application robustness.
+
+                        Supported performance tuning, Jenkins-based release workflows, and Entity Framework-backed relational data access in a Team Foundation Server environment.
+                        """,
+                        skills: ["Application Maintenance", "Unit Testing", "Performance Tuning"],
+                        technologies: ["C#", "ASP.NET MVC", "Entity Framework", "SQL", "Jenkins"])
+                ]
+            },
+            new Employer
+            {
+                Name = "FEi Systems",
+                City = "Columbia",
+                Region = "MD",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Contract Developer",
+                        new DateOnly(2016, 9, 1),
+                        new DateOnly(2017, 2, 28),
+                        null,
+                        """
+                        Built and maintained PDF generation templates, contributed CSS and JavaScript UI improvements, and resolved software defects in established ASP.NET MVC applications.
+                        """,
+                        skills: ["PDF Generation", "UI Debugging", "Rapid Learning"],
+                        technologies: ["C#", "ASP.NET MVC", "CSS", "JavaScript", "RavenDB", "ABCpdf"])
+                ]
+            },
+            new Employer
+            {
+                Name = "Revature",
+                City = "Reston",
+                Region = "VA",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Contract Developer",
+                        new DateOnly(2016, 2, 1),
+                        new DateOnly(2016, 8, 31),
+                        null,
+                        """
+                        Completed an intensive training program focused on emerging technologies and delivered projects using SQL Server, C#, .NET, ASP.NET MVC, and AngularJS within Agile teams.
+                        """,
+                        skills: ["Training", "Agile Delivery", "Form Development"],
+                        technologies: ["C#", "ASP.NET MVC", "ASP.NET Web Forms", "Entity Framework", "SQL Server", "AngularJS"])
+                ]
+            },
+            new Employer
+            {
+                Name = "MCS Valuations",
+                City = "Sandy",
+                Region = "UT",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Software Developer",
+                        new DateOnly(2015, 1, 1),
+                        new DateOnly(2015, 10, 31),
+                        null,
+                        """
+                        Maintained and upgraded the primary valuation application, implemented new SQL stored procedures, and supported rebranding-focused UI updates.
+
+                        Applied debugging and modernization work across legacy and newer Microsoft-stack technologies.
+                        """,
+                        skills: ["Debugging", "Stored Procedures", "UI Rebranding"],
+                        technologies: ["C#", "VB.NET", "VB6", "SQL Server", "Classic ASP"])
+                ]
+            },
+            new Employer
+            {
+                Name = "Zycamore LLC",
+                City = "Provo",
+                Region = "UT",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Software Developer",
+                        new DateOnly(2014, 4, 1),
+                        new DateOnly(2014, 12, 31),
+                        null,
+                        """
+                        Built SQL generation scripts, C# file-generation utilities, and ASP.NET MVC form validation features while also supporting Windows Server and IIS setup work.
+                        """,
+                        skills: ["Server Provisioning", "Form Validation", "Automation"],
+                        technologies: ["C#", "ASP.NET MVC", "SQL Server", "IIS", "Windows Server"])
+                ]
+            },
+            new Employer
+            {
+                Name = "Ocean Avenue",
+                City = "South Jordan",
+                Region = "UT",
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Junior Software Developer",
+                        new DateOnly(2013, 3, 1),
+                        new DateOnly(2013, 11, 30),
+                        null,
+                        """
+                        Published code to development and production environments for a Sitefinity-based ASP.NET site, implemented backend C# business logic, and enhanced client-side behavior with JavaScript and jQuery.
+
+                        Added AJAX features, SQL reporting support, and integrations with third-party OData web services.
+                        """,
+                        skills: ["Release Support", "OData Integration", "AJAX"],
+                        technologies: ["C#", "ASP.NET", "Sitefinity", "JavaScript", "jQuery", "SQL Server"])
+                ]
+            },
+            new Employer
+            {
+                Name = "Rubio's",
+                City = null,
+                Region = null,
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Intern Developer",
+                        new DateOnly(2012, 10, 1),
+                        new DateOnly(2012, 12, 31),
+                        null,
+                        """
+                        Supported an enterprise reporting application, implemented C# business rules in an ASP.NET application, and participated in daily Scrum collaboration.
+                        """,
+                        skills: ["Business Rules", "Enterprise Reporting", "Scrum"],
+                        technologies: ["C#", "ASP.NET", "Team Foundation Server"])
+                ]
+            },
+            new Employer
+            {
+                Name = "TopVue Defense",
+                City = null,
+                Region = null,
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Intern Developer",
+                        new DateOnly(2012, 10, 1),
+                        new DateOnly(2012, 12, 31),
+                        null,
+                        """
+                        Developed enterprise application features with PL/SQL, ASP.NET, C#, and JavaScript while collaborating through Team Foundation Server and daily Scrum meetings.
+                        """,
+                        skills: ["PL/SQL Development", "Enterprise Collaboration", "Scrum"],
+                        technologies: ["PL/SQL", "C#", "ASP.NET", "JavaScript"])
+                ]
+            },
+            new Employer
+            {
+                Name = "GTECH",
+                City = null,
+                Region = null,
+                Country = "USA",
+                IsPublished = true,
+                JobRoles =
+                [
+                    CreateJobRole(
+                        "Intern Developer",
+                        new DateOnly(2012, 6, 1),
+                        new DateOnly(2012, 9, 30),
+                        null,
+                        """
+                        Supported a lottery-simulation enterprise project by generating automated test cases and building Java utilities for XML parsing and file I/O workflows.
+                        """,
+                        skills: ["Automated Testing", "XML Parsing", "File I/O"],
+                        technologies: ["Java", "XML", "Eclipse"])
                 ]
             }
         ];
