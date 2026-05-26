@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using ProjectPortfolio2026.ResumeParser.Implementations;
-using ProjectPortfolio2026.ResumeParser.Interfaces;
 using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Data.SeedData;
 using ProjectPortfolio2026.Server.Domain.Identity;
@@ -91,8 +89,7 @@ builder.Services.AddScoped<IEmployerRepository, EmployerRepository>();
 builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IResumeImportFileStore>(_ => new TemporaryResumeFileStore());
-builder.Services.AddScoped<IResumeDocumentParser, DeferredResumeDocumentParser>();
-builder.Services.AddScoped<IResumeParserService, ResumeParserService>();
+builder.Services.AddScoped<IResumeParserService, DeferredResumeParserService>();
 builder.Services.AddScoped<IResumeImportService, ResumeImportService>();
 builder.Services.AddScoped<RequestTrackingFilter>();
 

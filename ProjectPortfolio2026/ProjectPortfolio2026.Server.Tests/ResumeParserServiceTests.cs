@@ -30,7 +30,8 @@ public sealed class ResumeParserServiceTests
                     Profiles =
                     [
                         new ResumeProfileLink { Url = "https://github.com/darkdhamon" },
-                        new ResumeProfileLink { Label = "LinkedIn" }
+                        new ResumeProfileLink { Url = "   ", Label = "LinkedIn" },
+                        new ResumeProfileLink { Url = "", UserName = "bronze-loft" }
                     ]
                 },
                 ProfessionalSummary = "Experienced engineer",
@@ -80,7 +81,9 @@ public sealed class ResumeParserServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Person?.FullName, Is.EqualTo("Bronze Loft"));
-            Assert.That(result.Person?.SocialProfiles, Is.EqualTo(new[] { "https://github.com/darkdhamon", "LinkedIn" }));
+            Assert.That(
+                result.Person?.SocialProfiles,
+                Is.EqualTo(new[] { "https://github.com/darkdhamon", "LinkedIn", "bronze-loft" }));
             Assert.That(result.ProfessionalSummary, Is.EqualTo("Experienced engineer"));
             Assert.That(result.GlobalSkills, Is.EqualTo(new[] { ".NET", "API Design", "C#" }));
             Assert.That(result.WorkHistory, Has.Count.EqualTo(1));

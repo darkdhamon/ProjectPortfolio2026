@@ -52,11 +52,18 @@ public sealed class ResumeParserService(IResumeDocumentParser resumeDocumentPars
             PhoneNumbers = [.. header.PhoneNumbers],
             Location = MapLocation(header.Location),
             SocialProfiles = header.Profiles
-                .Select(profile => profile.Url ?? profile.Label ?? profile.UserName)
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .Select(value => value!.Trim())
+                .Select(GetPreferredProfileValue)
+                .Where(value => value is not null)
+                .Select(value => value!)
                 .ToList()
         };
+    }
+
+    private static string? GetPreferredProfileValue(ResumeProfileLink profile)
+    {
+        return new[] { profile.Url, profile.Label, profile.UserName }
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
+            ?.Trim();
     }
 
     private static ParsedWorkHistoryEntry MapWorkHistoryEntry(ResumeWorkExperienceEntry entry)
