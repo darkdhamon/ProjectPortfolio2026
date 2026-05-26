@@ -145,7 +145,15 @@
 .admin-card,
 .account-grid,
 .account-form,
-.admin-callout {
+.admin-callout,
+.admin-workspace-shell,
+.admin-workspace-nav,
+.admin-workspace-nav-copy,
+.admin-workspace-utility,
+.admin-workspace-content,
+.admin-dashboard-grid,
+.admin-section-panel,
+.admin-section-nav {
     display: grid;
 }
 
@@ -887,6 +895,88 @@
 
 .admin-card p {
     margin: 0;
+}
+
+.admin-workspace-shell {
+    grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.admin-workspace-nav {
+    gap: 1rem;
+    position: sticky;
+    top: 1rem;
+}
+
+.admin-workspace-nav-copy,
+.admin-workspace-utility,
+.admin-workspace-content,
+.admin-section-nav,
+.admin-section-panel {
+    gap: 0.85rem;
+}
+
+.admin-dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: 1rem;
+}
+
+.admin-section-link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(111, 137, 171, 0.16);
+    border-radius: 1rem;
+    background: rgba(8, 17, 31, 0.54);
+    color: #eef4fb;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.admin-section-link:hover {
+    transform: translateY(-1px);
+    border-color: rgba(126, 233, 255, 0.24);
+}
+
+.admin-section-link.active {
+    border-color: rgba(245, 183, 48, 0.4);
+    background:
+        linear-gradient(135deg, rgba(245, 183, 48, 0.18), rgba(255, 255, 255, 0.06));
+    color: #fff4d2;
+}
+
+.admin-route-pill,
+.admin-section-meta {
+    color: rgba(216, 226, 238, 0.78);
+    font-size: 0.82rem;
+}
+
+.admin-route-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3rem 0.65rem;
+    border: 1px solid rgba(245, 183, 48, 0.18);
+    border-radius: 999px;
+    background: rgba(245, 183, 48, 0.12);
+    color: #ffe4a0;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.admin-section-list {
+    margin: 0;
+    padding-left: 1.2rem;
+    color: rgba(226, 235, 246, 0.86);
+    line-height: 1.7;
+}
+
+.admin-section-list li + li {
+    margin-top: 0.55rem;
 }
 .site-header {
     grid-template-columns: minmax(0, 1fr) minmax(18rem, 30rem);
@@ -2364,7 +2454,8 @@
     .contact-grid-secondary,
     .resume-grid,
     .resume-grid-secondary,
-    .resume-hero {
+    .resume-hero,
+    .admin-workspace-shell {
         grid-template-columns: 1fr;
     }
 
@@ -2497,6 +2588,10 @@
 
     .admin-subnav {
         margin-left: 0;
+    }
+
+    .admin-workspace-nav {
+        position: static;
     }
 
     .image-shell,
