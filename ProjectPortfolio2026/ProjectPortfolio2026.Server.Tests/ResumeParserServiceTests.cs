@@ -86,10 +86,55 @@ public sealed class ResumeParserServiceTests
                 Is.EqualTo(new[] { "https://github.com/darkdhamon", "LinkedIn", "bronze-loft" }));
             Assert.That(result.ProfessionalSummary, Is.EqualTo("Experienced engineer"));
             Assert.That(result.GlobalSkills, Is.EqualTo(new[] { ".NET", "API Design", "C#" }));
+            Assert.That(result.SourceFileName, Is.EqualTo("resume.pdf"));
             Assert.That(result.WorkHistory, Has.Count.EqualTo(1));
             Assert.That(result.WorkHistory[0].EmployerName, Is.EqualTo("Northwind Health"));
             Assert.That(result.WorkHistory[0].EmploymentDates.IsCurrentRole, Is.True);
             Assert.That(result.WorkHistory[0].RawFields["source-section"], Is.EqualTo("experience"));
+        });
+    }
+
+    [Test]
+    public async Task ParseAsync_PrefersUploadedFileNameOverParserProvidedSourceFileName()
+    {
+        var parser = new StubResumeDocumentParser
+        {
+            Result = new ResumeDocument
+            {
+                SourceFileName = "C:\\temp\\resume.pdf",
+                ParserName = "StubParser"
+            }
+        };
+        var service = new ResumeParserService(parser);
+
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        var result = await service.ParseAsync(stream, "resume.pdf");
+
+        Assert.That(result.SourceFileName, Is.EqualTo("resume.pdf"));
+    }
+
+    [Test]
+    public async Task ParseAsync_ReturnsNullPersonWhenParserDoesNotProvideHeader()
+    {
+        var parser = new StubResumeDocumentParser
+        {
+            Result = new ResumeDocument
+            {
+                SourceFileName = "resume.pdf",
+                ParserName = "StubParser"
+            }
+        };
+        var service = new ResumeParserService(parser);
+
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        var result = await service.ParseAsync(stream, "resume.pdf");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Person, Is.Null);
+            Assert.That(result.SourceFileName, Is.EqualTo("resume.pdf"));
         });
     }
 

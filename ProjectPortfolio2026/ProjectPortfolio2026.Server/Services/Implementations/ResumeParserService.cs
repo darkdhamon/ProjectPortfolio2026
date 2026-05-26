@@ -29,7 +29,9 @@ public sealed class ResumeParserService(IResumeDocumentParser resumeDocumentPars
                 .ToList(),
             ProfessionalSummary = document.ProfessionalSummary,
             RawText = document.RawText,
-            SourceFileName = document.SourceFileName,
+            SourceFileName = string.IsNullOrWhiteSpace(fileName)
+                ? document.SourceFileName
+                : fileName,
             ParserName = document.ParserName
         };
     }
