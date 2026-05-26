@@ -62,6 +62,7 @@ jobs:
             $codePathPatterns = @(
               '^\.github/',
               '^ProjectPortfolio2026/projectportfolio2026\.client/',
+              '^ProjectPortfolio2026/ProjectPortfolio2026\.ResumeParser/',
               '^ProjectPortfolio2026/ProjectPortfolio2026\.Server/',
               '^ProjectPortfolio2026/ProjectPortfolio2026\.Server\.Tests/'
             )
