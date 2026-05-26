@@ -14,35 +14,74 @@ const DEFAULT_CONFIG = {
   },
 };
 
-export function extractIssueNumbers(body) {
+export function extractIssueNumbers(body, repositoryFullName = null) {
   if (!body) {
     return [];
   }
 
+  const issueNumbers = new Set([
+    ...collectIncludedIssueNumbers(body),
+    ...collectClosingIssueNumbers(body, repositoryFullName),
+  ]);
+
+  return [...issueNumbers];
+}
+
+function collectIncludedIssueNumbers(body) {
   const lines = body.split(/\r?\n/);
   const includedIssuesHeaderIndex = lines.findIndex((line) =>
     /^## Included Issues\b/.test(line),
   );
-  let sourceText = body;
 
-  if (includedIssuesHeaderIndex >= 0) {
-    const includedIssueLines = [];
-
-    for (let index = includedIssuesHeaderIndex + 1; index < lines.length; index += 1) {
-      if (/^##\s/.test(lines[index])) {
-        break;
-      }
-
-      includedIssueLines.push(lines[index]);
-    }
-
-    sourceText = includedIssueLines.join("\n");
+  if (includedIssuesHeaderIndex < 0) {
+    return [];
   }
 
-  return collectIssueNumbers(sourceText);
+  const includedIssueLines = [];
+  const includedIssueLinePattern = /^\s*(?:-\s*)?(?:issues?\s*:?\s*)?#\d+\b/i;
+
+  for (let index = includedIssuesHeaderIndex + 1; index < lines.length; index += 1) {
+    if (/^##\s/.test(lines[index])) {
+      break;
+    }
+
+    if (includedIssueLinePattern.test(lines[index])) {
+      includedIssueLines.push(lines[index]);
+    }
+  }
+
+  return collectDirectIssueNumbers(includedIssueLines.join("\n"));
 }
 
-function collectIssueNumbers(sourceText) {
+function collectClosingIssueNumbers(sourceText, repositoryFullName) {
+  const issueNumbers = new Set();
+  const closingReferencePattern =
+    /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s*([^\r\n]+)/gi;
+
+  for (const match of sourceText.matchAll(closingReferencePattern)) {
+    const references = match[1] ?? "";
+    const issueReferencePattern =
+      /(?:(?<repository>[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+))?#(?<issueNumber>\d+)\b/g;
+
+    for (const issueMatch of references.matchAll(issueReferencePattern)) {
+      const referencedRepository = issueMatch.groups?.repository ?? null;
+
+      if (
+        referencedRepository &&
+        (!repositoryFullName ||
+          referencedRepository.toLowerCase() !== repositoryFullName.toLowerCase())
+      ) {
+        continue;
+      }
+
+      issueNumbers.add(Number(issueMatch.groups?.issueNumber));
+    }
+  }
+
+  return [...issueNumbers];
+}
+
+function collectDirectIssueNumbers(sourceText) {
   const issueNumbers = new Set();
   const issueReferencePattern =
     /(?:^|[\s(])(?:-\s*)?(?:(issues?)\s*:?\s*|(pull\s+request|pr)\s*:?\s*)?#(\d+)\b/gi;
@@ -242,7 +281,10 @@ export async function run({
     return;
   }
 
-  const issueNumbers = extractIssueNumbers(pullRequest?.body ?? "");
+  const issueNumbers = extractIssueNumbers(
+    pullRequest?.body ?? "",
+    `${owner}/${repo}`,
+  );
 
   if (issueNumbers.length === 0) {
     console.log(

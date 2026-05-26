@@ -1,3 +1,5 @@
+import type { AdminSectionId } from './components/admin/adminSections';
+
 export interface ListFilters {
     searchInput: string;
     selectedSkills: string[];
@@ -10,10 +12,11 @@ export interface AppLocation {
 
 const homeRoutePattern = /^\/?$/;
 const loginRoutePattern = /^\/login\/?$/;
-const adminRoutePattern = /^\/admin\/?$/;
 const adminAccountRoutePattern = /^\/admin\/account\/?$/;
+const adminRoutePattern = /^\/admin(?:\/(?<section>projects|social-links|resume|publishing))?\/?$/;
 const listRoutePattern = /^\/projects\/?$/;
 const workHistoryRoutePattern = /^\/work-history\/?$/;
+const resumeRoutePattern = /^\/resume\/?$/;
 const detailRoutePattern = /^\/projects\/(?<id>\d+)\/?$/;
 const contactRoutePattern = /^\/contact\/?$/;
 
@@ -37,15 +40,23 @@ export function parseRoute(location: AppLocation) {
         };
     }
 
-    if (adminRoutePattern.test(location.pathname)) {
+    const adminMatch = adminRoutePattern.exec(location.pathname);
+    if (adminMatch) {
         return {
-            kind: 'admin' as const
+            kind: 'admin' as const,
+            section: parseAdminSection(adminMatch.groups?.section)
         };
     }
 
     if (workHistoryRoutePattern.test(location.pathname)) {
         return {
             kind: 'work-history' as const
+        };
+    }
+
+    if (resumeRoutePattern.test(location.pathname)) {
+        return {
+            kind: 'resume' as const
         };
     }
 
@@ -85,6 +96,14 @@ export function parseRedirectTarget(search: string) {
     }
 
     return redirect;
+}
+
+function parseAdminSection(section: string | undefined): AdminSectionId {
+    if (!section) {
+        return 'dashboard';
+    }
+
+    return section as AdminSectionId;
 }
 
 export function parseListFilters(search: string): ListFilters {

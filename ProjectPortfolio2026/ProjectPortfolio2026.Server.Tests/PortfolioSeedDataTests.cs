@@ -36,16 +36,18 @@ public sealed class PortfolioSeedDataTests
 
         Assert.That(profiles, Has.Count.EqualTo(1));
         Assert.That(profiles[0].IsPublic, Is.True);
+        Assert.That(profiles[0].DisplayName, Is.EqualTo("Bronze Harold Brown"));
         Assert.That(profiles[0].ContactMethods, Has.Count.EqualTo(3));
-        Assert.That(profiles[0].SocialLinks, Has.Count.EqualTo(3));
+        Assert.That(profiles[0].SocialLinks, Has.Count.EqualTo(2));
         Assert.That(projects, Has.Count.EqualTo(100));
-        Assert.That(employers, Has.Count.EqualTo(2));
+        Assert.That(employers, Has.Count.EqualTo(15));
         Assert.That(projects.All(project => project.Screenshots.Count >= 2), Is.True);
         Assert.That(projects.Single(project => project.Title == "Project Portfolio 2026").Screenshots, Has.Count.EqualTo(6));
         Assert.That(projects.All(project => project.DeveloperRoles.Count > 0), Is.True);
         Assert.That(projects.All(project => project.ProjectTags.Any(projectTag => projectTag.Tag!.Category == ProjectPortfolio2026.Server.Domain.Tags.TagCategory.Technology)), Is.True);
         Assert.That(projects.All(project => project.ProjectTags.Any(projectTag => projectTag.Tag!.Category == ProjectPortfolio2026.Server.Domain.Tags.TagCategory.Skill)), Is.True);
         Assert.That(employers.All(employer => employer.JobRoles.Count > 0), Is.True);
+        Assert.That(employers.Any(employer => employer.Name == "Axl Protocol Music"), Is.True);
         Assert.That(employers.SelectMany(employer => employer.JobRoles).All(jobRole => jobRole.JobRoleTags.Count > 0), Is.True);
         Assert.That(projects.All(project => project.Milestones.Count > 0), Is.True);
         Assert.That(projects.Count(project => project.EndDate is null), Is.EqualTo(3));

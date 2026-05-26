@@ -2,17 +2,17 @@ namespace ProjectPortfolio2026.Server.Services.ServiceModels;
 
 public sealed class ResumeImportParseResult
 {
-    public ParsedPerson? Person { get; init; }
+    public ParsedPerson? Person { get; set; }
 
-    public List<ParsedWorkHistoryEntry> WorkHistory { get; init; } = [];
+    public List<ParsedWorkHistoryEntry> WorkHistory { get; set; } = [];
 
-    public List<string> GlobalSkills { get; init; } = [];
+    public List<string> GlobalSkills { get; set; } = [];
 
-    public string? ProfessionalSummary { get; init; }
+    public string? ProfessionalSummary { get; set; }
 
-    public string? RawText { get; init; }
+    public string? RawText { get; set; }
 
-    public string? SourceFileName { get; init; }
+    public string? SourceFileName { get; set; }
 
-    public string? ParserName { get; init; }
+    public string? ParserName { get; set; }
 }

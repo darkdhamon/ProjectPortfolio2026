@@ -302,6 +302,96 @@ describe('App', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/work-history?requestId=request-1', expect.any(Object));
     });
 
+    it('renders the resume page route and highlights resume navigation', async () => {
+        window.history.replaceState({}, '', '/resume');
+        fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+            const url = input.toString();
+
+            if (url === '/api/auth/me') {
+                return jsonResponse({
+                    isAuthenticated: false,
+                    isAdmin: false
+                });
+            }
+
+            if (url === '/api/portfolio-profile?requestId=request-1') {
+                return jsonResponse({
+                    requestId: 'request-1',
+                    id: 1,
+                    displayName: 'Bronze Loft',
+                    contactHeadline: 'Choose the contact path that fits the conversation you want to have.',
+                    contactIntro: 'Full-stack engineer focused on reliable delivery and clear communication.',
+                    availabilityHeadline: 'Open to senior full-stack roles',
+                    availabilitySummary: 'Remote-friendly and recruiter-ready.',
+                    contactMethods: [
+                        {
+                            type: 'email',
+                            label: 'Email',
+                            value: 'bronze@example.dev',
+                            href: 'mailto:bronze@example.dev',
+                            note: 'Best for interviews and hiring conversations.',
+                            sortOrder: 1
+                        }
+                    ],
+                    socialLinks: [
+                        {
+                            platform: 'github',
+                            label: 'GitHub',
+                            url: 'https://github.com/darkdhamon',
+                            handle: '@darkdhamon',
+                            summary: 'Public code samples and implementation details.',
+                            sortOrder: 1
+                        }
+                    ]
+                });
+            }
+
+            if (url === '/api/work-history?requestId=request-1') {
+                return jsonResponse({
+                    requestId: 'request-1',
+                    items: [
+                        {
+                            id: 7,
+                            name: 'Northwind Health',
+                            city: 'Chicago',
+                            region: 'IL',
+                            jobRoles: [
+                                {
+                                    role: 'Senior Software Engineer',
+                                    startDate: '2024-01-08',
+                                    endDate: null,
+                                    supervisorName: 'Dana Smith',
+                                    descriptionMarkdown: 'Leading API delivery.',
+                                    skills: ['API Design'],
+                                    technologies: ['.NET 10']
+                                }
+                            ]
+                        }
+                    ]
+                });
+            }
+
+            throw new Error(`Unexpected fetch request: ${url}`);
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Bronze Loft' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Resume' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getAllByText('Open to senior full-stack roles')).toHaveLength(2);
+        expect(await screen.findByText('Senior Software Engineer')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /bronze@example\.dev/i })).toHaveAttribute('href', 'mailto:bronze@example.dev');
+        expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
+        expect(screen.getByRole('button', { name: 'Full history' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Last 10 years' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'Last 5 years' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'All employers' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Top 3' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'Top 5' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'Download PDF' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Open Static Resume' })).toBeDisabled();
+    });
+
     it('renders the contact page from the portfolio profile endpoint and highlights contact navigation', async () => {
         window.history.replaceState({}, '', '/contact');
         fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
@@ -877,13 +967,20 @@ describe('App', () => {
         expect(window.location.search).toBe('?redirect=%2Fadmin');
     });
 
-    it('signs in through the mock login page and reveals admin account navigation', async () => {
+    it('signs in through the mock login page and reveals admin workspace navigation', async () => {
         window.history.replaceState({}, '', '/login?redirect=%2Fadmin');
         queueFetchJson('/api/auth/me', {
             isAuthenticated: false,
             isAdmin: false
         });
         queueFetchJson('/api/auth/login', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/auth/me', {
             isAuthenticated: true,
             isAdmin: true,
             userName: 'admin',
@@ -907,13 +1004,18 @@ describe('App', () => {
         });
         fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
 
-        expect(await screen.findByRole('heading', { name: 'Admin dashboard mockup' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Account Settings' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Content Management Overview' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Open Resume Configuration' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
         expect(screen.getByText('Welcome')).toBeInTheDocument();
         expect(screen.getAllByText('admin').length).toBeGreaterThan(0);
         expect(screen.getByText('Signed in as admin')).toBeInTheDocument();
         expect(window.location.pathname).toBe('/admin');
+
+        fireEvent.click(screen.getByRole('link', { name: 'Open Resume Configuration' }));
+
+        expect(await screen.findByRole('heading', { name: 'Resume configuration can build on a stable shell.' })).toBeInTheDocument();
+        expect(window.location.pathname).toBe('/admin/resume');
     });
 
     it('redirects direct account access to login when signed out', async () => {
@@ -978,7 +1080,7 @@ describe('App', () => {
         render(<App />);
 
         fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
-        fireEvent.click(await screen.findByRole('link', { name: 'Account Settings' }));
+        fireEvent.click(await screen.findByRole('link', { name: 'Open Account Settings' }));
 
         expect(await screen.findByRole('heading', { name: 'Manage your current admin account' })).toBeInTheDocument();
 
@@ -1010,7 +1112,7 @@ describe('App helpers', () => {
         });
     });
 
-    it('parses home, list, detail, and admin routes', () => {
+    it('parses home, list, detail, resume, and admin routes', () => {
         expect(parseRoute({ pathname: '/', search: '?search=react' })).toEqual({
             kind: 'home'
         });
@@ -1021,7 +1123,13 @@ describe('App helpers', () => {
         });
 
         expect(parseRoute({ pathname: '/admin', search: '' })).toEqual({
-            kind: 'admin'
+            kind: 'admin',
+            section: 'dashboard'
+        });
+
+        expect(parseRoute({ pathname: '/admin/resume', search: '' })).toEqual({
+            kind: 'admin',
+            section: 'resume'
         });
 
         expect(parseRoute({ pathname: '/admin/account', search: '' })).toEqual({
@@ -1044,6 +1152,10 @@ describe('App helpers', () => {
 
         expect(parseRoute({ pathname: '/work-history', search: '' })).toEqual({
             kind: 'work-history'
+        });
+
+        expect(parseRoute({ pathname: '/resume', search: '' })).toEqual({
+            kind: 'resume'
         });
 
         expect(parseRoute({ pathname: '/contact', search: '' })).toEqual({
