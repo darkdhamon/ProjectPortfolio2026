@@ -967,13 +967,20 @@ describe('App', () => {
         expect(window.location.search).toBe('?redirect=%2Fadmin');
     });
 
-    it('signs in through the mock login page and reveals admin account navigation', async () => {
+    it('signs in through the mock login page and reveals admin workspace navigation', async () => {
         window.history.replaceState({}, '', '/login?redirect=%2Fadmin');
         queueFetchJson('/api/auth/me', {
             isAuthenticated: false,
             isAdmin: false
         });
         queueFetchJson('/api/auth/login', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/auth/me', {
             isAuthenticated: true,
             isAdmin: true,
             userName: 'admin',
@@ -997,13 +1004,18 @@ describe('App', () => {
         });
         fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
 
-        expect(await screen.findByRole('heading', { name: 'Admin dashboard mockup' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Account Settings' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Content Management Overview' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Open Resume Configuration' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
         expect(screen.getByText('Welcome')).toBeInTheDocument();
         expect(screen.getAllByText('admin').length).toBeGreaterThan(0);
         expect(screen.getByText('Signed in as admin')).toBeInTheDocument();
         expect(window.location.pathname).toBe('/admin');
+
+        fireEvent.click(screen.getByRole('link', { name: 'Open Resume Configuration' }));
+
+        expect(await screen.findByRole('heading', { name: 'Resume configuration can build on a stable shell.' })).toBeInTheDocument();
+        expect(window.location.pathname).toBe('/admin/resume');
     });
 
     it('redirects direct account access to login when signed out', async () => {
@@ -1068,7 +1080,7 @@ describe('App', () => {
         render(<App />);
 
         fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
-        fireEvent.click(await screen.findByRole('link', { name: 'Account Settings' }));
+        fireEvent.click(await screen.findByRole('link', { name: 'Open Account Settings' }));
 
         expect(await screen.findByRole('heading', { name: 'Manage your current admin account' })).toBeInTheDocument();
 
@@ -1111,7 +1123,13 @@ describe('App helpers', () => {
         });
 
         expect(parseRoute({ pathname: '/admin', search: '' })).toEqual({
-            kind: 'admin'
+            kind: 'admin',
+            section: 'dashboard'
+        });
+
+        expect(parseRoute({ pathname: '/admin/resume', search: '' })).toEqual({
+            kind: 'admin',
+            section: 'resume'
         });
 
         expect(parseRoute({ pathname: '/admin/account', search: '' })).toEqual({

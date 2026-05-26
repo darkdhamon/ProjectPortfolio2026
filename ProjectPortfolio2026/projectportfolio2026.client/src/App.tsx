@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { NavigateFn } from './app/navigation';
 import { parseRoute, readLocation, type AppLocation } from './appSupport';
 import { AccountSettingsPage } from './components/admin/AccountSettingsPage';
-import { AdminDashboardPage } from './components/admin/AdminDashboardPage';
+import { getAdminSection } from './components/admin/adminSections';
+import { AdminWorkspacePage } from './components/admin/AdminWorkspacePage';
 import { LoginPage } from './components/admin/LoginPage';
 import { type AccountDraft } from './components/admin/mockAuth';
 import { SiteShell, type SiteShellContent } from './components/shell/SiteShell';
@@ -47,6 +48,7 @@ function App() {
 
     const route = useMemo(() => parseRoute(location), [location]);
     const isAdminRoute = route.kind === 'admin' || route.kind === 'admin-account';
+    const currentAdminSection = route.kind === 'admin' ? getAdminSection(route.section) : null;
     const activeNavLabel = route.kind === 'home'
         ? 'Home'
         : route.kind === 'detail' || route.kind === 'list'
@@ -92,16 +94,16 @@ function App() {
                     summary: 'Use the admin entry point to sign in, review the protected dashboard, and manage your own account settings.'
                 } satisfies SiteShellContent
                 : route.kind === 'admin'
-                    ? {
-                        kicker: 'Admin Access',
-                        title: 'Admin Dashboard',
-                        summary: 'This placeholder dashboard confirms the protected admin flow while the rest of the management surface is still being built.'
-                    } satisfies SiteShellContent
+                ? {
+                    kicker: 'Admin Access',
+                    title: currentAdminSection?.title ?? 'Admin Workspace',
+                    summary: currentAdminSection?.summary ?? 'Move through the admin workspace and keep later content-management modules on stable routes.'
+                } satisfies SiteShellContent
                     : route.kind === 'admin-account'
                         ? {
                             kicker: 'Admin Access',
                             title: 'Account Settings',
-                            summary: 'Update your username, email, display name, and password through the authenticated admin account flow.'
+                            summary: 'Update your username, email, display name, and password while the content-management shell stays available from the same admin area.'
                         } satisfies SiteShellContent
                         : route.kind === 'list'
                             ? {
@@ -184,6 +186,7 @@ function App() {
     return (
         <SiteShell
             activeNavLabel={activeNavLabel}
+            activePathname={location.pathname}
             content={shellContent}
             currentUserDisplayName={displayName}
             isAuthenticated={isAdminAuthenticated}
@@ -209,7 +212,8 @@ function App() {
                     onSignIn={handleLogin}
                 />
             ) : route.kind === 'admin' && isAdminAuthenticated ? (
-                <AdminDashboardPage
+                <AdminWorkspacePage
+                    activeSection={route.section}
                     currentUserDisplayName={displayName}
                     onNavigate={navigate}
                 />
