@@ -34,6 +34,7 @@
 
 - When errors require a workaround to complete a user task, document the workaround in `AGENTS.MD` so future tasks can be completed faster.
 - When `gh api` payloads become fragile in PowerShell because of quoting, prefer direct `gh` commands or write JSON to a temporary file before calling the API.
+- If the GitHub `fetch_comments.py` helper fails on Windows with a `charmap`/Unicode decode error, rerun it with UTF-8 forced, for example `PYTHONUTF8=1 python fetch_comments.py`.
 - Avoid running `dotnet build` and `dotnet test` in parallel against the same solution or projects on Windows, because file locks in `bin/obj` can cause build failures.
 - If `dotnet test` cannot copy the server build outputs because `ProjectPortfolio2026.Server.dll` or `ProjectPortfolio2026.Server.exe` is locked by Visual Studio or a running server process, rerun the test command with `-c Release` to use the unlocked Release output path.
 - If `dotnet ef` is unavailable when generating Entity Framework migrations, install the matching `dotnet-ef` tool version first before retrying the migration command.
