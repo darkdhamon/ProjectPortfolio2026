@@ -101,7 +101,7 @@ export function AdminWorkspacePage({
                         <p className="eyebrow">Session</p>
                         <p>Account maintenance stays available from the same admin surface while the content tools grow.</p>
                         <InternalLink
-                            className="primary-link"
+                            className="admin-action-link"
                             href="/admin/account"
                             onNavigate={onNavigate}
                             preserveScroll={true}>
@@ -120,7 +120,7 @@ export function AdminWorkspacePage({
                                     <p>{section.summary}</p>
                                     <p className="admin-section-meta">Next tracked work: {section.issueReferences}</p>
                                     <InternalLink
-                                        className="primary-link"
+                                        className="admin-action-link"
                                         href={section.href}
                                         onNavigate={onNavigate}
                                         preserveScroll={true}>
@@ -141,7 +141,7 @@ export function AdminWorkspacePage({
                             </ul>
                             <p className="admin-section-meta">Tracked issues: {currentSection.issueReferences}</p>
                             <InternalLink
-                                className="primary-link"
+                                className="admin-action-link"
                                 href="/admin"
                                 onNavigate={onNavigate}
                                 preserveScroll={true}>
