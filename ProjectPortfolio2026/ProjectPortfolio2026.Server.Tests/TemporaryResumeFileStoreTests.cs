@@ -42,6 +42,24 @@ public sealed class TemporaryResumeFileStoreTests
     }
 
     [Test]
+    public async Task StageAsync_StripsPathSegmentsAndNormalizesStoredExtension()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var file = CreateFormFile("C:\\temp\\Resume.DOCX", null, [1, 2, 3]);
+
+        var stagedFile = await store.StageAsync(file);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(stagedFile.OriginalFileName, Is.EqualTo("Resume.DOCX"));
+            Assert.That(stagedFile.StoredFilePath, Does.EndWith(".docx"));
+            Assert.That(stagedFile.ContentType, Is.Empty);
+        });
+
+        await stagedFile.DisposeAsync();
+    }
+
+    [Test]
     public void StageAsync_RejectsUnsupportedFileExtension()
     {
         var store = new TemporaryResumeFileStore(tempRootPath);
@@ -50,6 +68,17 @@ public sealed class TemporaryResumeFileStoreTests
         var exception = Assert.ThrowsAsync<ResumeImportValidationException>(async () => await store.StageAsync(file));
 
         Assert.That(exception?.Message, Is.EqualTo("Only PDF and DOCX resume files are supported."));
+    }
+
+    [Test]
+    public void StageAsync_RejectsMissingFileName()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var file = CreateFormFile(string.Empty, "application/pdf", [1, 2, 3]);
+
+        var exception = Assert.ThrowsAsync<ResumeImportValidationException>(async () => await store.StageAsync(file));
+
+        Assert.That(exception?.Message, Is.EqualTo("A resume file is required."));
     }
 
     [Test]
@@ -63,13 +92,13 @@ public sealed class TemporaryResumeFileStoreTests
         Assert.That(exception?.Message, Is.EqualTo("The uploaded resume file is empty."));
     }
 
-    private static FormFile CreateFormFile(string fileName, string contentType, byte[] content)
+    private static FormFile CreateFormFile(string fileName, string? contentType, byte[] content)
     {
         var stream = new MemoryStream(content);
         var formFile = new FormFile(stream, 0, content.Length, "file", fileName)
         {
             Headers = new HeaderDictionary(),
-            ContentType = contentType
+            ContentType = contentType ?? string.Empty
         };
 
         return formFile;

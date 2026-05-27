@@ -47,6 +47,30 @@ public sealed class ResumeImportServiceTests
     }
 
     [Test]
+    public async Task ParseAsync_PreservesParserSuppliedSourceFileName()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var parser = new TrackingResumeParserService
+        {
+            Result = new ResumeImportParseResult
+            {
+                SourceFileName = "normalized-resume.pdf",
+                ParserName = "TrackingResumeParserService"
+            }
+        };
+        var service = new ResumeImportService(store, parser);
+        var file = CreateFormFile("resume.pdf", "application/pdf", [9, 8, 7]);
+
+        var result = await service.ParseAsync(file);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.SourceFileName, Is.EqualTo("normalized-resume.pdf"));
+            Assert.That(parser.CapturedFileName, Is.EqualTo("resume.pdf"));
+        });
+    }
+
+    [Test]
     public void ParseAsync_DeletesTemporaryUploadWhenParserFails()
     {
         var store = new TemporaryResumeFileStore(tempRootPath);
@@ -77,6 +101,11 @@ public sealed class ResumeImportServiceTests
 
         public string? CapturedFileName { get; private set; }
 
+        public ResumeImportParseResult Result { get; set; } = new()
+        {
+            ParserName = "TrackingResumeParserService"
+        };
+
         public async Task<ResumeImportParseResult> ParseAsync(
             Stream content,
             string fileName,
@@ -87,10 +116,7 @@ public sealed class ResumeImportServiceTests
             CapturedBytes = memoryStream.ToArray();
             CapturedFileName = fileName;
 
-            return new ResumeImportParseResult
-            {
-                ParserName = "TrackingResumeParserService"
-            };
+            return Result;
         }
     }
 
