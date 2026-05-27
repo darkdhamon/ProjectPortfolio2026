@@ -371,6 +371,18 @@ describe('App', () => {
                 });
             }
 
+            if (url === '/api/resume-configuration?requestId=request-1') {
+                return jsonResponse({
+                    requestId: 'request-1',
+                    id: 1,
+                    sourceType: 'hosted-file',
+                    sourceUrl: 'https://cdn.example.dev/resume.pdf',
+                    displayLabel: 'Download Resume',
+                    summary: 'ATS-friendly PDF.',
+                    isConfigured: true
+                });
+            }
+
             throw new Error(`Unexpected fetch request: ${url}`);
         });
 
@@ -389,7 +401,8 @@ describe('App', () => {
         expect(screen.getByRole('button', { name: 'Top 3' })).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getByRole('button', { name: 'Top 5' })).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getByRole('button', { name: 'Download PDF' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Open Static Resume' })).toBeDisabled();
+        expect(screen.getByRole('link', { name: 'Download Resume' })).toHaveAttribute('href', 'https://cdn.example.dev/resume.pdf');
+        expect(screen.getByText('ATS-friendly PDF.')).toBeInTheDocument();
     });
 
     it('renders the contact page from the portfolio profile endpoint and highlights contact navigation', async () => {
@@ -994,6 +1007,21 @@ describe('App', () => {
             email: 'admin@example.com',
             displayName: 'admin'
         });
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/admin/resume-configuration', {
+            id: 0,
+            sourceType: 'none',
+            sourceUrl: null,
+            displayLabel: null,
+            summary: null,
+            isConfigured: false
+        });
         render(<App />);
 
         fireEvent.change(screen.getByLabelText('Username or email'), {
@@ -1014,7 +1042,7 @@ describe('App', () => {
 
         fireEvent.click(screen.getByRole('link', { name: 'Open Resume Configuration' }));
 
-        expect(await screen.findByRole('heading', { name: 'Resume configuration can build on a stable shell.' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Manage the public resume source' })).toBeInTheDocument();
         expect(window.location.pathname).toBe('/admin/resume');
     });
 

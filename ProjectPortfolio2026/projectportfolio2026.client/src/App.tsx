@@ -5,6 +5,7 @@ import { AccountSettingsPage } from './components/admin/AccountSettingsPage';
 import { getAdminSection } from './components/admin/adminSections';
 import { AdminWorkspacePage } from './components/admin/AdminWorkspacePage';
 import { LoginPage } from './components/admin/LoginPage';
+import { ResumeConfigurationSection } from './components/admin/ResumeConfigurationSection';
 import { type AccountDraft } from './components/admin/mockAuth';
 import { SiteShell, type SiteShellContent } from './components/shell/SiteShell';
 import { ContactPage } from './features/contact/ContactPage';
@@ -216,6 +217,7 @@ function App() {
                     activeSection={route.section}
                     currentUserDisplayName={displayName}
                     onNavigate={navigate}
+                    sectionContent={route.section === 'resume' ? <ResumeConfigurationSection /> : undefined}
                 />
             ) : route.kind === 'admin-account' && currentUser ? (
                 <AccountSettingsPage
