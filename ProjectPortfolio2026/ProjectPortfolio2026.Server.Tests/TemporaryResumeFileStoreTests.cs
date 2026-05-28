@@ -41,11 +41,12 @@ public sealed class TemporaryResumeFileStoreTests
         Assert.That(File.Exists(stagedFile.StoredFilePath), Is.False);
     }
 
-    [Test]
-    public async Task StageAsync_StripsPathSegmentsAndNormalizesStoredExtension()
+    [TestCase("temp/Resume.DOCX")]
+    [TestCase(@"temp\Resume.DOCX")]
+    public async Task StageAsync_StripsPathSegmentsAndNormalizesStoredExtension(string uploadedFileName)
     {
         var store = new TemporaryResumeFileStore(tempRootPath);
-        var file = CreateFormFile(Path.Combine("temp", "Resume.DOCX"), null, [1, 2, 3]);
+        var file = CreateFormFile(uploadedFileName, null, [1, 2, 3]);
 
         var stagedFile = await store.StageAsync(file);
 

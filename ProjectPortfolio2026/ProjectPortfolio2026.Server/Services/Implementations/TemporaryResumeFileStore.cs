@@ -28,7 +28,7 @@ public sealed class TemporaryResumeFileStore : IResumeImportFileStore
     {
         ArgumentNullException.ThrowIfNull(file);
 
-        var originalFileName = Path.GetFileName(file.FileName);
+        var originalFileName = ExtractFileName(file.FileName);
         var extension = Path.GetExtension(originalFileName);
 
         if (string.IsNullOrWhiteSpace(originalFileName))
@@ -80,5 +80,13 @@ public sealed class TemporaryResumeFileStore : IResumeImportFileStore
             originalFileName,
             file.ContentType ?? string.Empty,
             file.Length);
+    }
+
+    private static string ExtractFileName(string fileName)
+    {
+        var lastSeparatorIndex = Math.Max(fileName.LastIndexOf('/'), fileName.LastIndexOf('\\'));
+        return lastSeparatorIndex >= 0
+            ? fileName[(lastSeparatorIndex + 1)..]
+            : fileName;
     }
 }
