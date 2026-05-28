@@ -45,7 +45,7 @@ public sealed class TemporaryResumeFileStoreTests
     public async Task StageAsync_StripsPathSegmentsAndNormalizesStoredExtension()
     {
         var store = new TemporaryResumeFileStore(tempRootPath);
-        var file = CreateFormFile("C:\\temp\\Resume.DOCX", null, [1, 2, 3]);
+        var file = CreateFormFile(Path.Combine("temp", "Resume.DOCX"), null, [1, 2, 3]);
 
         var stagedFile = await store.StageAsync(file);
 
