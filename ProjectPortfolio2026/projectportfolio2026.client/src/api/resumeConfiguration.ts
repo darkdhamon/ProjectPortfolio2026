@@ -56,15 +56,16 @@ export async function fetchAdminResumeConfiguration(signal?: AbortSignal) {
 }
 
 export async function saveResumeConfigurationAsync(draft: ResumeConfigurationDraft) {
+    const clearsExternalSource = draft.sourceType === 'none';
     const { payload } = await fetchAuthJson<ResumeConfiguration>(
         '/api/admin/resume-configuration',
         {
             method: 'PUT',
             body: JSON.stringify({
                 sourceType: draft.sourceType,
-                sourceUrl: draft.sourceUrl.trim() || null,
-                displayLabel: draft.displayLabel.trim() || null,
-                summary: draft.summary.trim() || null
+                sourceUrl: clearsExternalSource ? null : draft.sourceUrl.trim() || null,
+                displayLabel: clearsExternalSource ? null : draft.displayLabel.trim() || null,
+                summary: clearsExternalSource ? null : draft.summary.trim() || null
             })
         },
         'Unable to save resume configuration.'
