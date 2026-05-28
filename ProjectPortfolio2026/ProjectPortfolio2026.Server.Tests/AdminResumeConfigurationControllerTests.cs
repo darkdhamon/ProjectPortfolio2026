@@ -52,6 +52,25 @@ public sealed class AdminResumeConfigurationControllerTests
     }
 
     [Test]
+    public async Task UpdateAsync_ReturnsValidationProblemWhenSourceTypeIsUnsupported()
+    {
+        var controller = CreateController(new StubResumeConfigurationRepository());
+
+        var actionResult = await controller.UpdateAsync(
+            new ResumeConfigurationUpdateRequest
+            {
+                SourceType = "sharepoint-link",
+                SourceUrl = "https://cdn.example.dev/resume.pdf",
+                DisplayLabel = "Download Resume"
+            },
+            CancellationToken.None);
+
+        Assert.That(actionResult.Result, Is.InstanceOf<BadRequestObjectResult>());
+        var validationProblem = (actionResult.Result as BadRequestObjectResult)?.Value as ValidationProblemDetails;
+        Assert.That(validationProblem?.Errors, Contains.Key("sourceType"));
+    }
+
+    [Test]
     public async Task UpdateAsync_PersistsTrimmedConfiguration()
     {
         var repository = new StubResumeConfigurationRepository();

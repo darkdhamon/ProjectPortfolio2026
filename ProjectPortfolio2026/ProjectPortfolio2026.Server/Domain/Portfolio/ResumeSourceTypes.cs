@@ -8,7 +8,7 @@ public static class ResumeSourceTypes
 
     public static bool IsSupported(string? value)
     {
-        var normalizedValue = Normalize(value);
+        var normalizedValue = value?.Trim().ToLowerInvariant();
         return normalizedValue is None or HostedFile or Embed;
     }
 

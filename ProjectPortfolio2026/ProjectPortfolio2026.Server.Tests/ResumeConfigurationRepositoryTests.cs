@@ -74,6 +74,30 @@ public sealed class ResumeConfigurationRepositoryTests
         });
     }
 
+    [Test]
+    public async Task SaveAsync_CreatesFirstConfigurationWhenDatabaseIsEmpty()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = new ResumeConfigurationRepository(dbContext);
+
+        var savedConfiguration = await repository.SaveAsync(new ResumeConfiguration
+        {
+            SourceType = ResumeSourceTypes.HostedFile,
+            SourceUrl = "https://cdn.example.dev/resume-v1.pdf",
+            DisplayLabel = "Download Resume",
+            Summary = "Initial summary"
+        });
+
+        var persistedConfigurations = await dbContext.ResumeConfigurations.ToListAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(savedConfiguration.Id, Is.GreaterThan(0));
+            Assert.That(persistedConfigurations, Has.Count.EqualTo(1));
+            Assert.That(persistedConfigurations[0].DisplayLabel, Is.EqualTo("Download Resume"));
+        });
+    }
+
     private static PortfolioDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<PortfolioDbContext>()
