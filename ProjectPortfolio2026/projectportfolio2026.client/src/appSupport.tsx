@@ -13,6 +13,7 @@ export interface AppLocation {
 const homeRoutePattern = /^\/?$/;
 const loginRoutePattern = /^\/login\/?$/;
 const adminAccountRoutePattern = /^\/admin\/account\/?$/;
+const adminResumeImportRoutePattern = /^\/admin\/resume\/import\/?$/;
 const adminRoutePattern = /^\/admin(?:\/(?<section>projects|social-links|resume|publishing))?\/?$/;
 const listRoutePattern = /^\/projects\/?$/;
 const workHistoryRoutePattern = /^\/work-history\/?$/;
@@ -37,6 +38,12 @@ export function parseRoute(location: AppLocation) {
     if (adminAccountRoutePattern.test(location.pathname)) {
         return {
             kind: 'admin-account' as const
+        };
+    }
+
+    if (adminResumeImportRoutePattern.test(location.pathname)) {
+        return {
+            kind: 'admin-resume-import' as const
         };
     }
 

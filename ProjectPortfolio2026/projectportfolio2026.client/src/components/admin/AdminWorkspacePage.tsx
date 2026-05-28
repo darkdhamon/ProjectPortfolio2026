@@ -140,6 +140,17 @@ export function AdminWorkspacePage({
                                 ))}
                             </ul>
                             <p className="admin-section-meta">Tracked issues: {currentSection.issueReferences}</p>
+                            {activeSection === 'resume' ? (
+                                <div className="admin-inline-actions">
+                                    <InternalLink
+                                        className="admin-action-link"
+                                        href="/admin/resume/import"
+                                        onNavigate={onNavigate}
+                                        preserveScroll={true}>
+                                        Start Resume Import
+                                    </InternalLink>
+                                </div>
+                            ) : null}
                             <InternalLink
                                 className="admin-action-link"
                                 href="/admin"

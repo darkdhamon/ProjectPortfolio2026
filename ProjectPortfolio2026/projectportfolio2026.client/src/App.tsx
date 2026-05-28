@@ -5,6 +5,7 @@ import { AccountSettingsPage } from './components/admin/AccountSettingsPage';
 import { getAdminSection } from './components/admin/adminSections';
 import { AdminWorkspacePage } from './components/admin/AdminWorkspacePage';
 import { LoginPage } from './components/admin/LoginPage';
+import { ResumeImportPage } from './components/admin/ResumeImportPage';
 import { type AccountDraft } from './components/admin/mockAuth';
 import { SiteShell, type SiteShellContent } from './components/shell/SiteShell';
 import { ContactPage } from './features/contact/ContactPage';
@@ -47,8 +48,12 @@ function App() {
     }, []);
 
     const route = useMemo(() => parseRoute(location), [location]);
-    const isAdminRoute = route.kind === 'admin' || route.kind === 'admin-account';
-    const currentAdminSection = route.kind === 'admin' ? getAdminSection(route.section) : null;
+    const isAdminRoute = route.kind === 'admin' || route.kind === 'admin-account' || route.kind === 'admin-resume-import';
+    const currentAdminSection = route.kind === 'admin'
+        ? getAdminSection(route.section)
+        : route.kind === 'admin-resume-import'
+            ? getAdminSection('resume')
+            : null;
     const activeNavLabel = route.kind === 'home'
         ? 'Home'
         : route.kind === 'detail' || route.kind === 'list'
@@ -58,6 +63,7 @@ function App() {
             : route.kind === 'resume'
                 ? 'Resume'
             : route.kind === 'login' || route.kind === 'admin' || route.kind === 'admin-account'
+                || route.kind === 'admin-resume-import'
                 ? 'Admin'
                 : route.kind === 'contact'
                     ? 'Contact'
@@ -105,6 +111,12 @@ function App() {
                             title: 'Account Settings',
                             summary: 'Update your username, email, display name, and password while the content-management shell stays available from the same admin area.'
                         } satisfies SiteShellContent
+                        : route.kind === 'admin-resume-import'
+                            ? {
+                                kicker: 'Admin Access',
+                                title: 'Resume Import',
+                                summary: 'Choose the import source, stage an upload-backed parse when needed, and keep later review or approval steps separate.'
+                            } satisfies SiteShellContent
                         : route.kind === 'list'
                             ? {
                                 kicker: 'Project Portfolio',
@@ -228,6 +240,11 @@ function App() {
                     passwordNotice={passwordNotice}
                     onSave={handleAccountSave}
                     onChangePassword={handlePasswordChange}
+                />
+            ) : route.kind === 'admin-resume-import' && isAdminAuthenticated ? (
+                <ResumeImportPage
+                    currentUserDisplayName={displayName}
+                    onNavigate={navigate}
                 />
             ) : isAdminRoute ? (
                 <main className="auth-page">
