@@ -52,7 +52,7 @@ public sealed class ResumeImportServiceTests
         var store = new TemporaryResumeFileStore(tempRootPath);
         var parser = new TrackingResumeParserService
         {
-            Result = new ResumeImportParseResult
+            ResultFactory = () => new ResumeImportParseResult
             {
                 SourceFileName = "normalized-resume.pdf",
                 ParserName = "TrackingResumeParserService"
@@ -67,6 +67,8 @@ public sealed class ResumeImportServiceTests
         {
             Assert.That(result.SourceFileName, Is.EqualTo("normalized-resume.pdf"));
             Assert.That(parser.CapturedFileName, Is.EqualTo("resume.pdf"));
+            Assert.That(Directory.Exists(tempRootPath), Is.True);
+            Assert.That(Directory.EnumerateFiles(tempRootPath), Is.Empty);
         });
     }
 
@@ -101,7 +103,7 @@ public sealed class ResumeImportServiceTests
 
         public string? CapturedFileName { get; private set; }
 
-        public ResumeImportParseResult Result { get; set; } = new()
+        public Func<ResumeImportParseResult> ResultFactory { get; set; } = () => new ResumeImportParseResult
         {
             ParserName = "TrackingResumeParserService"
         };
@@ -116,7 +118,7 @@ public sealed class ResumeImportServiceTests
             CapturedBytes = memoryStream.ToArray();
             CapturedFileName = fileName;
 
-            return Result;
+            return ResultFactory();
         }
     }
 
