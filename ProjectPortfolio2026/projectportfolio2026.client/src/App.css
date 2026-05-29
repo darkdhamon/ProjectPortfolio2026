@@ -2554,6 +2554,164 @@
     text-shadow: 0 1px 0 rgba(4, 11, 20, 0.35);
 }
 
+@media (min-width: 901px) and (max-width: 1450px), (min-width: 901px) and (max-height: 940px) {
+    .site-shell {
+        grid-template-columns: minmax(13.5rem, 16rem) minmax(0, 1fr);
+    }
+
+    .site-sidebar {
+        gap: 1rem;
+        padding: 1rem 0.85rem;
+    }
+
+    .site-brand {
+        gap: 0.75rem;
+        padding: 0.8rem 0.85rem;
+    }
+
+    .brand-mark {
+        width: 2.6rem;
+        border-radius: 0.85rem;
+    }
+
+    .site-brand strong {
+        font-size: 0.98rem;
+    }
+
+    .sidebar-welcome {
+        padding: 0.8rem 0.85rem;
+    }
+
+    .sidebar-welcome-name {
+        font-size: 1rem;
+    }
+
+    .nav-link {
+        min-height: 2.7rem;
+        padding: 0.72rem 0.85rem;
+        border-radius: 0.9rem;
+    }
+
+    .site-main {
+        gap: 0.95rem;
+        padding-right: 1.25rem;
+    }
+
+    .site-header {
+        grid-template-columns: minmax(0, 1fr) minmax(14rem, 24rem);
+        gap: 0.8rem;
+        padding: 1rem 1.5rem 0;
+    }
+
+    .site-header-copy {
+        max-width: 22rem;
+        font-size: 0.84rem;
+    }
+
+    .site-title {
+        font-size: clamp(1.55rem, 3.2vw, 2.15rem);
+    }
+
+    .portfolio-page,
+    .home-page,
+    .resume-page,
+    .auth-page,
+    .admin-page,
+    .contact-page {
+        gap: 1rem;
+        padding: 1.5rem;
+    }
+
+    .hero-panel {
+        padding: 1.25rem;
+    }
+
+    .hero-panel h1 {
+        font-size: clamp(1.9rem, 3vw, 2.5rem);
+        line-height: 1.14;
+        max-width: 18ch;
+    }
+
+    .hero-description {
+        max-width: 42rem;
+        font-size: 0.9rem;
+        line-height: 1.45;
+    }
+
+    .hero-stats {
+        gap: 0.6rem;
+    }
+
+    .stat-card {
+        padding: 0.72rem 0.82rem;
+    }
+
+    .sticky-filters {
+        top: 0.55rem;
+        gap: 0.65rem;
+        padding: 0.8rem 0.85rem;
+        border-radius: 1.2rem;
+    }
+
+    .filter-heading {
+        gap: 0.65rem;
+    }
+
+    .filter-heading-copy h2 {
+        font-size: 1.02rem;
+    }
+
+    .filter-summary {
+        gap: 0.55rem;
+    }
+
+    .filter-stat {
+        padding: 0.62rem 0.75rem;
+    }
+
+    .search-panel,
+    .search-panel-label,
+    .filter-actions,
+    .skill-filter-panel {
+        gap: 0.4rem;
+    }
+
+    .search-panel input,
+    .clear-button {
+        min-height: 2.65rem;
+    }
+
+    .toolbar-helper {
+        display: none;
+    }
+
+    .skill-filter-panel {
+        padding: 0.72rem 0.78rem;
+    }
+
+    .skill-filter-header {
+        gap: 0.45rem;
+    }
+
+    .active-filter-pill {
+        padding: 0.28rem 0.58rem;
+    }
+
+    .skill-strip,
+    .tag-group {
+        gap: 0.45rem;
+    }
+
+    .skill-chip {
+        padding: 0.5rem 0.72rem;
+        font-size: 0.84rem;
+    }
+
+    .project-list {
+        gap: 0.85rem;
+    }
+}
+
 @media (max-width: 900px) {
     .site-shell {
         grid-template-columns: 1fr;
