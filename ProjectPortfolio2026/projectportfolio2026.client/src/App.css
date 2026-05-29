@@ -1322,6 +1322,17 @@
     align-items: center;
 }
 
+.filter-heading-side,
+.skill-filter-actions,
+.filter-workspace {
+    display: grid;
+}
+
+.filter-heading-side {
+    gap: 0.55rem;
+    align-items: start;
+}
+
 .filter-heading-copy,
 .filter-stat {
     display: grid;
@@ -1374,6 +1385,10 @@
     align-content: start;
 }
 
+.filter-workspace {
+    gap: 0.7rem;
+}
+
 .skill-filter-panel {
     display: grid;
     gap: 0.7rem;
@@ -1387,6 +1402,12 @@
 .skill-filter-header {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.55rem;
+    align-items: center;
+}
+
+.skill-filter-actions {
+    grid-auto-flow: column;
+    gap: 0.45rem;
     align-items: center;
 }
 
@@ -1406,6 +1427,48 @@
     border-color: rgba(111, 137, 171, 0.2);
     background: rgba(255, 255, 255, 0.06);
     color: rgba(213, 224, 239, 0.76);
+}
+
+.filter-toggle {
+    min-height: 2.45rem;
+    padding: 0.58rem 0.9rem;
+    border: 1px solid rgba(111, 137, 171, 0.2);
+    border-radius: 999px;
+    background: rgba(12, 27, 47, 0.92);
+    color: #dce7f5;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.filter-toggle:hover {
+    transform: translateY(-1px);
+}
+
+.filter-toggle:focus-visible {
+    outline: none;
+    border-color: rgba(245, 183, 48, 0.78);
+    box-shadow: 0 0 0 0.2rem rgba(245, 183, 48, 0.14);
+}
+
+.filter-collapsed-copy {
+    margin: 0;
+    color: rgba(213, 224, 239, 0.76);
+    font-size: 0.84rem;
+    line-height: 1.35;
+}
+
+.sticky-filters.collapsed {
+    gap: 0.6rem;
+}
+
+.sticky-filters.collapsed .filter-heading {
+    align-items: start;
+}
+
+.skill-filter-panel.collapsed {
+    gap: 0.5rem;
 }
 
 .search-panel input {
@@ -2657,6 +2720,10 @@
         gap: 0.65rem;
     }
 
+    .filter-heading-side {
+        gap: 0.45rem;
+    }
+
     .filter-heading-copy h2 {
         font-size: 1.02rem;
     }
@@ -2676,8 +2743,14 @@
         gap: 0.4rem;
     }
 
+    .filter-workspace,
+    .skill-filter-actions {
+        gap: 0.4rem;
+    }
+
     .search-panel input,
-    .clear-button {
+    .clear-button,
+    .filter-toggle {
         min-height: 2.65rem;
     }
 
@@ -2695,6 +2768,10 @@
 
     .active-filter-pill {
         padding: 0.28rem 0.58rem;
+    }
+
+    .filter-collapsed-copy {
+        font-size: 0.8rem;
     }
 
     .skill-strip,
@@ -2855,9 +2932,11 @@
     }
 
     .filter-heading,
+    .filter-heading-side,
     .filter-summary,
     .toolbar,
     .skill-filter-header,
+    .skill-filter-actions,
     .featured-panel-heading,
     .milestone-heading,
     .auth-actions,

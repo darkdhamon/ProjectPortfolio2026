@@ -616,6 +616,24 @@ describe('App', () => {
         expect(screen.getAllByText('2 active filters').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'true');
         expect(window.location.search).toBe('?search=React&skills=Testing');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Hide skills' }));
+
+        expect(screen.queryByRole('button', { name: 'Testing' })).not.toBeInTheDocument();
+        expect(screen.getByText('1 selected skill')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Show skills' }));
+
+        expect(screen.getByRole('button', { name: 'Testing' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Collapse filters' }));
+
+        expect(screen.queryByRole('searchbox', { name: 'Search projects' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Expand filters' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand filters' }));
+
+        expect(screen.getByRole('searchbox', { name: 'Search projects' })).toBeInTheDocument();
     });
 
     it('renders the detail view and preserves list filters in the back link', async () => {
