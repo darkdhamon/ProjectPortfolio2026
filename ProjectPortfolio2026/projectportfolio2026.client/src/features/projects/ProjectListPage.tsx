@@ -44,6 +44,12 @@ export function ProjectListPage({
     const showingCount = projects.length;
     const activeFilterCount = selectedSkills.length + (searchInput.trim().length > 0 ? 1 : 0);
     const isEmpty = !isLoading && !error && showingCount === 0;
+    const resultSummary = showingCount === totalCount
+        ? `Showing ${showingCount} ${getProjectLabel(showingCount)}`
+        : `Showing ${showingCount} of ${totalCount} ${getProjectLabel(totalCount)}`;
+    const activeFilterSummary = activeFilterCount === 0
+        ? 'No active filters'
+        : `${activeFilterCount} active ${activeFilterCount === 1 ? 'filter' : 'filters'}`;
 
     return (
         <main className="portfolio-page">
@@ -76,49 +82,86 @@ export function ProjectListPage({
             </section>
 
             <section className="sticky-filters">
-                <div className="toolbar" aria-label="Project filters">
-                    <label className="search-panel" htmlFor="project-search">
-                        <span className="search-label">Search projects</span>
-                        <input
-                            id="project-search"
-                            name="project-search"
-                            type="search"
-                            value={searchInput}
-                            onChange={event => handleSearchChange(event.target.value)}
-                            placeholder="Search by title, summary, technology, or skill"
-                        />
-                    </label>
+                <div className="filter-heading">
+                    <div className="filter-heading-copy">
+                        <p className="eyebrow">Refine The Results</p>
+                        <h2>Search the archive, then stack skills to narrow the field.</h2>
+                    </div>
 
-                    <button
-                        className="clear-button"
-                        type="button"
-                        onClick={clearFilters}
-                        disabled={searchInput.length === 0 && selectedSkills.length === 0}>
-                        Reset filters
-                    </button>
+                    <div className="filter-summary" aria-label="Filter summary">
+                        <div className="filter-stat">
+                            <span className="search-label">Results</span>
+                            <strong>{resultSummary}</strong>
+                        </div>
+                        <div className="filter-stat">
+                            <span className="search-label">Selection</span>
+                            <strong>{activeFilterSummary}</strong>
+                        </div>
+                    </div>
                 </div>
 
-                <section className="skill-strip" aria-label="Skill filters">
-                    {availableSkills.length === 0 && isInitialLoad ? (
-                        <p className="helper-copy">Loading skill filters...</p>
-                    ) : availableSkills.length === 0 ? (
-                        <p className="helper-copy">Skill filters will appear once published projects are available.</p>
-                    ) : (
-                        availableSkills.map(skill => {
-                            const isSelected = selectedSkills.includes(skill);
+                <div className="toolbar" aria-label="Project filters">
+                    <div className="search-panel">
+                        <label className="search-panel-label" htmlFor="project-search">
+                            <span className="search-label">Search projects</span>
+                            <input
+                                id="project-search"
+                                name="project-search"
+                                type="search"
+                                value={searchInput}
+                                onChange={event => handleSearchChange(event.target.value)}
+                                aria-describedby="project-search-helper"
+                                placeholder="Search by title, summary, technology, or skill"
+                            />
+                        </label>
+                        <p id="project-search-helper" className="toolbar-helper">
+                            Search titles, summaries, technologies, or skill tags.
+                        </p>
+                    </div>
 
-                            return (
-                                <button
-                                    key={skill}
-                                    className={`skill-chip${isSelected ? ' selected' : ''}`}
-                                    type="button"
-                                    onClick={() => toggleSkill(skill)}
-                                    aria-pressed={isSelected}>
-                                    {skill}
-                                </button>
-                            );
-                        })
-                    )}
+                    <div className="filter-actions">
+                        <button
+                            className="clear-button"
+                            type="button"
+                            onClick={clearFilters}
+                            disabled={searchInput.length === 0 && selectedSkills.length === 0}>
+                            Reset filters
+                        </button>
+                        <p className="toolbar-helper">The current filters stay in the URL and carry into detail views.</p>
+                    </div>
+                </div>
+
+                <section className="skill-filter-panel" aria-label="Skill filters">
+                    <div className="skill-filter-header">
+                        <div>
+                            <span className="search-label">Skill filters</span>
+                            <p className="toolbar-helper">Layer skills onto the current search without losing context.</p>
+                        </div>
+                        <p className={`active-filter-pill${activeFilterCount === 0 ? ' muted' : ''}`}>{activeFilterSummary}</p>
+                    </div>
+
+                    <div className="skill-strip">
+                        {availableSkills.length === 0 && isInitialLoad ? (
+                            <p className="helper-copy">Loading skill filters...</p>
+                        ) : availableSkills.length === 0 ? (
+                            <p className="helper-copy">Skill filters will appear once published projects are available.</p>
+                        ) : (
+                            availableSkills.map(skill => {
+                                const isSelected = selectedSkills.includes(skill);
+
+                                return (
+                                    <button
+                                        key={skill}
+                                        className={`skill-chip${isSelected ? ' selected' : ''}`}
+                                        type="button"
+                                        onClick={() => toggleSkill(skill)}
+                                        aria-pressed={isSelected}>
+                                        {skill}
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
                 </section>
             </section>
 
@@ -145,6 +188,10 @@ export function ProjectListPage({
             {!hasMore && projects.length > 0 ? <p className="helper-copy">You&apos;ve reached the end of the published project list.</p> : null}
         </main>
     );
+}
+
+function getProjectLabel(count: number) {
+    return `${count === 1 ? 'published project' : 'published projects'}`;
 }
 
 interface ProjectCardProps {

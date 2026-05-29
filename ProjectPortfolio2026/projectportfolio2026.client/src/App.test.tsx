@@ -598,17 +598,22 @@ describe('App', () => {
         render(<App />);
 
         expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Search the archive, then stack skills to narrow the field.' })).toBeInTheDocument();
+        expect(screen.getAllByText('Showing 1 published project').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('No active filters').length).toBeGreaterThan(0);
 
         fireEvent.change(screen.getByRole('searchbox', { name: 'Search projects' }), {
             target: { value: 'React' }
         });
 
         expect(await screen.findByRole('heading', { name: 'React Search Result' })).toBeInTheDocument();
+        expect(screen.getAllByText('1 active filter').length).toBeGreaterThan(0);
         expect(window.location.search).toBe('?search=React');
 
         fireEvent.click(screen.getByRole('button', { name: 'Testing' }));
 
         expect(await screen.findByRole('heading', { name: 'Testing Skill Result' })).toBeInTheDocument();
+        expect(screen.getAllByText('2 active filters').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'true');
         expect(window.location.search).toBe('?search=React&skills=Testing');
     });
