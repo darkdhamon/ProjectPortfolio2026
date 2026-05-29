@@ -7,6 +7,7 @@
 - Ensure uploaded project images match the main display ratio of `2047:768`, and if an upload does not match, provide a user-controlled crop/position workflow before publishing.
 - Optimize the placeholder image assets for production so the fallback visuals keep their styling without carrying unnecessary bundle weight.
 - Evaluate and refine the public site's long-term color palette in a separate issue from dark-theme consistency work.
+- Work with the user on theme and `site.css` refinements so the site is more usable, compact, and visually polished across device types. Tracked in issue #128.
 - Refactor `projectportfolio2026.client/src/App.tsx` into maintainable frontend modules before additional UI work keeps expanding the current monolith. Tracked in issue #45.
 - Design password reset and account recovery for local accounts without requiring email or SMS delivery. Tracked in issue #59.
 - Consider showing the logged-in user's display name in the admin navigation or header once the MVP admin shell is stable.
