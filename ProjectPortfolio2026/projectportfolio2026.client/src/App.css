@@ -2936,12 +2936,17 @@
     .filter-summary,
     .toolbar,
     .skill-filter-header,
-    .skill-filter-actions,
     .featured-panel-heading,
     .milestone-heading,
     .auth-actions,
     .work-role-heading {
         grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .skill-filter-actions {
+        grid-template-columns: 1fr;
+        grid-auto-flow: row;
         align-items: stretch;
     }
 
