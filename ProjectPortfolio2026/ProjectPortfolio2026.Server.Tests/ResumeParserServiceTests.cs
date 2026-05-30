@@ -115,6 +115,26 @@ public sealed class ResumeParserServiceTests
     }
 
     [Test]
+    public async Task ParseAsync_UsesParserProvidedSourceFileNameWhenUploadedFileNameIsBlank()
+    {
+        var parser = new StubResumeDocumentParser
+        {
+            Result = new ResumeDocument
+            {
+                SourceFileName = "parsed-resume.pdf",
+                ParserName = "StubParser"
+            }
+        };
+        var service = new ResumeParserService(parser);
+
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        var result = await service.ParseAsync(stream, string.Empty);
+
+        Assert.That(result.SourceFileName, Is.EqualTo("parsed-resume.pdf"));
+    }
+
+    [Test]
     public async Task ParseAsync_ReturnsNullPersonWhenParserDoesNotProvideHeader()
     {
         var parser = new StubResumeDocumentParser
