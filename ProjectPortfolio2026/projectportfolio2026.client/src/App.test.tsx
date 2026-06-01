@@ -634,6 +634,37 @@ describe('App', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Expand filters' }));
 
         expect(screen.getByRole('searchbox', { name: 'Search projects' })).toBeInTheDocument();
+
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+        expect(screen.getByRole('searchbox', { name: 'Search projects' })).toHaveValue('');
+        expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getAllByText('No active filters').length).toBeGreaterThan(0);
+        expect(screen.getByRole('button', { name: 'Reset filters' })).toBeDisabled();
+        expect(window.location.search).toBe('');
     });
 
     it('renders the detail view and preserves list filters in the back link', async () => {
