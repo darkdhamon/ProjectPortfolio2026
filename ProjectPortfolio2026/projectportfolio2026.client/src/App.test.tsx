@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import {
@@ -265,6 +265,14 @@ describe('App', () => {
         expect(screen.getByRole('button', { name: 'React' })).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getByLabelText('Projects ending in Present')).toBeInTheDocument();
         expect(screen.getByLabelText('Projects ending in 2024')).toBeInTheDocument();
+
+        const featuredProjectCard = screen.getByRole('heading', { name: 'Portfolio Refresh' }).closest('article');
+        expect(featuredProjectCard).not.toBeNull();
+        expect(within(featuredProjectCard as HTMLElement).getByText('Skills')).toBeInTheDocument();
+        expect(within(featuredProjectCard as HTMLElement).getByText('Technology Stack')).toBeInTheDocument();
+        expect(within(featuredProjectCard as HTMLElement).getByLabelText('Portfolio Refresh skills')).toHaveTextContent('React');
+        expect(within(featuredProjectCard as HTMLElement).getByLabelText('Portfolio Refresh technologies')).toHaveTextContent('TypeScript');
+
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
     });
 
