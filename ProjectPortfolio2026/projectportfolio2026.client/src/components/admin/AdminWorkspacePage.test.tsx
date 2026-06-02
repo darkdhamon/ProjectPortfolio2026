@@ -94,4 +94,24 @@ describe('AdminWorkspacePage', () => {
 
         expect(onNavigate).toHaveBeenCalledWith('/admin', { preserveScroll: true });
     });
+
+    it('links the resume section into the resume import start flow', () => {
+        const onNavigate = vi.fn();
+
+        render(
+            <AdminWorkspacePage
+                activeSection="resume"
+                currentUserDisplayName="Portfolio Owner"
+                onNavigate={onNavigate}
+            />
+        );
+
+        const importLink = screen.getByRole('link', { name: 'Start Resume Import' });
+
+        expect(importLink).toHaveAttribute('href', '/admin/resume/import');
+
+        fireEvent.click(importLink);
+
+        expect(onNavigate).toHaveBeenCalledWith('/admin/resume/import', { preserveScroll: true });
+    });
 });

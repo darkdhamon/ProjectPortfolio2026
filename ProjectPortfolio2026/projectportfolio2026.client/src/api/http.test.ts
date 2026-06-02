@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     csrfHeaderName,
     csrfCookieName,
+    fetchAuthFormData,
     fetchAuthJson,
     fetchJsonWithStartupRetry,
     fetchResponsePayloadWithStartupRetry,
@@ -186,6 +187,30 @@ describe('http api helpers', () => {
         const [, options] = fetchMock.mock.calls[0];
         const headers = options?.headers as Headers;
         expect(headers.get(csrfHeaderName)).toBeNull();
+    });
+
+    it('preserves form-data payloads for authenticated uploads', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }));
+        document.cookie = `${csrfCookieName}=csrf-token-value`;
+
+        const formData = new FormData();
+        formData.set('file', new Blob(['resume']), 'resume.pdf');
+
+        await fetchAuthFormData(
+            '/api/admin/resume-import/parse',
+            {
+                method: 'POST',
+                body: formData
+            },
+            'Fallback upload error'
+        );
+
+        const [, options] = fetchMock.mock.calls[0];
+        const headers = options?.headers as Headers;
+
+        expect(headers.get('Content-Type')).toBeNull();
+        expect(headers.get(csrfHeaderName)).toBe('csrf-token-value');
+        expect(options?.body).toBe(formData);
     });
 
     it('throws the fallback error when an auth request fails without an api message', async () => {

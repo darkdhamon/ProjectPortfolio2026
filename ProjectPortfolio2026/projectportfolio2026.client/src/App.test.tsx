@@ -1161,6 +1161,11 @@ describe('App', () => {
 
         expect(await screen.findByRole('heading', { name: 'Manage the public resume source' })).toBeInTheDocument();
         expect(window.location.pathname).toBe('/admin/resume');
+
+        fireEvent.click(screen.getByRole('link', { name: 'Start Resume Import' }));
+
+        expect(await screen.findByRole('heading', { name: 'Choose a source for resume import' })).toBeInTheDocument();
+        expect(window.location.pathname).toBe('/admin/resume/import');
     });
 
     it('redirects direct account access to login when signed out', async () => {
@@ -1275,6 +1280,10 @@ describe('App helpers', () => {
         expect(parseRoute({ pathname: '/admin/resume', search: '' })).toEqual({
             kind: 'admin',
             section: 'resume'
+        });
+
+        expect(parseRoute({ pathname: '/admin/resume/import', search: '' })).toEqual({
+            kind: 'admin-resume-import'
         });
 
         expect(parseRoute({ pathname: '/admin/account', search: '' })).toEqual({

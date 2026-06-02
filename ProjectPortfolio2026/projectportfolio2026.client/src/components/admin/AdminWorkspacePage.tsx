@@ -133,7 +133,20 @@ export function AdminWorkspacePage({
                             ))}
                         </section>
                     ) : sectionContent ? (
-                        sectionContent
+                        <>
+                            {activeSection === 'resume' ? (
+                                <div className="admin-inline-actions">
+                                    <InternalLink
+                                        className="admin-action-link"
+                                        href="/admin/resume/import"
+                                        onNavigate={onNavigate}
+                                        preserveScroll={true}>
+                                        Start Resume Import
+                                    </InternalLink>
+                                </div>
+                            ) : null}
+                            {sectionContent}
+                        </>
                     ) : (
                         <article className="admin-card admin-section-panel">
                             <p className="eyebrow">{currentSection.kicker}</p>
@@ -145,6 +158,17 @@ export function AdminWorkspacePage({
                                 ))}
                             </ul>
                             <p className="admin-section-meta">Tracked issues: {currentSection.issueReferences}</p>
+                            {activeSection === 'resume' ? (
+                                <div className="admin-inline-actions">
+                                    <InternalLink
+                                        className="admin-action-link"
+                                        href="/admin/resume/import"
+                                        onNavigate={onNavigate}
+                                        preserveScroll={true}>
+                                        Start Resume Import
+                                    </InternalLink>
+                                </div>
+                            ) : null}
                             <InternalLink
                                 className="admin-action-link"
                                 href="/admin"
