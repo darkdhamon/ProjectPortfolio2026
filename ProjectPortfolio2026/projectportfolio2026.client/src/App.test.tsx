@@ -638,7 +638,11 @@ describe('App', () => {
 
     it('clears search and skill filters from the reset action', async () => {
         window.history.replaceState({}, '', '/projects?search=React&skills=Testing');
-        queueFetchJson(/^\/api\/projects\?/, {
+        const initialFilteredRequest = '/api/projects?page=1&pageSize=6&requestId=request-1&search=React&skills=Testing';
+        const intermediateSearchOnlyRequest = '/api/projects?page=1&pageSize=6&requestId=request-1&search=React';
+        const finalResetRequest = '/api/projects?page=1&pageSize=6&requestId=request-1';
+
+        queueFetchJson(initialFilteredRequest, {
             requestId: 'request-1',
             items: [
                 {
@@ -659,7 +663,28 @@ describe('App', () => {
             hasMore: false,
             availableSkills: ['React', 'Testing']
         });
-        queueFetchJson(/^\/api\/projects\?/, {
+        queueFetchJson(intermediateSearchOnlyRequest, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 43,
+                    title: 'React Search Result',
+                    startDate: '2024-06-01',
+                    endDate: '2024-09-01',
+                    primaryImageUrl: null,
+                    shortDescription: 'Matched the search query before the deferred reset completed.',
+                    isFeatured: false,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+        queueFetchJson(finalResetRequest, {
             requestId: 'request-1',
             items: [
                 {
@@ -690,6 +715,8 @@ describe('App', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
 
         expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledWith(intermediateSearchOnlyRequest, expect.any(Object));
+        expect(fetchMock).toHaveBeenCalledWith(finalResetRequest, expect.any(Object));
         expect(screen.getByRole('searchbox', { name: 'Search projects' })).toHaveValue('');
         expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getAllByText('No active filters').length).toBeGreaterThan(0);
