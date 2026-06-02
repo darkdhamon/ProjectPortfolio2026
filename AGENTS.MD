@@ -32,6 +32,8 @@
 
 ## Pull Request Commands
 
+- Treat `Promote Dev to Main`, `Promote Dev to Prod`, and equivalent wording as a promotion command that should move changes through every required repository step, not just the first branch hop.
+- For promotion commands targeting `main` or production, follow the protected-branch path automatically in order, including `dev -> stage` and then `stage -> main`, unless the user explicitly narrows the request.
 - Treat `PR auto <number>` as a pull request automation command, not as the issue-number conversation opener workflow.
 - When a conversation starts with `PR auto ...`, do not create a fresh feature branch from `dev` just because the command includes a number. Operate on the referenced pull request instead.
 - The number passed to `PR auto` is the pull request number even if the user casually refers to it as an issue number.
