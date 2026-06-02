@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Employer, PortfolioProfile } from '../../app/types';
+import type { Employer, PortfolioProfile, ResumeConfiguration } from '../../app/types';
 import { ResumePage } from './ResumePage';
 
 vi.mock('../../hooks/usePortfolioProfile', () => ({
@@ -11,10 +11,16 @@ vi.mock('../../hooks/useWorkHistory', () => ({
     useWorkHistory: vi.fn()
 }));
 
+vi.mock('../../hooks/useResumeConfiguration', () => ({
+    useResumeConfiguration: vi.fn()
+}));
+
 import { usePortfolioProfile } from '../../hooks/usePortfolioProfile';
+import { useResumeConfiguration } from '../../hooks/useResumeConfiguration';
 import { useWorkHistory } from '../../hooks/useWorkHistory';
 
 const mockUsePortfolioProfile = vi.mocked(usePortfolioProfile);
+const mockUseResumeConfiguration = vi.mocked(useResumeConfiguration);
 const mockUseWorkHistory = vi.mocked(useWorkHistory);
 
 function createProfile(overrides: Partial<PortfolioProfile> = {}): PortfolioProfile {
@@ -51,6 +57,18 @@ function createEmployer(id: number, overrides: Partial<Employer> = {}): Employer
     };
 }
 
+function createResumeConfiguration(overrides: Partial<ResumeConfiguration> = {}): ResumeConfiguration {
+    return {
+        id: 1,
+        sourceType: 'hosted-file',
+        sourceUrl: 'https://cdn.example.dev/resume.pdf',
+        displayLabel: 'Download Resume',
+        summary: 'ATS-friendly PDF.',
+        isConfigured: true,
+        ...overrides
+    };
+}
+
 describe('ResumePage', () => {
     afterEach(() => {
         cleanup();
@@ -71,6 +89,12 @@ describe('ResumePage', () => {
             employers: [createEmployer(1)],
             isLoading: false,
             error: null
+        });
+        mockUseResumeConfiguration.mockReturnValue({
+            configuration: createResumeConfiguration(),
+            isLoading: false,
+            error: null,
+            isMissing: false
         });
     });
 
@@ -140,6 +164,12 @@ describe('ResumePage', () => {
             isLoading: false,
             error: null
         });
+        mockUseResumeConfiguration.mockReturnValue({
+            configuration: null,
+            isLoading: false,
+            error: null,
+            isMissing: true
+        });
 
         render(<ResumePage />);
 
@@ -150,6 +180,14 @@ describe('ResumePage', () => {
         expect(screen.getByText('Published work history will appear here once employer and job-role records are available.')).toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'Positioning for recruiters and hiring teams.' })).not.toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'Highlighted skills and technologies.' })).not.toBeInTheDocument();
+    });
+
+    it('renders the configured public resume action when external source settings are available', () => {
+        render(<ResumePage />);
+
+        expect(screen.getByRole('link', { name: 'Download Resume' })).toHaveAttribute('href', 'https://cdn.example.dev/resume.pdf');
+        expect(screen.getByText('ATS-friendly PDF.')).toBeInTheDocument();
+        expect(screen.getAllByText('Hosted file').length).toBeGreaterThan(0);
     });
 
     it('renders structured summary, skill highlights, and full experience history', () => {
@@ -352,6 +390,12 @@ describe('ResumePage', () => {
             isLoading: true,
             error: null
         });
+        mockUseResumeConfiguration.mockReturnValue({
+            configuration: null,
+            isLoading: true,
+            error: null,
+            isMissing: false
+        });
 
         const { rerender } = render(<ResumePage />);
 
@@ -368,12 +412,19 @@ describe('ResumePage', () => {
             isLoading: false,
             error: 'Work history request failed.'
         });
+        mockUseResumeConfiguration.mockReturnValue({
+            configuration: null,
+            isLoading: false,
+            error: 'Resume configuration failed.',
+            isMissing: false
+        });
 
         rerender(<ResumePage />);
 
         expect(screen.queryByText('Loading resume...')).not.toBeInTheDocument();
         expect(screen.getByText('Profile request failed.')).toBeInTheDocument();
         expect(screen.getByText('Work history request failed.')).toBeInTheDocument();
+        expect(screen.getByText('Resume configuration failed.')).toBeInTheDocument();
     });
 
     it('avoids duplicate key warnings when role titles and start dates repeat', () => {

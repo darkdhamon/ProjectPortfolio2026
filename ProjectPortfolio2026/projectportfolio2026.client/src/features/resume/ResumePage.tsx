@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { JobRole } from '../../app/types';
 import { formatProjectDates } from '../../appSupport';
 import { usePortfolioProfile } from '../../hooks/usePortfolioProfile';
+import { useResumeConfiguration } from '../../hooks/useResumeConfiguration';
 import { useWorkHistory } from '../../hooks/useWorkHistory';
 
 interface ResumeDateValue {
@@ -308,6 +309,12 @@ export function ResumePage() {
         isLoading: isWorkHistoryLoading,
         error: workHistoryError
     } = useWorkHistory();
+    const {
+        configuration: resumeConfiguration,
+        isLoading: isResumeConfigurationLoading,
+        error: resumeConfigurationError,
+        isMissing: isResumeConfigurationMissing
+    } = useResumeConfiguration();
 
     const currentDate = new Date();
     const currentMonthIndex = (currentDate.getFullYear() * 12) + currentDate.getMonth() + 1;
@@ -359,8 +366,8 @@ export function ResumePage() {
     const highlightedTechnologySet = new Set(technologyHighlights.map(highlight => highlight.label));
     const hasSummarySection = Boolean(profile?.contactHeadline?.trim() || profile?.availabilityHeadline?.trim() || summaryParagraphs.length > 0);
     const hasSkillsSection = skillHighlights.length > 0 || technologyHighlights.length > 0;
-    const isLoading = isProfileLoading || isWorkHistoryLoading;
-    const errors = [profileError, workHistoryError].filter(Boolean);
+    const isLoading = isProfileLoading || isWorkHistoryLoading || isResumeConfigurationLoading;
+    const errors = [profileError, workHistoryError, resumeConfigurationError].filter(Boolean);
     const activeFilterCount = (selectedTimeFilter.key === 'all' ? 0 : 1) + (selectedEmployerLimit.key === 'all' ? 0 : 1);
     const resumeViewSummary = getResumeViewSummary(
         selectedTimeFilter,
@@ -369,6 +376,7 @@ export function ResumePage() {
         filteredRoleCount,
         totalRoleCount
     );
+    const resumeSourceTypeLabel = resumeConfiguration?.sourceType === 'embed' ? 'Embed source' : 'Hosted file';
 
     return (
         <main className="resume-page">
@@ -507,18 +515,39 @@ export function ResumePage() {
                         </div>
                         <div className="resume-action-card">
                             <div className="resume-action-copy">
-                                <span className="meta-label">Static Resume Link</span>
-                                <span className="resume-action-note">{isProfileMissing ? 'Needs config' : 'Planned'}</span>
+                                <span className="meta-label">Resume Source</span>
+                                <span className="resume-action-note">
+                                    {resumeConfiguration?.isConfigured
+                                        ? resumeSourceTypeLabel
+                                        : isResumeConfigurationMissing || isProfileMissing
+                                            ? 'Needs config'
+                                            : 'Unavailable'}
+                                </span>
                             </div>
-                            <button
-                                className="resume-action-button"
-                                type="button"
-                                disabled
-                                aria-disabled="true"
-                                aria-label="Open Static Resume">
-                                <span>Open Static Resume</span>
-                                <span className="coming-soon-pill">Coming Soon</span>
-                            </button>
+                            {resumeConfiguration?.isConfigured && resumeConfiguration.sourceUrl && resumeConfiguration.displayLabel ? (
+                                <a
+                                    className="resume-action-button"
+                                    href={resumeConfiguration.sourceUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    aria-label={resumeConfiguration.displayLabel}>
+                                    <span>{resumeConfiguration.displayLabel}</span>
+                                    <span className="coming-soon-pill">{resumeSourceTypeLabel}</span>
+                                </a>
+                            ) : (
+                                <button
+                                    className="resume-action-button"
+                                    type="button"
+                                    disabled
+                                    aria-disabled="true"
+                                    aria-label="Open Resume Source">
+                                    <span>Open Resume Source</span>
+                                    <span className="coming-soon-pill">Needs Config</span>
+                                </button>
+                            )}
+                            {resumeConfiguration?.isConfigured && resumeConfiguration.summary ? (
+                                <p>{resumeConfiguration.summary}</p>
+                            ) : null}
                         </div>
                     </div>
                 </article>
