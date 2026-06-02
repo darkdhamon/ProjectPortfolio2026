@@ -278,17 +278,31 @@ function ProjectCard({
 
                     <p className="project-summary">{project.shortDescription}</p>
 
-                    <div className="tag-group" aria-label={`${project.title} skills`}>
-                        {project.skills.map(skill => (
-                            <span key={skill} className="tag skill">{skill}</span>
-                        ))}
-                    </div>
+                    {project.skills.length > 0 || project.technologies.length > 0 ? (
+                        <div className="project-card-metadata">
+                            {project.skills.length > 0 ? (
+                                <section className="project-card-metadata-group">
+                                    <span className="meta-label">Skills</span>
+                                    <div className="tag-group" aria-label={`${project.title} skills`}>
+                                        {project.skills.map(skill => (
+                                            <span key={skill} className="tag skill">{skill}</span>
+                                        ))}
+                                    </div>
+                                </section>
+                            ) : null}
 
-                    <div className="tag-group secondary" aria-label={`${project.title} technologies`}>
-                        {project.technologies.map(technology => (
-                            <span key={technology} className="tag technology">{technology}</span>
-                        ))}
-                    </div>
+                            {project.technologies.length > 0 ? (
+                                <section className="project-card-metadata-group">
+                                    <span className="meta-label">Technology Stack</span>
+                                    <div className="tag-group secondary" aria-label={`${project.title} technologies`}>
+                                        {project.technologies.map(technology => (
+                                            <span key={technology} className="tag technology">{technology}</span>
+                                        ))}
+                                    </div>
+                                </section>
+                            ) : null}
+                        </div>
+                    ) : null}
 
                     <div className="card-links">
                         <InternalLink
