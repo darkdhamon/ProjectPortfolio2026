@@ -830,6 +830,8 @@ describe('App', () => {
         expect(screen.getByRole('heading', { name: 'Screenshots' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Collaborators' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Milestones' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Project overview facts')).toBeInTheDocument();
+        expect(screen.getByLabelText('Project stack')).toBeInTheDocument();
         expect(screen.getByRole('region', { name: 'Project screenshot carousel' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Show next screenshot' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Live Demo' })).toHaveAttribute('href', 'https://example.com/launch-control');
@@ -838,6 +840,9 @@ describe('App', () => {
         expect(screen.getByText('Planned')).toBeInTheDocument();
         expect(screen.getByText('Taylor Dev')).toBeInTheDocument();
         expect(screen.getByText('Designer | QA')).toBeInTheDocument();
+        expect(screen.getByText('Roles, skills, and technologies that shaped the delivery.')).toBeInTheDocument();
+        expect(screen.getByText('The screenshot gallery below expands on this project view.')).toBeInTheDocument();
+        expect(screen.getByText('The delivery story, implementation context, and outcome for this project.')).toBeInTheDocument();
         expect(screen.getByText('Overview dashboard')).toBeInTheDocument();
         expect(screen.getByText('Screenshot 1 of 2')).toBeInTheDocument();
         expect(screen.getAllByAltText('Launch Control screenshot 2')).toHaveLength(2);
