@@ -635,7 +635,30 @@ describe('App', () => {
 
         expect(screen.getByRole('searchbox', { name: 'Search projects' })).toBeInTheDocument();
 
-        queueFetchJson(/^\/api\/projects\?/, {
+        const resetRequestPath = '/api/projects?page=1&pageSize=6&requestId=request-1';
+
+        queueFetchJson(resetRequestPath, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+        queueFetchJson(resetRequestPath, {
             requestId: 'request-1',
             items: [
                 {
