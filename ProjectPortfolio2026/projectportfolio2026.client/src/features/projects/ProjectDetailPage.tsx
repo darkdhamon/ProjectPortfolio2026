@@ -24,8 +24,36 @@ export function ProjectDetailPage({
     onNavigate
 }: ProjectDetailPageProps) {
     const { project, isLoading, error, isMissing } = useProjectDetail(projectId);
-
     const backPath = buildProjectsPath(listSearch);
+    const completedMilestoneCount = project?.milestones.filter(milestone => !!milestone.completedOn).length ?? 0;
+    const detailFacts = project
+        ? [
+            {
+                label: 'Delivery Window',
+                value: formatProjectDates(project.startDate, project.endDate),
+                tone: 'default' as const
+            },
+            {
+                label: 'Project Media',
+                value: `${project.screenshots.length} screenshot${project.screenshots.length === 1 ? '' : 's'}`,
+                tone: 'default' as const
+            },
+            {
+                label: 'Collaborators',
+                value: project.collaborators.length > 0
+                    ? `${project.collaborators.length} teammate${project.collaborators.length === 1 ? '' : 's'}`
+                    : 'Solo build',
+                tone: 'default' as const
+            },
+            {
+                label: 'Milestones',
+                value: project.milestones.length > 0
+                    ? `${completedMilestoneCount}/${project.milestones.length} completed`
+                    : 'No milestones listed',
+                tone: completedMilestoneCount > 0 ? 'success' as const : 'default' as const
+            }
+        ]
+        : [];
 
     return (
         <main className="portfolio-page detail-page">
@@ -50,40 +78,60 @@ export function ProjectDetailPage({
                             <div className="detail-copy">
                                 <p className="eyebrow">Project Detail</p>
                                 <div className="detail-heading">
-                                    <div>
+                                    <div className="detail-heading-copy">
                                         <p className="project-dates">{formatProjectDates(project.startDate, project.endDate)}</p>
                                         <h1>{project.title}</h1>
                                     </div>
                                     {project.isFeatured ? <span className="featured-pill detail-featured-pill">Featured</span> : null}
                                 </div>
 
-                                <p className="detail-summary">{project.shortDescription}</p>
+                                <div className="detail-summary-card">
+                                    <p className="detail-summary">{project.shortDescription}</p>
 
-                                {project.developerRoles.length > 0 ? (
-                                    <MetadataGroup label="Roles" items={project.developerRoles} tone="technology" />
-                                ) : null}
+                                    {(project.demoUrl || project.gitHubUrl) ? (
+                                        <div className="card-links detail-links">
+                                            {project.demoUrl ? (
+                                                <a className="primary-link" href={project.demoUrl} target="_blank" rel="noreferrer">
+                                                    Live Demo
+                                                </a>
+                                            ) : null}
+                                            {project.gitHubUrl ? (
+                                                <a className="secondary-link" href={project.gitHubUrl} target="_blank" rel="noreferrer">
+                                                    Source
+                                                </a>
+                                            ) : null}
+                                        </div>
+                                    ) : null}
+                                </div>
 
-                                {project.skills.length > 0 ? (
-                                    <MetadataGroup label="Skills" items={project.skills} tone="skill" />
-                                ) : null}
+                                <div className="detail-fact-grid" aria-label="Project overview facts">
+                                    {detailFacts.map(fact => (
+                                        <article key={fact.label} className={`detail-fact-card${fact.tone === 'success' ? ' success' : ''}`}>
+                                            <span className="meta-label">{fact.label}</span>
+                                            <strong>{fact.value}</strong>
+                                        </article>
+                                    ))}
+                                </div>
 
-                                {project.technologies.length > 0 ? (
-                                    <MetadataGroup label="Technologies" items={project.technologies} tone="technology" />
-                                ) : null}
+                                {(project.developerRoles.length > 0 || project.skills.length > 0 || project.technologies.length > 0) ? (
+                                    <section className="detail-stack-panel" aria-label="Project stack">
+                                        <div className="detail-stack-header">
+                                            <p className="eyebrow">Project Stack</p>
+                                            <p className="secondary-copy">Roles, skills, and technologies that shaped the delivery.</p>
+                                        </div>
 
-                                {(project.demoUrl || project.gitHubUrl) ? (
-                                    <div className="card-links detail-links">
-                                        {project.demoUrl ? (
-                                            <a href={project.demoUrl} target="_blank" rel="noreferrer">
-                                                Live Demo
-                                            </a>
+                                        {project.developerRoles.length > 0 ? (
+                                            <MetadataGroup label="Roles" items={project.developerRoles} tone="technology" />
                                         ) : null}
-                                        {project.gitHubUrl ? (
-                                            <a href={project.gitHubUrl} target="_blank" rel="noreferrer">
-                                                Source
-                                            </a>
+
+                                        {project.skills.length > 0 ? (
+                                            <MetadataGroup label="Skills" items={project.skills} tone="skill" />
                                         ) : null}
-                                    </div>
+
+                                        {project.technologies.length > 0 ? (
+                                            <MetadataGroup label="Technologies" items={project.technologies} tone="technology" />
+                                        ) : null}
+                                    </section>
                                 ) : null}
                             </div>
 
@@ -95,6 +143,10 @@ export function ProjectDetailPage({
                                     fallbackSrc={projectImageUnavailable}
                                     className="detail-media"
                                 />
+                                <div className="detail-visual-caption">
+                                    <p className="eyebrow">Primary Preview</p>
+                                    <p>{project.screenshots.length > 0 ? 'The screenshot gallery below expands on this project view.' : 'This project currently ships without an additional screenshot gallery.'}</p>
+                                </div>
                             </div>
                         </section>
 
@@ -102,7 +154,11 @@ export function ProjectDetailPage({
                             <div className="detail-column detail-column-main">
                                 {project.longDescriptionMarkdown.trim().length > 0 ? (
                                     <section className="detail-panel">
-                                        <h2>Overview</h2>
+                                        <DetailPanelHeader
+                                            eyebrow="Narrative"
+                                            title="Overview"
+                                            description="The delivery story, implementation context, and outcome for this project."
+                                        />
                                         <div className="detail-markdown">
                                             {renderMarkdownParagraphs(project.longDescriptionMarkdown)}
                                         </div>
@@ -111,7 +167,11 @@ export function ProjectDetailPage({
 
                                 {project.collaborators.length > 0 ? (
                                     <section className="detail-panel">
-                                        <h2>Collaborators</h2>
+                                        <DetailPanelHeader
+                                            eyebrow="Team"
+                                            title="Collaborators"
+                                            description="People who contributed alongside the primary build effort."
+                                        />
                                         <div className="stack-list">
                                             {project.collaborators.map(collaborator => (
                                                 <article key={collaborator.name} className="stack-card collaborator-card">
@@ -154,7 +214,11 @@ export function ProjectDetailPage({
 
                                 {project.milestones.length > 0 ? (
                                     <section className="detail-panel">
-                                        <h2>Milestones</h2>
+                                        <DetailPanelHeader
+                                            eyebrow="Delivery"
+                                            title="Milestones"
+                                            description="Planned and completed checkpoints that shaped the release."
+                                        />
                                         <div className="stack-list">
                                             {project.milestones.map(milestone => (
                                                 <article key={`${milestone.title}-${milestone.targetDate}`} className="stack-card">
@@ -181,7 +245,11 @@ export function ProjectDetailPage({
                             <div className="detail-column detail-column-media">
                                 {project.screenshots.length > 0 ? (
                                     <section className="detail-panel">
-                                        <h2>Screenshots</h2>
+                                        <DetailPanelHeader
+                                            eyebrow="Project Media"
+                                            title="Screenshots"
+                                            description="Select a frame to inspect the interface in more detail."
+                                        />
                                         <ScreenshotCarousel
                                             projectTitle={project.title}
                                             screenshots={project.screenshots}
@@ -194,6 +262,28 @@ export function ProjectDetailPage({
                 ) : null}
             </section>
         </main>
+    );
+}
+
+interface DetailPanelHeaderProps {
+    eyebrow: string;
+    title: string;
+    description: string;
+}
+
+function DetailPanelHeader({
+    eyebrow,
+    title,
+    description
+}: DetailPanelHeaderProps) {
+    return (
+        <header className="detail-panel-header">
+            <p className="eyebrow">{eyebrow}</p>
+            <div className="detail-panel-heading">
+                <h2>{title}</h2>
+                <p className="secondary-copy">{description}</p>
+            </div>
+        </header>
     );
 }
 
