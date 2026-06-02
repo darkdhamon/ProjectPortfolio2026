@@ -44,6 +44,15 @@ jobs:
             $baseRef = "origin/${{ github.base_ref }}"
             git fetch origin "${{ github.base_ref }}" --depth=1
             $baseCommit = git merge-base HEAD $baseRef
+
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($baseCommit)) {
+              Write-Warning "Unable to resolve a merge base against $baseRef. Falling back to the base branch head."
+              $baseCommit = git rev-parse $baseRef
+
+              if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($baseCommit)) {
+                throw "Unable to determine a comparison base for changed files."
+              }
+            }
           }
           elseif ("${{ github.event.before }}" -and "${{ github.event.before }}" -ne "0000000000000000000000000000000000000000") {
             $baseCommit = "${{ github.event.before }}"
