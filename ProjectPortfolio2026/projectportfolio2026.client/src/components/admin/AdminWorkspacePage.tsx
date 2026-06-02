@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { NavigateFn } from '../../app/navigation';
 import { InternalLink } from '../common/InternalLink';
 import { adminSections, getAdminSection, type AdminSectionId } from './adminSections';
@@ -48,11 +49,13 @@ const sectionDetails: Record<Exclude<AdminSectionId, 'dashboard'>, { title: stri
 export function AdminWorkspacePage({
     activeSection,
     currentUserDisplayName,
-    onNavigate
+    onNavigate,
+    sectionContent
 }: {
     activeSection: AdminSectionId;
     currentUserDisplayName: string;
     onNavigate: NavigateFn;
+    sectionContent?: ReactNode;
 }) {
     const currentSection = getAdminSection(activeSection);
 
@@ -129,6 +132,21 @@ export function AdminWorkspacePage({
                                 </article>
                             ))}
                         </section>
+                    ) : sectionContent ? (
+                        <>
+                            {activeSection === 'resume' ? (
+                                <div className="admin-inline-actions">
+                                    <InternalLink
+                                        className="admin-action-link"
+                                        href="/admin/resume/import"
+                                        onNavigate={onNavigate}
+                                        preserveScroll={true}>
+                                        Start Resume Import
+                                    </InternalLink>
+                                </div>
+                            ) : null}
+                            {sectionContent}
+                        </>
                     ) : (
                         <article className="admin-card admin-section-panel">
                             <p className="eyebrow">{currentSection.kicker}</p>

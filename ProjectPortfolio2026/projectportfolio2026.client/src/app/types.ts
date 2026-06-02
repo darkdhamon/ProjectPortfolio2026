@@ -127,6 +127,18 @@ export interface PortfolioProfile {
     socialLinks: PortfolioSocialLink[];
 }
 
+export type ResumeSourceType = 'none' | 'hosted-file' | 'embed';
+
+export interface ResumeConfiguration {
+    requestId?: string;
+    id: number;
+    sourceType: ResumeSourceType;
+    sourceUrl?: string | null;
+    displayLabel?: string | null;
+    summary?: string | null;
+    isConfigured: boolean;
+}
+
 export interface ApiErrorResponse {
     message?: string;
 }
