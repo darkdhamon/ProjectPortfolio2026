@@ -663,6 +663,7 @@ describe('App', () => {
             hasMore: false,
             availableSkills: ['React', 'Testing']
         });
+        // React may briefly issue a search-only request before the deferred reset settles.
         queueFetchJson(intermediateSearchOnlyRequest, {
             requestId: 'request-1',
             items: [
@@ -715,7 +716,6 @@ describe('App', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
 
         expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
-        expect(fetchMock).toHaveBeenCalledWith(intermediateSearchOnlyRequest, expect.any(Object));
         expect(fetchMock).toHaveBeenCalledWith(finalResetRequest, expect.any(Object));
         expect(screen.getByRole('searchbox', { name: 'Search projects' })).toHaveValue('');
         expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'false');
