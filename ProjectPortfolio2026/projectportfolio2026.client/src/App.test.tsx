@@ -636,6 +636,68 @@ describe('App', () => {
         expect(screen.getByRole('searchbox', { name: 'Search projects' })).toBeInTheDocument();
     });
 
+    it('clears search and skill filters from the reset action', async () => {
+        window.history.replaceState({}, '', '/projects?search=React&skills=Testing');
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 44,
+                    title: 'Testing Skill Result',
+                    startDate: '2023-01-01',
+                    endDate: '2023-04-01',
+                    primaryImageUrl: null,
+                    shortDescription: 'Filtered by selected skill.',
+                    isFeatured: false,
+                    skills: ['Testing'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Testing Skill Result' })).toBeInTheDocument();
+        expect(screen.getByRole('searchbox', { name: 'Search projects' })).toHaveValue('React');
+        expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'true');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+        expect(screen.getByRole('searchbox', { name: 'Search projects' })).toHaveValue('');
+        expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getAllByText('No active filters').length).toBeGreaterThan(0);
+        expect(screen.getByRole('button', { name: 'Reset filters' })).toBeDisabled();
+        expect(window.location.pathname).toBe('/projects');
+        expect(window.location.search).toBe('');
+    });
+
     it('renders the detail view and preserves list filters in the back link', async () => {
         window.history.replaceState({}, '', '/projects/42?search=react&skills=Testing');
         queueFetchJson(/^\/api\/projects\/42\?/, {
