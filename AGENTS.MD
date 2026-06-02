@@ -30,6 +30,17 @@
 - Keep the current assignment in scope.
 - If the user shares an idea that is outside the scope of the current assignment, add it to `TODO.MD` in the project root for later follow-up.
 
+## Pull Request Commands
+
+- Treat `PR auto <number>` as a pull request automation command, not as the issue-number conversation opener workflow.
+- When a conversation starts with `PR auto ...`, do not create a fresh feature branch from `dev` just because the command includes a number. Operate on the referenced pull request instead.
+- The number passed to `PR auto` is the pull request number even if the user casually refers to it as an issue number.
+- Ignore optional filler tokens and markers in the shorthand. `PR auto 137`, `PR auto for 137`, `PR auto #137`, and `PR auto for #137` all mean the same thing.
+- For `PR auto`, resolve the number as a pull request first. Only ask whether the user meant an issue if that pull request number does not exist in this repository.
+- Treat `PR <number>` and `PR #<number>` without `auto` as pull request inspection requests by default, not as issue work and not as full automation requests.
+- `PR auto` means to run the pull request follow-up workflow for that PR: inspect status, address actionable review or CI feedback, run relevant validation, commit and push fixes, request fresh Codex review, and continue monitoring with the required heartbeat automation while the PR remains in review.
+- `PR auto` alone does not authorize merging. Do not complete or merge the pull request unless the user explicitly asks to do that and the repository review rules allow it.
+
 ## Knowledge Capture
 
 - When errors require a workaround to complete a user task, document the workaround in `AGENTS.MD` so future tasks can be completed faster.
