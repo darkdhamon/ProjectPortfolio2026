@@ -43,7 +43,7 @@ public sealed class ResumeImportControllerTests
     {
         var controller = new ResumeImportController(new StubResumeImportService
         {
-            Result = new ResumeImportParseResult
+            Result = new ResumeImportCandidateResult
             {
                 SourceFileName = "resume.pdf",
                 ParserName = "StubParser",
@@ -71,9 +71,9 @@ public sealed class ResumeImportControllerTests
     {
         public ResumeImportValidationException? ExceptionToThrow { get; set; }
 
-        public ResumeImportParseResult Result { get; set; } = new();
+        public ResumeImportCandidateResult Result { get; set; } = new();
 
-        public Task<ResumeImportParseResult> ParseAsync(IFormFile file, CancellationToken cancellationToken = default)
+        public Task<ResumeImportCandidateResult> ParseAsync(IFormFile file, CancellationToken cancellationToken = default)
         {
             if (ExceptionToThrow is not null)
             {

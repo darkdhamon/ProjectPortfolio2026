@@ -53,7 +53,8 @@ export function ResumeImportPage({
         }
     }
 
-    const parsedWorkHistoryCount = parseResult?.workHistory.length ?? 0;
+    const parsedEmployerCount = parseResult?.candidateWorkHistory.length ?? 0;
+    const parsedWorkHistoryCount = parseResult?.candidateWorkHistory.reduce((count, employer) => count + employer.jobRoles.length, 0) ?? 0;
     const parsedSkillsCount = parseResult?.globalSkills.length ?? 0;
     const parserName = parseResult?.parserName?.trim() || 'Pending parser implementation';
 
@@ -174,7 +175,7 @@ export function ResumeImportPage({
                                     <article className="resume-import-preview-card">
                                         <span className="stat-label">Parsed candidates</span>
                                         <strong>{formatCandidateCount(parsedWorkHistoryCount, 'role candidate', 'role candidates')}</strong>
-                                        <p>{formatCandidateCount(parsedSkillsCount, 'global skill', 'global skills')}</p>
+                                        <p>{formatCandidateCount(parsedEmployerCount, 'employer group', 'employer groups')} and {formatCandidateCount(parsedSkillsCount, 'global skill', 'global skills')}</p>
                                     </article>
                                     <article className="resume-import-preview-card">
                                         <span className="stat-label">Detected person</span>

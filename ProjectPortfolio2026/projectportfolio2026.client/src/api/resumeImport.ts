@@ -7,7 +7,7 @@ export interface ResumeImportParseResponse {
     professionalSummary?: string | null;
     rawText?: string | null;
     globalSkills: string[];
-    workHistory: ResumeImportWorkHistoryEntry[];
+    candidateWorkHistory: ResumeImportEmployerCandidate[];
     person?: ResumeImportPerson | null;
 }
 
@@ -19,10 +19,17 @@ export interface ResumeImportPerson {
     socialProfiles: string[];
 }
 
-export interface ResumeImportWorkHistoryEntry {
+export interface ResumeImportEmployerCandidate {
+    candidateId: string;
     employerName?: string | null;
+    jobRoles: ResumeImportJobRoleCandidate[];
+}
+
+export interface ResumeImportJobRoleCandidate {
+    candidateId: string;
     jobTitle?: string | null;
     descriptionLines: string[];
+    descriptionMarkdown?: string | null;
     skills: string[];
     technologies: string[];
 }

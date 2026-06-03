@@ -5,12 +5,12 @@ namespace ProjectPortfolio2026.Server.Mappers;
 
 public static class ResumeImportContractMapper
 {
-    public static ResumeImportParseResponse Map(ResumeImportParseResult result)
+    public static ResumeImportParseResponse Map(ResumeImportCandidateResult result)
     {
         return new ResumeImportParseResponse
         {
             Person = Map(result.Person),
-            WorkHistory = result.WorkHistory.Select(Map).ToList(),
+            CandidateWorkHistory = result.CandidateWorkHistory.Select(Map).ToList(),
             GlobalSkills = [.. result.GlobalSkills],
             ProfessionalSummary = result.ProfessionalSummary,
             RawText = result.RawText,
@@ -59,30 +59,40 @@ public static class ResumeImportContractMapper
         };
     }
 
-    private static ResumeImportWorkHistoryEntryResponse Map(ParsedWorkHistoryEntry entry)
+    private static ResumeImportEmployerCandidateResponse Map(ResumeImportEmployerCandidate candidate)
     {
-        return new ResumeImportWorkHistoryEntryResponse
+        return new ResumeImportEmployerCandidateResponse
         {
-            EmployerName = entry.EmployerName,
-            EmployerLocation = Map(entry.EmployerLocation),
-            JobTitle = entry.JobTitle,
-            EmploymentType = entry.EmploymentType,
-            SupervisorName = entry.SupervisorName,
+            CandidateId = candidate.CandidateId,
+            EmployerName = candidate.EmployerName,
+            EmployerLocation = Map(candidate.EmployerLocation),
+            JobRoles = candidate.JobRoles.Select(Map).ToList()
+        };
+    }
+
+    private static ResumeImportJobRoleCandidateResponse Map(ResumeImportJobRoleCandidate candidate)
+    {
+        return new ResumeImportJobRoleCandidateResponse
+        {
+            CandidateId = candidate.CandidateId,
+            JobTitle = candidate.JobTitle,
+            EmploymentType = candidate.EmploymentType,
+            SupervisorName = candidate.SupervisorName,
             EmploymentDates = new ResumeImportDateRangeResponse
             {
-                StartDateText = entry.EmploymentDates.StartDateText,
-                EndDateText = entry.EmploymentDates.EndDateText,
-                StartDate = entry.EmploymentDates.StartDate,
-                EndDate = entry.EmploymentDates.EndDate,
-                IsCurrentRole = entry.EmploymentDates.IsCurrentRole
+                StartDateText = candidate.EmploymentDates.StartDateText,
+                EndDateText = candidate.EmploymentDates.EndDateText,
+                StartDate = candidate.EmploymentDates.StartDate,
+                EndDate = candidate.EmploymentDates.EndDate,
+                IsCurrentRole = candidate.EmploymentDates.IsCurrentRole
             },
-            DescriptionLines = [.. entry.DescriptionLines],
-            DescriptionMarkdown = entry.DescriptionMarkdown,
-            Skills = [.. entry.Skills],
-            Technologies = [.. entry.Technologies],
-            Tags = [.. entry.Tags],
-            RawRoleText = entry.RawRoleText,
-            RawFields = new Dictionary<string, string?>(entry.RawFields, StringComparer.Ordinal)
+            DescriptionLines = [.. candidate.DescriptionLines],
+            DescriptionMarkdown = candidate.DescriptionMarkdown,
+            Skills = [.. candidate.Skills],
+            Technologies = [.. candidate.Technologies],
+            Tags = [.. candidate.Tags],
+            RawRoleText = candidate.RawRoleText,
+            RawFields = new Dictionary<string, string?>(candidate.RawFields, StringComparer.Ordinal)
         };
     }
 }
