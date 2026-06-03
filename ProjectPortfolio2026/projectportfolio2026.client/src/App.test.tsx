@@ -276,6 +276,74 @@ describe('App', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
     });
 
+    it('renders only the populated project metadata groups', async () => {
+        window.history.replaceState({}, '', '/projects');
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Skills Only Project',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Keeps only the skills section visible.',
+                    isFeatured: false,
+                    skills: ['React'],
+                    technologies: []
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React']
+        });
+
+        render(<App />);
+
+        const projectCard = (await screen.findByRole('heading', { name: 'Skills Only Project' })).closest('article');
+        expect(projectCard).not.toBeNull();
+        expect(within(projectCard as HTMLElement).getByText('Skills')).toBeInTheDocument();
+        expect(within(projectCard as HTMLElement).queryByText('Technology Stack')).not.toBeInTheDocument();
+        expect(within(projectCard as HTMLElement).getByLabelText('Skills Only Project skills')).toHaveTextContent('React');
+        expect(within(projectCard as HTMLElement).queryByLabelText('Skills Only Project technologies')).not.toBeInTheDocument();
+    });
+
+    it('omits project metadata when no skills or technologies are published', async () => {
+        window.history.replaceState({}, '', '/projects');
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Metadata Free Project',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Has no metadata tags to render.',
+                    isFeatured: false,
+                    skills: [],
+                    technologies: []
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: []
+        });
+
+        render(<App />);
+
+        const projectCard = (await screen.findByRole('heading', { name: 'Metadata Free Project' })).closest('article');
+        expect(projectCard).not.toBeNull();
+        expect(within(projectCard as HTMLElement).queryByText('Skills')).not.toBeInTheDocument();
+        expect(within(projectCard as HTMLElement).queryByText('Technology Stack')).not.toBeInTheDocument();
+        expect(within(projectCard as HTMLElement).queryByLabelText('Metadata Free Project skills')).not.toBeInTheDocument();
+        expect(within(projectCard as HTMLElement).queryByLabelText('Metadata Free Project technologies')).not.toBeInTheDocument();
+    });
+
     it('renders the work history page from the public endpoint', async () => {
         window.history.replaceState({}, '', '/work-history');
         queueFetchJson('/api/work-history?requestId=request-1', {
