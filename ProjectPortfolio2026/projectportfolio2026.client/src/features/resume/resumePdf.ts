@@ -1,3 +1,6 @@
+import fontkit from '@pdf-lib/fontkit';
+import { PDFDocument } from 'pdf-lib';
+import unicodeFontUrl from '@fontpkg/unifont/unifont-15.0.01.ttf?url';
 import type { Employer, PortfolioContactMethod, PortfolioProfile, PortfolioSocialLink } from '../../app/types';
 
 export interface ResumePdfExportOptions {
@@ -22,31 +25,47 @@ const pdfPageHeight = 792;
 const pdfMargin = 54;
 const pdfBottomMargin = 54;
 
-function sanitizePdfText(value: string) {
+let unicodePdfFontBytesPromise: Promise<Uint8Array> | null = null;
+
+function normalizePdfText(value: string) {
     return value
-        .normalize('NFKD')
-        .replace(/[\u0300-\u036f]/g, '')
+        .normalize('NFC')
         .replace(/\u2013|\u2014/g, '-')
         .replace(/\u2018|\u2019/g, "'")
         .replace(/\u201c|\u201d/g, '"')
         .replace(/\u2022/g, '*')
         .replace(/\u2026/g, '...')
-        .replace(/\u00a0/g, ' ')
-        .replace(/[^\x20-\x7E]/g, '?');
+        .replace(/\u00a0/g, ' ');
 }
 
-function escapePdfText(value: string) {
-    return value
-        .replace(/\\/g, '\\\\')
-        .replace(/\(/g, '\\(')
-        .replace(/\)/g, '\\)');
+function sanitizePdfFileNamePart(value: string) {
+    return normalizePdfText(value)
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\x20-\x7E]/g, '')
+        .trim();
+}
+
+function getPdfTextLength(value: string) {
+    return Array.from(value).length;
+}
+
+function splitPdfWord(value: string, maxCharacters: number) {
+    const codePoints = Array.from(value);
+    const segments: string[] = [];
+
+    for (let index = 0; index < codePoints.length; index += maxCharacters) {
+        segments.push(codePoints.slice(index, index + maxCharacters).join(''));
+    }
+
+    return segments;
 }
 
 function wrapPdfText(text: string, fontSize: number, indent = 0) {
     const availableWidth = pdfPageWidth - (pdfMargin * 2) - indent;
     const approximateCharacterWidth = Math.max(4, fontSize * 0.52);
     const maxCharacters = Math.max(18, Math.floor(availableWidth / approximateCharacterWidth));
-    const sanitized = sanitizePdfText(text).trim();
+    const sanitized = normalizePdfText(text).trim();
 
     if (!sanitized) {
         return [''];
@@ -58,7 +77,7 @@ function wrapPdfText(text: string, fontSize: number, indent = 0) {
 
     for (const word of words) {
         const nextLine = currentLine ? `${currentLine} ${word}` : word;
-        if (nextLine.length <= maxCharacters) {
+        if (getPdfTextLength(nextLine) <= maxCharacters) {
             currentLine = nextLine;
             continue;
         }
@@ -67,17 +86,16 @@ function wrapPdfText(text: string, fontSize: number, indent = 0) {
             lines.push(currentLine);
         }
 
-        if (word.length <= maxCharacters) {
+        if (getPdfTextLength(word) <= maxCharacters) {
             currentLine = word;
             continue;
         }
 
-        let remainingWord = word;
-        while (remainingWord.length > maxCharacters) {
-            lines.push(remainingWord.slice(0, maxCharacters - 1));
-            remainingWord = remainingWord.slice(maxCharacters - 1);
+        const segments = splitPdfWord(word, maxCharacters);
+        while (segments.length > 1) {
+            lines.push(segments.shift() ?? '');
         }
-        currentLine = remainingWord;
+        currentLine = segments[0] ?? '';
     }
 
     if (currentLine) {
@@ -148,7 +166,7 @@ function formatRoleDate(startDate: string, endDate?: string | null) {
 }
 
 function summarizeRoleCopy(markdown: string) {
-    return sanitizePdfText(
+    return normalizePdfText(
         markdown
             .replace(/^#+\s*/gm, '')
             .split(/\r?\n\r?\n/)
@@ -273,86 +291,76 @@ function buildPdfLines(options: ResumePdfExportOptions) {
     return lines;
 }
 
-export function buildResumePdfBytes(options: ResumePdfExportOptions) {
+export function buildResumePdfTextLines(options: ResumePdfExportOptions) {
+    return buildPdfLines(options)
+        .map(line => line.text)
+        .filter(text => text.length > 0);
+}
+
+async function loadUnicodePdfFontBytes() {
+    if (!unicodePdfFontBytesPromise) {
+        unicodePdfFontBytesPromise = fetch(unicodeFontUrl)
+            .then(async response => {
+                if (!response.ok) {
+                    throw new Error('Unable to load the PDF export font.');
+                }
+
+                return new Uint8Array(await response.arrayBuffer());
+            })
+            .catch(error => {
+                unicodePdfFontBytesPromise = null;
+                throw error;
+            });
+    }
+
+    return unicodePdfFontBytesPromise;
+}
+
+export async function buildResumePdfBytes(options: ResumePdfExportOptions) {
     const lines = buildPdfLines(options);
-    const pages: string[][] = [[]];
-    let currentPageIndex = 0;
+    const pdfDocument = await PDFDocument.create();
+    pdfDocument.registerFontkit(fontkit);
+    const font = await pdfDocument.embedFont(await loadUnicodePdfFontBytes(), {
+        subset: true
+    });
+    let page = pdfDocument.addPage([pdfPageWidth, pdfPageHeight]);
     let currentY = pdfPageHeight - pdfMargin;
 
     for (const line of lines) {
         const lineHeight = line.text ? line.fontSize + 6 : line.fontSize;
         if (currentY - lineHeight < pdfBottomMargin) {
-            pages.push([]);
-            currentPageIndex += 1;
+            page = pdfDocument.addPage([pdfPageWidth, pdfPageHeight]);
             currentY = pdfPageHeight - pdfMargin;
         }
 
         if (line.text) {
-            const x = pdfMargin + (line.indent ?? 0);
-            const escapedText = escapePdfText(line.text);
-            pages[currentPageIndex].push(`BT /F1 ${line.fontSize} Tf 1 0 0 1 ${x} ${currentY} Tm (${escapedText}) Tj ET`);
+            page.drawText(line.text, {
+                font,
+                size: line.fontSize,
+                x: pdfMargin + (line.indent ?? 0),
+                y: currentY
+            });
         }
 
         currentY -= lineHeight;
     }
 
-    const objects: string[] = [];
-    const pageObjectNumbers: number[] = [];
-    const contentObjectNumbers: number[] = [];
-    const fontObjectNumber = 3;
-
-    objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
-    objects[2] = '';
-    objects[fontObjectNumber] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
-
-    let nextObjectNumber = 4;
-    pages.forEach(pageCommands => {
-        const pageObjectNumber = nextObjectNumber++;
-        const contentObjectNumber = nextObjectNumber++;
-        pageObjectNumbers.push(pageObjectNumber);
-        contentObjectNumbers.push(contentObjectNumber);
-
-        const stream = pageCommands.join('\n');
-        objects[pageObjectNumber] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pdfPageWidth} ${pdfPageHeight}] /Resources << /Font << /F1 ${fontObjectNumber} 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`;
-        objects[contentObjectNumber] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+    return pdfDocument.save({
+        useObjectStreams: false
     });
-
-    objects[2] = `<< /Type /Pages /Kids [${pageObjectNumbers.map(number => `${number} 0 R`).join(' ')}] /Count ${pageObjectNumbers.length} >>`;
-
-    const parts: string[] = ['%PDF-1.4'];
-    const offsets: number[] = [0];
-
-    for (let objectNumber = 1; objectNumber < objects.length; objectNumber += 1) {
-        offsets[objectNumber] = parts.join('\n').length + 1;
-        parts.push(`${objectNumber} 0 obj\n${objects[objectNumber]}\nendobj`);
-    }
-
-    const xrefOffset = parts.join('\n').length + 1;
-    const xrefEntries = ['0000000000 65535 f '];
-
-    for (let objectNumber = 1; objectNumber < objects.length; objectNumber += 1) {
-        xrefEntries.push(`${offsets[objectNumber].toString().padStart(10, '0')} 00000 n `);
-    }
-
-    parts.push(`xref\n0 ${objects.length}\n${xrefEntries.join('\n')}`);
-    parts.push(`trailer\n<< /Size ${objects.length} /Root 1 0 R >>`);
-    parts.push(`startxref\n${xrefOffset}`);
-    parts.push('%%EOF');
-
-    return new TextEncoder().encode(parts.join('\n'));
 }
 
 function buildDownloadFileName(displayName: string, timeWindowLabel: string, employerLimitLabel: string) {
-    const normalizedName = sanitizePdfText(displayName)
+    const normalizedName = sanitizePdfFileNamePart(displayName)
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
         || 'resume';
-    const normalizedTimeWindow = sanitizePdfText(timeWindowLabel)
+    const normalizedTimeWindow = sanitizePdfFileNamePart(timeWindowLabel)
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
-    const normalizedEmployerLimit = sanitizePdfText(employerLimitLabel)
+    const normalizedEmployerLimit = sanitizePdfFileNamePart(employerLimitLabel)
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
@@ -362,13 +370,19 @@ function buildDownloadFileName(displayName: string, timeWindowLabel: string, emp
         .join('-');
 }
 
-export function downloadResumePdf(options: ResumePdfExportOptions) {
-    if (typeof document === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+export async function downloadResumePdf(options: ResumePdfExportOptions) {
+    if (typeof document === 'undefined'
+        || typeof Blob === 'undefined'
+        || typeof URL === 'undefined'
+        || typeof URL.createObjectURL !== 'function'
+        || typeof fetch !== 'function') {
         throw new Error('This browser does not support PDF downloads.');
     }
 
-    const bytes = buildResumePdfBytes(options);
-    const blob = new Blob([bytes], {
+    const bytes = await buildResumePdfBytes(options);
+    const blobBytes = new Uint8Array(bytes.byteLength);
+    blobBytes.set(bytes);
+    const blob = new Blob([blobBytes], {
         type: 'application/pdf'
     });
     const downloadUrl = URL.createObjectURL(blob);

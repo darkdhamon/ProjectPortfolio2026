@@ -4,7 +4,6 @@ import { formatProjectDates } from '../../appSupport';
 import { usePortfolioProfile } from '../../hooks/usePortfolioProfile';
 import { useResumeConfiguration } from '../../hooks/useResumeConfiguration';
 import { useWorkHistory } from '../../hooks/useWorkHistory';
-import { downloadResumePdf } from './resumePdf';
 
 interface ResumeDateValue {
     label: string;
@@ -299,6 +298,7 @@ function getResumeViewSummary(
 export function ResumePage() {
     const [selectedTimeFilterKey, setSelectedTimeFilterKey] = useState<ResumeTimeFilterKey>('all');
     const [selectedEmployerLimitKey, setSelectedEmployerLimitKey] = useState<ResumeEmployerLimitKey>('all');
+    const [isExportingPdf, setIsExportingPdf] = useState(false);
     const [pdfExportFeedback, setPdfExportFeedback] = useState<string | null>(null);
     const [pdfExportError, setPdfExportError] = useState<string | null>(null);
     const {
@@ -370,7 +370,9 @@ export function ResumePage() {
     const hasSummarySection = Boolean(profile?.contactHeadline?.trim() || profile?.availabilityHeadline?.trim() || summaryParagraphs.length > 0);
     const hasSkillsSection = skillHighlights.length > 0 || technologyHighlights.length > 0;
     const isLoading = isProfileLoading || isWorkHistoryLoading || isResumeConfigurationLoading;
+    const isResumePdfLoading = isProfileLoading || isWorkHistoryLoading || isExportingPdf;
     const errors = [profileError, workHistoryError, resumeConfigurationError].filter(Boolean);
+    const resumePdfErrors = [profileError, workHistoryError].filter(Boolean);
     const activeFilterCount = (selectedTimeFilter.key === 'all' ? 0 : 1) + (selectedEmployerLimit.key === 'all' ? 0 : 1);
     const resumeViewSummary = getResumeViewSummary(
         selectedTimeFilter,
@@ -380,11 +382,16 @@ export function ResumePage() {
         totalRoleCount
     );
     const resumeSourceTypeLabel = resumeConfiguration?.sourceType === 'embed' ? 'Embed source' : 'Hosted file';
-    const canExportPdf = !isLoading && errors.length === 0;
+    const canExportPdf = !isResumePdfLoading && resumePdfErrors.length === 0;
 
-    function handleDownloadPdf() {
+    async function handleDownloadPdf() {
+        setIsExportingPdf(true);
+        setPdfExportFeedback('Preparing PDF download...');
+        setPdfExportError(null);
+
         try {
-            downloadResumePdf({
+            const { downloadResumePdf } = await import('./resumePdf');
+            await downloadResumePdf({
                 profile,
                 employers: filteredEmployers,
                 activeTimeWindowLabel: selectedTimeFilter.label,
@@ -395,10 +402,11 @@ export function ResumePage() {
                 technologyHighlights: technologyHighlights.map(highlight => highlight.label)
             });
             setPdfExportFeedback('PDF download started.');
-            setPdfExportError(null);
         } catch {
             setPdfExportFeedback(null);
             setPdfExportError('Unable to export the resume PDF right now.');
+        } finally {
+            setIsExportingPdf(false);
         }
     }
 
@@ -534,7 +542,9 @@ export function ResumePage() {
                                 <span className="resume-action-note">
                                     {canExportPdf
                                         ? 'Reflects the active resume filters.'
-                                        : 'Available once resume data finishes loading.'}
+                                        : isExportingPdf
+                                            ? 'Preparing the latest filtered resume PDF.'
+                                            : 'Available once profile and work history finish loading.'}
                                 </span>
                             </div>
                             <button
@@ -545,7 +555,7 @@ export function ResumePage() {
                                 aria-label="Download PDF"
                                 onClick={handleDownloadPdf}>
                                 <span>Download PDF</span>
-                                <span className="coming-soon-pill">{canExportPdf ? 'ATS-friendly' : 'Unavailable'}</span>
+                                <span className="coming-soon-pill">{canExportPdf ? 'ATS-friendly' : isExportingPdf ? 'Preparing' : 'Unavailable'}</span>
                             </button>
                         </div>
                         <div className="resume-action-card">
