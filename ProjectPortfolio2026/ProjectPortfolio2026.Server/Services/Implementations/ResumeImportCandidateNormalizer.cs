@@ -184,12 +184,32 @@ public static class ResumeImportCandidateNormalizer
 
     private static Dictionary<string, string?> NormalizeRawFields(Dictionary<string, string?> rawFields)
     {
-        return rawFields
-            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
-            .ToDictionary(
-                pair => pair.Key.Trim(),
-                pair => NormalizeText(pair.Value),
-                StringComparer.Ordinal);
+        var normalized = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        foreach (var pair in rawFields)
+        {
+            if (string.IsNullOrWhiteSpace(pair.Key))
+            {
+                continue;
+            }
+
+            var key = pair.Key.Trim();
+            var value = NormalizeText(pair.Value);
+
+            if (normalized.TryGetValue(key, out var existingValue))
+            {
+                if (existingValue is null && value is not null)
+                {
+                    normalized[key] = value;
+                }
+
+                continue;
+            }
+
+            normalized[key] = value;
+        }
+
+        return normalized;
     }
 
     private static List<string> NormalizeValues(IEnumerable<string?> values)

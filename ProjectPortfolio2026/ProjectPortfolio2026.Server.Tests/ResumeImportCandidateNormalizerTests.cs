@@ -91,4 +91,35 @@ public sealed class ResumeImportCandidateNormalizerTests
             Assert.That(result.CandidateWorkHistory[1].JobRoles[0].JobTitle, Is.EqualTo("Consultant"));
         });
     }
+
+    [Test]
+    public void Normalize_TrimsDuplicateRawFieldKeysWithoutThrowingAndKeepsStructuredValue()
+    {
+        var result = ResumeImportCandidateNormalizer.Normalize(new ResumeImportParseResult
+        {
+            WorkHistory =
+            [
+                new ParsedWorkHistoryEntry
+                {
+                    EmployerName = "Northwind Health",
+                    JobTitle = "Engineer",
+                    RawFields = new Dictionary<string, string?>(StringComparer.Ordinal)
+                    {
+                        [" source-section "] = "   ",
+                        ["source-section"] = " experience ",
+                        ["detail"] = " imported "
+                    }
+                }
+            ]
+        });
+
+        var rawFields = result.CandidateWorkHistory[0].JobRoles[0].RawFields;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rawFields, Has.Count.EqualTo(2));
+            Assert.That(rawFields["source-section"], Is.EqualTo("experience"));
+            Assert.That(rawFields["detail"], Is.EqualTo("imported"));
+        });
+    }
 }
