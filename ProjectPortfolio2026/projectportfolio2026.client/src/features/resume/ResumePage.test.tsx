@@ -73,6 +73,7 @@ describe('ResumePage', () => {
     afterEach(() => {
         cleanup();
         vi.useRealTimers();
+        vi.restoreAllMocks();
     });
 
     beforeEach(() => {
@@ -188,6 +189,87 @@ describe('ResumePage', () => {
         expect(screen.getByRole('link', { name: 'Download Resume' })).toHaveAttribute('href', 'https://cdn.example.dev/resume.pdf');
         expect(screen.getByText('ATS-friendly PDF.')).toBeInTheDocument();
         expect(screen.getAllByText('Hosted file').length).toBeGreaterThan(0);
+    });
+
+    it('exports the currently filtered resume view as a PDF download', async () => {
+        const createObjectUrl = vi.fn<(object: Blob) => string>(() => 'blob:resume');
+        const revokeObjectUrl = vi.fn();
+        Object.defineProperty(URL, 'createObjectURL', {
+            configurable: true,
+            writable: true,
+            value: createObjectUrl
+        });
+        Object.defineProperty(URL, 'revokeObjectURL', {
+            configurable: true,
+            writable: true,
+            value: revokeObjectUrl
+        });
+        const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+        mockUseWorkHistory.mockReturnValue({
+            employers: [
+                createEmployer(1, {
+                    name: 'Current Employer',
+                    jobRoles: [
+                        {
+                            role: 'Staff Engineer',
+                            startDate: '2024-02-01',
+                            endDate: null,
+                            descriptionMarkdown: 'Owning platform and delivery work.',
+                            skills: ['Leadership'],
+                            technologies: ['React']
+                        }
+                    ]
+                }),
+                createEmployer(2, {
+                    name: 'Legacy Employer',
+                    jobRoles: [
+                        {
+                            role: 'Analyst',
+                            startDate: '2015-01-01',
+                            endDate: '2017-12-20',
+                            descriptionMarkdown: 'Early delivery work.',
+                            skills: ['Support'],
+                            technologies: ['SQL Server']
+                        }
+                    ]
+                })
+            ],
+            isLoading: false,
+            error: null
+        });
+
+        render(<ResumePage />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Last 5 years' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Download PDF' }));
+
+        expect(screen.getByText('PDF download started.')).toBeInTheDocument();
+        expect(createObjectUrl).toHaveBeenCalledTimes(1);
+        expect(anchorClickSpy).toHaveBeenCalledTimes(1);
+        expect(revokeObjectUrl).toHaveBeenCalledWith('blob:resume');
+
+        const pdfBlob = createObjectUrl.mock.calls[0]?.[0] as unknown as Blob;
+        const pdfText = await pdfBlob.text();
+        expect(pdfBlob.type).toBe('application/pdf');
+        expect(pdfText).toContain('%PDF-1.4');
+        expect(pdfText).toContain('Time Window: Last 5 years');
+        expect(pdfText).toContain('Current Employer');
+        expect(pdfText).not.toContain('Legacy Employer');
+    });
+
+    it('shows a clean error when the PDF export pipeline is unavailable', () => {
+        Object.defineProperty(URL, 'createObjectURL', {
+            configurable: true,
+            writable: true,
+            value: undefined
+        });
+
+        render(<ResumePage />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Download PDF' }));
+
+        expect(screen.getByText('Unable to export the resume PDF right now.')).toBeInTheDocument();
     });
 
     it('renders structured summary, skill highlights, and full experience history', () => {

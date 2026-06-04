@@ -4,6 +4,7 @@ import { formatProjectDates } from '../../appSupport';
 import { usePortfolioProfile } from '../../hooks/usePortfolioProfile';
 import { useResumeConfiguration } from '../../hooks/useResumeConfiguration';
 import { useWorkHistory } from '../../hooks/useWorkHistory';
+import { downloadResumePdf } from './resumePdf';
 
 interface ResumeDateValue {
     label: string;
@@ -298,6 +299,8 @@ function getResumeViewSummary(
 export function ResumePage() {
     const [selectedTimeFilterKey, setSelectedTimeFilterKey] = useState<ResumeTimeFilterKey>('all');
     const [selectedEmployerLimitKey, setSelectedEmployerLimitKey] = useState<ResumeEmployerLimitKey>('all');
+    const [pdfExportFeedback, setPdfExportFeedback] = useState<string | null>(null);
+    const [pdfExportError, setPdfExportError] = useState<string | null>(null);
     const {
         profile,
         isLoading: isProfileLoading,
@@ -377,12 +380,39 @@ export function ResumePage() {
         totalRoleCount
     );
     const resumeSourceTypeLabel = resumeConfiguration?.sourceType === 'embed' ? 'Embed source' : 'Hosted file';
+    const canExportPdf = !isLoading && errors.length === 0;
+
+    function handleDownloadPdf() {
+        try {
+            downloadResumePdf({
+                profile,
+                employers: filteredEmployers,
+                activeTimeWindowLabel: selectedTimeFilter.label,
+                activeEmployerLimitLabel: selectedEmployerLimit.label,
+                viewSummary: resumeViewSummary,
+                generatedAt: new Date(),
+                skillHighlights: skillHighlights.map(highlight => highlight.label),
+                technologyHighlights: technologyHighlights.map(highlight => highlight.label)
+            });
+            setPdfExportFeedback('PDF download started.');
+            setPdfExportError(null);
+        } catch {
+            setPdfExportFeedback(null);
+            setPdfExportError('Unable to export the resume PDF right now.');
+        }
+    }
 
     return (
         <main className="resume-page">
             {errors.map(error => (
                 <p key={error} className="status-banner error">{error}</p>
             ))}
+            {pdfExportError ? (
+                <p className="status-banner error">{pdfExportError}</p>
+            ) : null}
+            {pdfExportFeedback ? (
+                <p className="status-banner">{pdfExportFeedback}</p>
+            ) : null}
             {!errors.length && isLoading ? (
                 <p className="status-banner">Loading resume...</p>
             ) : null}
@@ -501,16 +531,21 @@ export function ResumePage() {
                         <div className="resume-action-card">
                             <div className="resume-action-copy">
                                 <span className="meta-label">PDF Export</span>
-                                <span className="resume-action-note">Issue #88</span>
+                                <span className="resume-action-note">
+                                    {canExportPdf
+                                        ? 'Reflects the active resume filters.'
+                                        : 'Available once resume data finishes loading.'}
+                                </span>
                             </div>
                             <button
                                 className="resume-action-button"
                                 type="button"
-                                disabled
-                                aria-disabled="true"
-                                aria-label="Download PDF">
+                                disabled={!canExportPdf}
+                                aria-disabled={!canExportPdf}
+                                aria-label="Download PDF"
+                                onClick={handleDownloadPdf}>
                                 <span>Download PDF</span>
-                                <span className="coming-soon-pill">Coming Soon</span>
+                                <span className="coming-soon-pill">{canExportPdf ? 'ATS-friendly' : 'Unavailable'}</span>
                             </button>
                         </div>
                         <div className="resume-action-card">

@@ -408,7 +408,7 @@ describe('App', () => {
         expect(screen.getByRole('button', { name: 'All employers' })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: 'Top 3' })).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getByRole('button', { name: 'Top 5' })).toHaveAttribute('aria-pressed', 'false');
-        expect(screen.getByRole('button', { name: 'Download PDF' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Download PDF' })).toBeEnabled();
         expect(screen.getByRole('link', { name: 'Download Resume' })).toHaveAttribute('href', 'https://cdn.example.dev/resume.pdf');
         expect(screen.getByText('ATS-friendly PDF.')).toBeInTheDocument();
     });
