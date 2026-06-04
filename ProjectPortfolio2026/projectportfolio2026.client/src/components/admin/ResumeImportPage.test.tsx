@@ -27,13 +27,19 @@ describe('ResumeImportPage', () => {
             sourceFileName: 'resume.pdf',
             parserName: 'StubParser',
             globalSkills: ['C#', '.NET'],
-            workHistory: [
+            candidateWorkHistory: [
                 {
+                    candidateId: 'employer-001',
                     employerName: 'Northwind Health',
-                    jobTitle: 'Senior Software Engineer',
-                    descriptionLines: [],
-                    skills: [],
-                    technologies: []
+                    jobRoles: [
+                        {
+                            candidateId: 'role-001',
+                            jobTitle: 'Senior Software Engineer',
+                            descriptionLines: [],
+                            skills: [],
+                            technologies: []
+                        }
+                    ]
                 }
             ],
             person: {
@@ -67,7 +73,7 @@ describe('ResumeImportPage', () => {
         expect(await screen.findByRole('heading', { name: 'Candidate data is ready for the next import stages' })).toBeInTheDocument();
         expect(screen.getByText('resume.pdf')).toBeInTheDocument();
         expect(screen.getByText('1 role candidate')).toBeInTheDocument();
-        expect(screen.getByText('2 global skills')).toBeInTheDocument();
+        expect(screen.getByText('1 employer group and 2 global skills')).toBeInTheDocument();
         expect(screen.getAllByText('Portfolio Owner').length).toBeGreaterThan(0);
     });
 });

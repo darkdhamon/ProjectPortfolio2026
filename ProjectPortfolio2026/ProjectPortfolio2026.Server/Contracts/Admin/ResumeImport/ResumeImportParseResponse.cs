@@ -6,7 +6,7 @@ public sealed class ResumeImportParseResponse : ApiResponseDto
 {
     public ResumeImportPersonResponse? Person { get; set; }
 
-    public List<ResumeImportWorkHistoryEntryResponse> WorkHistory { get; set; } = [];
+    public List<ResumeImportEmployerCandidateResponse> CandidateWorkHistory { get; set; } = [];
 
     public List<string> GlobalSkills { get; set; } = [];
 
@@ -57,11 +57,20 @@ public sealed class ResumeImportLocationResponse
     public string? DisplayText { get; set; }
 }
 
-public sealed class ResumeImportWorkHistoryEntryResponse
+public sealed class ResumeImportEmployerCandidateResponse
 {
+    public string CandidateId { get; set; } = string.Empty;
+
     public string? EmployerName { get; set; }
 
     public ResumeImportLocationResponse? EmployerLocation { get; set; }
+
+    public List<ResumeImportJobRoleCandidateResponse> JobRoles { get; set; } = [];
+}
+
+public sealed class ResumeImportJobRoleCandidateResponse
+{
+    public string CandidateId { get; set; } = string.Empty;
 
     public string? JobTitle { get; set; }
 
