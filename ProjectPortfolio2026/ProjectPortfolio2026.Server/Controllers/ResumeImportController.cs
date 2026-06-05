@@ -15,6 +15,7 @@ namespace ProjectPortfolio2026.Server.Controllers;
 public sealed class ResumeImportController(IResumeImportService resumeImportService) : ControllerBase
 {
     [HttpPost("parse")]
+    [ValidateAntiForgeryToken]
     [Consumes("multipart/form-data")]
     [ProducesResponseType<ResumeImportParseResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status400BadRequest)]

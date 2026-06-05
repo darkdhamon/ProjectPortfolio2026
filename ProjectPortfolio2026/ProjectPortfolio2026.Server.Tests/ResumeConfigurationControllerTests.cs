@@ -58,10 +58,9 @@ public sealed class ResumeConfigurationControllerTests
 
         var actionResult = await controller.GetAsync(CancellationToken.None);
         var notFoundResult = actionResult.Result as NotFoundObjectResult;
-        var response = notFoundResult?.Value as ApiErrorResponse;
 
         Assert.That(notFoundResult, Is.Not.Null);
-        Assert.That(response?.Message, Is.EqualTo("The requested resume configuration could not be found."));
+        Assert.That(notFoundResult?.Value, Is.EqualTo("The requested resume configuration could not be found."));
     }
 
     private static ResumeConfigurationController CreateController(IResumeConfigurationRepository repository)

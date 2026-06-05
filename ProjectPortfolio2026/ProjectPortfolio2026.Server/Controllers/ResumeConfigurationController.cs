@@ -20,7 +20,7 @@ public sealed class ResumeConfigurationController(IResumeConfigurationRepository
         var configuration = await resumeConfigurationRepository.GetAsync(cancellationToken);
         if (!ResumeConfigurationRules.HasCompletePublicConfiguration(configuration))
         {
-            return NotFound(new ApiErrorResponse { Message = "The requested resume configuration could not be found." });
+            return NotFound("The requested resume configuration could not be found.");
         }
 
         var requestId = HttpContext.Items[RequestIdContext.ItemKey] as string;
