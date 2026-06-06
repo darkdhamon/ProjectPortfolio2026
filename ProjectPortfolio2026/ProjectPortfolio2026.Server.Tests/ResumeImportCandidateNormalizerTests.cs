@@ -122,4 +122,75 @@ public sealed class ResumeImportCandidateNormalizerTests
             Assert.That(rawFields["detail"], Is.EqualTo("imported"));
         });
     }
+
+    [Test]
+    public void Normalize_CollapsesWhitespaceOnlyStructuredValuesAndPreservesExistingRawFieldValues()
+    {
+        var result = ResumeImportCandidateNormalizer.Normalize(new ResumeImportParseResult
+        {
+            Person = new ParsedPerson
+            {
+                FullName = "  Taylor Jordan  ",
+                PhoneNumbers = ["  ", " 555-0100 ", "555-0100"],
+                Location = new ParsedLocation
+                {
+                    City = " ",
+                    Region = "\t"
+                },
+                SocialProfiles = ["  https://linkedin.example/taylor  ", "https://linkedin.example/taylor"]
+            },
+            ProfessionalSummary = "  ",
+            RawText = "\r\n imported raw text \r\n",
+            SourceFileName = " resume.pdf ",
+            ParserName = " parser-x ",
+            WorkHistory =
+            [
+                new ParsedWorkHistoryEntry
+                {
+                    EmployerName = "  Fabrikam  ",
+                    EmployerLocation = new ParsedLocation
+                    {
+                        DisplayText = " "
+                    },
+                    JobTitle = " Engineer ",
+                    EmploymentDates = null!,
+                    DescriptionMarkdown = " ",
+                    DescriptionLines = ["  ", "\t"],
+                    RawRoleText = " ",
+                    RawFields = new Dictionary<string, string?>(StringComparer.Ordinal)
+                    {
+                        ["detail"] = " first value ",
+                        [" detail "] = " second value ",
+                        ["empty"] = " "
+                    }
+                }
+            ]
+        });
+
+        var candidate = result.CandidateWorkHistory[0];
+        var role = candidate.JobRoles[0];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Person, Is.Not.Null);
+            Assert.That(result.Person?.FullName, Is.EqualTo("Taylor Jordan"));
+            Assert.That(result.Person?.PhoneNumbers, Is.EqualTo(new[] { "555-0100" }));
+            Assert.That(result.Person?.Location, Is.Null);
+            Assert.That(result.Person?.SocialProfiles, Is.EqualTo(new[] { "https://linkedin.example/taylor" }));
+            Assert.That(result.ProfessionalSummary, Is.Null);
+            Assert.That(result.RawText, Is.EqualTo("imported raw text"));
+            Assert.That(result.SourceFileName, Is.EqualTo("resume.pdf"));
+            Assert.That(result.ParserName, Is.EqualTo("parser-x"));
+            Assert.That(candidate.EmployerName, Is.EqualTo("Fabrikam"));
+            Assert.That(candidate.EmployerLocation, Is.Null);
+            Assert.That(role.EmploymentDates, Is.Not.Null);
+            Assert.That(role.EmploymentDates.StartDateText, Is.Null);
+            Assert.That(role.EmploymentDates.EndDateText, Is.Null);
+            Assert.That(role.DescriptionLines, Is.Empty);
+            Assert.That(role.DescriptionMarkdown, Is.Null);
+            Assert.That(role.RawRoleText, Is.Null);
+            Assert.That(role.RawFields["detail"], Is.EqualTo("first value"));
+            Assert.That(role.RawFields["empty"], Is.Null);
+        });
+    }
 }
