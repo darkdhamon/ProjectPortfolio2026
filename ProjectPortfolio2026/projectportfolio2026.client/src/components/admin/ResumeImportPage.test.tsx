@@ -8,18 +8,28 @@ afterEach(() => {
 
 describe('ResumeImportPage', () => {
     it('lets admins choose the configured source path and switch back to upload', () => {
+        const onParseConfigured = vi.fn().mockResolvedValue({
+            globalSkills: [],
+            candidateWorkHistory: []
+        });
+
         render(
             <ResumeImportPage
                 currentUserDisplayName="Portfolio Owner"
                 onNavigate={vi.fn()}
                 onParseUpload={vi.fn()}
+                onParseConfigured={onParseConfigured}
             />
         );
 
         fireEvent.click(screen.getByRole('button', { name: 'Select configured source' }));
 
-        expect(screen.getByRole('heading', { name: 'Configured source is reserved but not wired yet' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Switch to Upload Source' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Parse from the configured master resume source' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Parse Configured Resume Source' })).toBeInTheDocument();
+        expect(screen.getByText('The configured source is fetched only when this workflow is explicitly started, then routed through the same import parser used by upload.')).toBeInTheDocument();
+
+        fireEvent.submit(screen.getByRole('button', { name: 'Parse Configured Resume Source' }).closest('form')!);
+        expect(onParseConfigured).toHaveBeenCalledTimes(1);
     });
 
     it('starts the upload import flow and renders a parse summary', async () => {

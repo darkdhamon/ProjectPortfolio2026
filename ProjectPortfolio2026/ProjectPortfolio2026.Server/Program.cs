@@ -91,7 +91,7 @@ builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IResumeImportFileStore>(_ => new TemporaryResumeFileStore());
 builder.Services.AddScoped<IResumeParserService, DeferredResumeParserService>();
-builder.Services.AddScoped<IResumeImportService, ResumeImportService>();
+builder.Services.AddHttpClient<IResumeImportService, ResumeImportService>();
 builder.Services.AddScoped<RequestTrackingFilter>();
 
 var app = builder.Build();

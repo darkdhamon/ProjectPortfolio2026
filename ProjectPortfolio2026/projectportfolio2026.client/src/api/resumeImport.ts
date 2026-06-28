@@ -1,4 +1,5 @@
 import { fetchAuthFormData } from './http';
+import { fetchAuthJson } from './http';
 
 export interface ResumeImportParseResponse {
     requestId?: string;
@@ -45,6 +46,22 @@ export async function parseResumeUploadAsync(file: File) {
             body: formData
         },
         'Unable to parse the selected resume file.'
+    );
+
+    if (!payload) {
+        throw new Error('The resume import service returned an empty response.');
+    }
+
+    return payload as ResumeImportParseResponse;
+}
+
+export async function parseResumeConfiguredAsync() {
+    const { payload } = await fetchAuthJson<ResumeImportParseResponse>(
+        '/api/admin/resume-import/parse-configured',
+        {
+            method: 'POST'
+        },
+        'Unable to parse the configured resume source.'
     );
 
     if (!payload) {
