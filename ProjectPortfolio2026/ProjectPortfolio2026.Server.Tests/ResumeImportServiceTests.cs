@@ -378,6 +378,23 @@ public sealed class ResumeImportServiceTests
         });
     }
 
+    [Test]
+    public void CreateConfiguredSourceHttpMessageHandler_DisablesProxyUse()
+    {
+        using var handler = ResumeImportService.CreateConfiguredSourceHttpMessageHandler();
+
+        Assert.That(handler, Is.TypeOf<SocketsHttpHandler>());
+
+        var socketsHandler = (SocketsHttpHandler)handler;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(socketsHandler.AllowAutoRedirect, Is.False);
+            Assert.That(socketsHandler.UseProxy, Is.False);
+            Assert.That(socketsHandler.ConnectCallback, Is.Not.Null);
+        });
+    }
+
     private static FormFile CreateFormFile(string fileName, string contentType, byte[] content)
     {
         var stream = new MemoryStream(content);

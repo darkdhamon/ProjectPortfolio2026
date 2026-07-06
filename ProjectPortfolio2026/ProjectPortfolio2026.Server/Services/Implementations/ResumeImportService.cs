@@ -36,6 +36,7 @@ public sealed class ResumeImportService(
         return new SocketsHttpHandler
         {
             AllowAutoRedirect = false,
+            UseProxy = false,
             ConnectCallback = ConnectValidatedPublicHostAsync
         };
     }
