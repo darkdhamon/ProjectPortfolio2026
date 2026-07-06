@@ -72,6 +72,18 @@ test("extractIssueNumbers supports multiple closing references in one statement"
   ]);
 });
 
+test("extractIssueNumbers supports Oxford-comma closing references", () => {
+  const body = `Closes #12, #13, and #14`;
+
+  assert.deepEqual(extractIssueNumbers(body), [12, 13, 14]);
+});
+
+test("extractIssueNumbers ignores unrelated same-line issue references after a closing clause", () => {
+  const body = `Closes #12. Related to #61`;
+
+  assert.deepEqual(extractIssueNumbers(body), [12]);
+});
+
 test("extractIssueNumbers ignores cross-repo closing references", () => {
   const body = `Resolves #12 and other-org/other-repo#14`;
 
