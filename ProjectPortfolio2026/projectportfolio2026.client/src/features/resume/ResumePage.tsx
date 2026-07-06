@@ -298,6 +298,9 @@ function getResumeViewSummary(
 export function ResumePage() {
     const [selectedTimeFilterKey, setSelectedTimeFilterKey] = useState<ResumeTimeFilterKey>('all');
     const [selectedEmployerLimitKey, setSelectedEmployerLimitKey] = useState<ResumeEmployerLimitKey>('all');
+    const [isExportingPdf, setIsExportingPdf] = useState(false);
+    const [pdfExportFeedback, setPdfExportFeedback] = useState<string | null>(null);
+    const [pdfExportError, setPdfExportError] = useState<string | null>(null);
     const {
         profile,
         isLoading: isProfileLoading,
@@ -365,7 +368,9 @@ export function ResumePage() {
     const hasSummarySection = Boolean(profile?.contactHeadline?.trim() || profile?.availabilityHeadline?.trim() || summaryParagraphs.length > 0);
     const hasSkillsSection = skillHighlights.length > 0 || technologyHighlights.length > 0;
     const isLoading = isProfileLoading || isWorkHistoryLoading || isResumeConfigurationLoading;
+    const isResumePdfLoading = isProfileLoading || isWorkHistoryLoading || isExportingPdf;
     const errors = [profileError, workHistoryError, resumeConfigurationError].filter(Boolean);
+    const resumePdfErrors = [profileError, workHistoryError].filter(Boolean);
     const activeFilterCount = (selectedTimeFilter.key === 'all' ? 0 : 1) + (selectedEmployerLimit.key === 'all' ? 0 : 1);
     const resumeViewSummary = getResumeViewSummary(
         selectedTimeFilter,
@@ -374,15 +379,49 @@ export function ResumePage() {
         filteredRoleCount,
         totalRoleCount
     );
+    const resumeSourceTypeLabel = resumeConfiguration?.sourceType === 'embed' ? 'Embed source' : 'Hosted file';
     const hasStaticResumeSource = resumeConfiguration?.isConfigured === true
         && Boolean(resumeConfiguration.sourceUrl?.trim())
         && Boolean(resumeConfiguration.displayLabel?.trim());
+    const canExportPdf = !isResumePdfLoading && resumePdfErrors.length === 0;
+
+    async function handleDownloadPdf() {
+        setIsExportingPdf(true);
+        setPdfExportFeedback('Preparing PDF download...');
+        setPdfExportError(null);
+
+        try {
+            const { downloadResumePdf } = await import('./resumePdf');
+            await downloadResumePdf({
+                profile,
+                employers: filteredEmployers,
+                activeTimeWindowLabel: selectedTimeFilter.label,
+                activeEmployerLimitLabel: selectedEmployerLimit.label,
+                viewSummary: resumeViewSummary,
+                generatedAt: new Date(),
+                skillHighlights: skillHighlights.map(highlight => highlight.label),
+                technologyHighlights: technologyHighlights.map(highlight => highlight.label)
+            });
+            setPdfExportFeedback('PDF download started.');
+        } catch {
+            setPdfExportFeedback(null);
+            setPdfExportError('Unable to export the resume PDF right now.');
+        } finally {
+            setIsExportingPdf(false);
+        }
+    }
 
     return (
         <main className="resume-page">
             {errors.map(error => (
                 <p key={error} className="status-banner error">{error}</p>
             ))}
+            {pdfExportError ? (
+                <p className="status-banner error">{pdfExportError}</p>
+            ) : null}
+            {pdfExportFeedback ? (
+                <p className="status-banner">{pdfExportFeedback}</p>
+            ) : null}
             {!errors.length && isLoading ? (
                 <p className="status-banner">Loading resume...</p>
             ) : null}
@@ -501,16 +540,23 @@ export function ResumePage() {
                         <div className="resume-action-card">
                             <div className="resume-action-copy">
                                 <span className="meta-label">PDF Export</span>
-                                <span className="resume-action-note">Issue #88</span>
+                                <span className="resume-action-note">
+                                    {canExportPdf
+                                        ? 'Reflects the active resume filters.'
+                                        : isExportingPdf
+                                            ? 'Preparing the latest filtered resume PDF.'
+                                            : 'Available once profile and work history finish loading.'}
+                                </span>
                             </div>
                             <button
                                 className="resume-action-button"
                                 type="button"
-                                disabled
-                                aria-disabled="true"
-                                aria-label="Download PDF">
+                                disabled={!canExportPdf}
+                                aria-disabled={!canExportPdf}
+                                aria-label="Download PDF"
+                                onClick={handleDownloadPdf}>
                                 <span>Download PDF</span>
-                                <span className="coming-soon-pill">Coming Soon</span>
+                                <span className="coming-soon-pill">{canExportPdf ? 'ATS-friendly' : isExportingPdf ? 'Preparing' : 'Unavailable'}</span>
                             </button>
                         </div>
                         {hasStaticResumeSource ? (
@@ -518,7 +564,7 @@ export function ResumePage() {
                                 <div className="resume-action-copy">
                                     <span className="meta-label">Resume Source</span>
                                     <span className="resume-action-note">
-                                        {resumeConfiguration?.sourceType === 'embed' ? 'Embed source' : 'Hosted file'}
+                                        {resumeSourceTypeLabel}
                                     </span>
                                 </div>
                                 <a
@@ -528,7 +574,7 @@ export function ResumePage() {
                                     rel="noreferrer"
                                     aria-label={resumeConfiguration?.displayLabel ?? 'Open Resume Source'}>
                                     <span>{resumeConfiguration?.displayLabel}</span>
-                                    <span className="coming-soon-pill">{resumeConfiguration?.sourceType === 'embed' ? 'Embed source' : 'Hosted file'}</span>
+                                    <span className="coming-soon-pill">{resumeSourceTypeLabel}</span>
                                 </a>
                                 {resumeConfiguration?.summary ? (
                                     <p>{resumeConfiguration.summary}</p>

@@ -1,3 +1,6 @@
+/// <reference types="node" />
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Employer, PortfolioProfile, ResumeConfiguration } from '../../app/types';
@@ -22,6 +25,52 @@ import { useWorkHistory } from '../../hooks/useWorkHistory';
 const mockUsePortfolioProfile = vi.mocked(usePortfolioProfile);
 const mockUseResumeConfiguration = vi.mocked(useResumeConfiguration);
 const mockUseWorkHistory = vi.mocked(useWorkHistory);
+const originalCreateObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'createObjectURL');
+const originalRevokeObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL');
+const unicodePdfFontBytes = readFileSync(resolve(process.cwd(), 'node_modules', '@fontpkg', 'unifont', 'unifont-15.0.01.ttf'));
+
+function restoreUrlProperty(name: 'createObjectURL' | 'revokeObjectURL', descriptor?: PropertyDescriptor) {
+    if (descriptor) {
+        Object.defineProperty(URL, name, descriptor);
+        return;
+    }
+
+    Reflect.deleteProperty(URL, name);
+}
+
+function mockPdfFontFetch() {
+    const fontBytes = unicodePdfFontBytes;
+    const fontArrayBuffer = fontBytes.buffer.slice(fontBytes.byteOffset, fontBytes.byteOffset + fontBytes.byteLength);
+    const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => fontArrayBuffer.slice(0)
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+}
+
+function mockPdfDownloadSupport() {
+    const createObjectUrl = vi.fn<(object: Blob) => string>(() => 'blob:resume');
+    const revokeObjectUrl = vi.fn();
+    Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        writable: true,
+        value: createObjectUrl
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        writable: true,
+        value: revokeObjectUrl
+    });
+    const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    return {
+        anchorClickSpy,
+        createObjectUrl,
+        fetchMock: mockPdfFontFetch(),
+        revokeObjectUrl
+    };
+}
 
 function createProfile(overrides: Partial<PortfolioProfile> = {}): PortfolioProfile {
     return {
@@ -73,6 +122,10 @@ describe('ResumePage', () => {
     afterEach(() => {
         cleanup();
         vi.useRealTimers();
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+        restoreUrlProperty('createObjectURL', originalCreateObjectUrlDescriptor);
+        restoreUrlProperty('revokeObjectURL', originalRevokeObjectUrlDescriptor);
     });
 
     beforeEach(() => {
@@ -210,6 +263,120 @@ describe('ResumePage', () => {
         expect(screen.queryByRole('button', { name: /Open Resume Source/i })).not.toBeInTheDocument();
         expect(screen.queryByText('Hosted file')).not.toBeInTheDocument();
         expect(screen.queryByText('Needs config')).not.toBeInTheDocument();
+    });
+
+    it('exports the currently filtered resume view as a PDF download', async () => {
+        vi.useRealTimers();
+        const { anchorClickSpy, createObjectUrl, revokeObjectUrl } = mockPdfDownloadSupport();
+
+        mockUseWorkHistory.mockReturnValue({
+            employers: [
+                createEmployer(1, {
+                    name: 'Current Employer',
+                    jobRoles: [
+                        {
+                            role: 'Staff Engineer',
+                            startDate: '2024-02-01',
+                            endDate: null,
+                            descriptionMarkdown: 'Owning platform and delivery work.',
+                            skills: ['Leadership'],
+                            technologies: ['React']
+                        }
+                    ]
+                }),
+                createEmployer(2, {
+                    name: 'Legacy Employer',
+                    jobRoles: [
+                        {
+                            role: 'Analyst',
+                            startDate: '2015-01-01',
+                            endDate: '2017-12-20',
+                            descriptionMarkdown: 'Early delivery work.',
+                            skills: ['Support'],
+                            technologies: ['SQL Server']
+                        }
+                    ]
+                })
+            ],
+            isLoading: false,
+            error: null
+        });
+
+        render(<ResumePage />);
+        fireEvent.click(screen.getByRole('button', { name: 'Last 5 years' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Download PDF' }));
+
+        expect(await screen.findByText('PDF download started.')).toBeInTheDocument();
+        expect(createObjectUrl).toHaveBeenCalledTimes(1);
+        expect(anchorClickSpy).toHaveBeenCalledTimes(1);
+        expect(revokeObjectUrl).toHaveBeenCalledWith('blob:resume');
+
+        const pdfBlob = createObjectUrl.mock.calls[0]?.[0] as unknown as Blob;
+        expect(pdfBlob.type).toBe('application/pdf');
+        const pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
+        const pdfHeader = new TextDecoder().decode(pdfBytes.slice(0, 8));
+        expect(pdfHeader).toContain('%PDF-');
+    });
+
+    it('shows a clean error when the PDF export pipeline is unavailable', () => {
+        vi.useRealTimers();
+        Object.defineProperty(URL, 'createObjectURL', {
+            configurable: true,
+            writable: true,
+            value: undefined
+        });
+
+        render(<ResumePage />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Download PDF' }));
+
+        return screen.findByText('Unable to export the resume PDF right now.')
+            .then(errorBanner => {
+                expect(errorBanner).toBeInTheDocument();
+            });
+    });
+
+    it('keeps PDF export available while resume source configuration is still loading', async () => {
+        vi.useRealTimers();
+        const { createObjectUrl } = mockPdfDownloadSupport();
+        mockUseResumeConfiguration.mockReturnValue({
+            configuration: null,
+            isLoading: true,
+            error: null,
+            isMissing: false
+        });
+
+        render(<ResumePage />);
+
+        const downloadButton = screen.getByRole('button', { name: 'Download PDF' });
+        expect(downloadButton).toBeEnabled();
+
+        fireEvent.click(downloadButton);
+
+        expect(await screen.findByText('PDF download started.')).toBeInTheDocument();
+        expect(createObjectUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps PDF export available when resume source configuration fails', async () => {
+        vi.useRealTimers();
+        const { createObjectUrl } = mockPdfDownloadSupport();
+        mockUseResumeConfiguration.mockReturnValue({
+            configuration: null,
+            isLoading: false,
+            error: 'Resume configuration failed.',
+            isMissing: false
+        });
+
+        render(<ResumePage />);
+
+        expect(screen.getByText('Resume configuration failed.')).toBeInTheDocument();
+        const downloadButton = screen.getByRole('button', { name: 'Download PDF' });
+        expect(downloadButton).toBeEnabled();
+
+        fireEvent.click(downloadButton);
+
+        expect(await screen.findByText('PDF download started.')).toBeInTheDocument();
+        expect(createObjectUrl).toHaveBeenCalledTimes(1);
     });
 
     it('renders structured summary, skill highlights, and full experience history', () => {
