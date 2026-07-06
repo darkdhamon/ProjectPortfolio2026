@@ -181,6 +181,15 @@ public sealed class ResumeImportAntiforgeryFlowTests
                 ParserName = "StubParser"
             });
         }
+
+        public Task<ResumeImportCandidateResult> ParseConfiguredSourceAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new ResumeImportCandidateResult
+            {
+                SourceFileName = "configured-resume.pdf",
+                ParserName = "StubParser"
+            });
+        }
     }
 
     private sealed class TestAuthenticationHandler(
