@@ -91,7 +91,12 @@ builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IResumeImportFileStore>(_ => new TemporaryResumeFileStore());
 builder.Services.AddScoped<IResumeParserService, DeferredResumeParserService>();
-builder.Services.AddHttpClient<IResumeImportService, ResumeImportService>();
+builder.Services
+    .AddHttpClient<IResumeImportService, ResumeImportService>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false
+    });
 builder.Services.AddScoped<RequestTrackingFilter>();
 
 var app = builder.Build();

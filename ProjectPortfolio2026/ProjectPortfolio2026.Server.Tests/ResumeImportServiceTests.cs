@@ -109,13 +109,125 @@ public sealed class ResumeImportServiceTests
             Configuration = new ResumeConfiguration
             {
                 SourceType = ResumeSourceTypes.HostedFile,
-                SourceUrl = "https://cdn.example.dev/resume.pdf",
+                SourceUrl = "https://8.8.8.8/resume.pdf",
                 DisplayLabel = "Public Resume"
             }
         };
         var service = new ResumeImportService(store, parser, repository, CreateHttpClient(HttpStatusCode.NotFound));
 
         Assert.That(async () => await service.ParseConfiguredSourceAsync(), Throws.TypeOf<ResumeImportValidationException>());
+    }
+
+    [Test]
+    public void ParseConfiguredSourceAsync_ThrowsWhenConfiguredSourceTypeIsEmbed()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var parser = new TrackingResumeParserService();
+        var repository = new StubResumeConfigurationRepository
+        {
+            Configuration = new ResumeConfiguration
+            {
+                SourceType = ResumeSourceTypes.Embed,
+                SourceUrl = "https://8.8.8.8/embed/resume",
+                DisplayLabel = "Public Resume"
+            }
+        };
+        var httpClient = CreateHttpClient(out var handler);
+        var service = new ResumeImportService(store, parser, repository, httpClient);
+
+        var exception = Assert.ThrowsAsync<ResumeImportValidationException>(async () => await service.ParseConfiguredSourceAsync());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception?.Message, Is.EqualTo("Only hosted file resume sources can be parsed from the configured source workflow."));
+            Assert.That(handler.RequestCount, Is.EqualTo(0));
+        });
+    }
+
+    [Test]
+    public void ParseConfiguredSourceAsync_WrapsNetworkFailuresAsValidationErrors()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var parser = new TrackingResumeParserService();
+        var repository = new StubResumeConfigurationRepository
+        {
+            Configuration = new ResumeConfiguration
+            {
+                SourceType = ResumeSourceTypes.HostedFile,
+                SourceUrl = "https://8.8.8.8/resume.pdf",
+                DisplayLabel = "Public Resume"
+            }
+        };
+        var httpClient = CreateHttpClient(new StubHttpResponse
+        {
+            ExceptionToThrow = new HttpRequestException("Host unreachable.")
+        });
+        var service = new ResumeImportService(store, parser, repository, httpClient);
+
+        var exception = Assert.ThrowsAsync<ResumeImportValidationException>(async () => await service.ParseConfiguredSourceAsync());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception?.Message, Is.EqualTo("Unable to download the configured resume source."));
+            Assert.That(exception?.InnerException, Is.TypeOf<HttpRequestException>());
+        });
+    }
+
+    [Test]
+    public void ParseConfiguredSourceAsync_RejectsPrivateConfiguredSourceHostsBeforeDownload()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var parser = new TrackingResumeParserService();
+        var repository = new StubResumeConfigurationRepository
+        {
+            Configuration = new ResumeConfiguration
+            {
+                SourceType = ResumeSourceTypes.HostedFile,
+                SourceUrl = "https://127.0.0.1/resume.pdf",
+                DisplayLabel = "Public Resume"
+            }
+        };
+        var httpClient = CreateHttpClient(out var handler);
+        var service = new ResumeImportService(store, parser, repository, httpClient);
+
+        var exception = Assert.ThrowsAsync<ResumeImportValidationException>(async () => await service.ParseConfiguredSourceAsync());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception?.Message, Is.EqualTo("Configured resume source URLs must resolve to a public host."));
+            Assert.That(handler.RequestCount, Is.EqualTo(0));
+        });
+    }
+
+    [Test]
+    public void ParseConfiguredSourceAsync_RejectsRedirectsToPrivateHosts()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var parser = new TrackingResumeParserService();
+        var repository = new StubResumeConfigurationRepository
+        {
+            Configuration = new ResumeConfiguration
+            {
+                SourceType = ResumeSourceTypes.HostedFile,
+                SourceUrl = "https://8.8.8.8/resume.pdf",
+                DisplayLabel = "Public Resume"
+            }
+        };
+        var httpClient = CreateHttpClient(out var handler,
+            new StubHttpResponse
+            {
+                StatusCode = HttpStatusCode.Redirect,
+                RedirectLocation = new Uri("https://127.0.0.1/internal.pdf")
+            });
+        var service = new ResumeImportService(store, parser, repository, httpClient);
+
+        var exception = Assert.ThrowsAsync<ResumeImportValidationException>(async () => await service.ParseConfiguredSourceAsync());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception?.Message, Is.EqualTo("Configured resume source URLs must resolve to a public host."));
+            Assert.That(handler.RequestCount, Is.EqualTo(1));
+        });
     }
 
     [Test]
@@ -128,7 +240,7 @@ public sealed class ResumeImportServiceTests
             Configuration = new ResumeConfiguration
             {
                 SourceType = ResumeSourceTypes.HostedFile,
-                SourceUrl = "https://cdn.example.dev/resume.pdf",
+                SourceUrl = "https://8.8.8.8/resume.pdf",
                 DisplayLabel = "Public Resume"
             }
         };
@@ -149,6 +261,68 @@ public sealed class ResumeImportServiceTests
         });
     }
 
+    [Test]
+    public async Task ParseConfiguredSourceAsync_InfersSupportedFileExtensionFromContentType()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var parser = new TrackingResumeParserService();
+        var repository = new StubResumeConfigurationRepository
+        {
+            Configuration = new ResumeConfiguration
+            {
+                SourceType = ResumeSourceTypes.HostedFile,
+                SourceUrl = "https://8.8.8.8/download/resume",
+                DisplayLabel = "Public Resume"
+            }
+        };
+        var sourceBytes = new byte[] { 21, 22, 23 };
+        var service = new ResumeImportService(
+            store,
+            parser,
+            repository,
+            CreateHttpClient(content: sourceBytes, contentType: "application/pdf"));
+
+        var result = await service.ParseConfiguredSourceAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.SourceFileName, Is.EqualTo("resume.pdf"));
+            Assert.That(parser.CapturedFileName, Is.EqualTo("resume.pdf"));
+            Assert.That(parser.CapturedBytes, Is.EqualTo(sourceBytes));
+        });
+    }
+
+    [Test]
+    public async Task ParseConfiguredSourceAsync_UsesContentDispositionFileNameStarWhenPresent()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var parser = new TrackingResumeParserService();
+        var repository = new StubResumeConfigurationRepository
+        {
+            Configuration = new ResumeConfiguration
+            {
+                SourceType = ResumeSourceTypes.HostedFile,
+                SourceUrl = "https://8.8.8.8/download/resume",
+                DisplayLabel = "Public Resume"
+            }
+        };
+        var sourceBytes = new byte[] { 31, 32, 33 };
+        var service = new ResumeImportService(
+            store,
+            parser,
+            repository,
+            CreateHttpClient(content: sourceBytes, fileNameStar: "UTF-8''resume%20master.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+
+        var result = await service.ParseConfiguredSourceAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.SourceFileName, Is.EqualTo("resume master.docx"));
+            Assert.That(parser.CapturedFileName, Is.EqualTo("resume master.docx"));
+            Assert.That(parser.CapturedBytes, Is.EqualTo(sourceBytes));
+        });
+    }
+
     private static FormFile CreateFormFile(string fileName, string contentType, byte[] content)
     {
         var stream = new MemoryStream(content);
@@ -161,40 +335,116 @@ public sealed class ResumeImportServiceTests
         return formFile;
     }
 
-    private static HttpClient CreateHttpClient(HttpStatusCode statusCode = HttpStatusCode.OK, byte[]? content = null, string? fileName = null)
+    private static HttpClient CreateHttpClient(
+        HttpStatusCode statusCode = HttpStatusCode.OK,
+        byte[]? content = null,
+        string? fileName = null,
+        string? fileNameStar = null,
+        string? contentType = null)
     {
-        return new HttpClient(new StubHttpMessageHandler(statusCode, content ?? Array.Empty<byte>(), fileName))
+        return CreateHttpClient(new StubHttpResponse
+        {
+            StatusCode = statusCode,
+            Content = content ?? Array.Empty<byte>(),
+            FileName = fileName,
+            FileNameStar = fileNameStar,
+            ContentType = contentType
+        });
+    }
+
+    private static HttpClient CreateHttpClient(params StubHttpResponse[] responses)
+    {
+        var handler = new StubHttpMessageHandler(responses);
+        return new HttpClient(handler)
         {
             BaseAddress = new Uri("https://example.com/")
         };
     }
 
+    private static HttpClient CreateHttpClient(out StubHttpMessageHandler handler, params StubHttpResponse[] responses)
+    {
+        handler = new StubHttpMessageHandler(responses);
+        return new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://example.com/")
+        };
+    }
+
+    private sealed class StubHttpResponse
+    {
+        public byte[] Content { get; init; } = Array.Empty<byte>();
+
+        public string? ContentType { get; init; }
+
+        public Exception? ExceptionToThrow { get; init; }
+
+        public string? FileName { get; init; }
+
+        public string? FileNameStar { get; init; }
+
+        public Uri? RedirectLocation { get; init; }
+
+        public HttpStatusCode StatusCode { get; init; } = HttpStatusCode.OK;
+    }
+
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {
-        private readonly HttpStatusCode statusCode;
-        private readonly byte[] content;
-        private readonly string? fileName;
+        private readonly Queue<StubHttpResponse> responses;
 
-        public StubHttpMessageHandler(HttpStatusCode statusCode, byte[] content, string? fileName)
+        public int RequestCount { get; private set; }
+
+        public StubHttpMessageHandler(params StubHttpResponse[] responses)
         {
-            this.statusCode = statusCode;
-            this.content = content;
-            this.fileName = fileName;
+            this.responses = new Queue<StubHttpResponse>(responses.Length == 0
+                ? [new StubHttpResponse()]
+                : responses);
         }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var response = new HttpResponseMessage(statusCode)
+            RequestCount += 1;
+
+            if (responses.Count == 0)
             {
-                Content = new ByteArrayContent(content)
+                throw new InvalidOperationException("No stub HTTP response was configured.");
+            }
+
+            var nextResponse = responses.Dequeue();
+            if (nextResponse.ExceptionToThrow is not null)
+            {
+                throw nextResponse.ExceptionToThrow;
+            }
+
+            var response = new HttpResponseMessage(nextResponse.StatusCode)
+            {
+                Content = new ByteArrayContent(nextResponse.Content),
+                RequestMessage = request
             };
 
-            if (!string.IsNullOrWhiteSpace(fileName))
+            if (!string.IsNullOrWhiteSpace(nextResponse.ContentType))
             {
-                response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment")
+                response.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(nextResponse.ContentType);
+            }
+
+            if (!string.IsNullOrWhiteSpace(nextResponse.FileName) || !string.IsNullOrWhiteSpace(nextResponse.FileNameStar))
+            {
+                var contentDisposition = new ContentDispositionHeaderValue("attachment");
+                if (!string.IsNullOrWhiteSpace(nextResponse.FileName))
                 {
-                    FileName = fileName
-                };
+                    contentDisposition.FileName = nextResponse.FileName;
+                }
+
+                if (!string.IsNullOrWhiteSpace(nextResponse.FileNameStar))
+                {
+                    contentDisposition.FileNameStar = nextResponse.FileNameStar;
+                }
+
+                response.Content.Headers.ContentDisposition = contentDisposition;
+            }
+
+            if (nextResponse.RedirectLocation is not null)
+            {
+                response.Headers.Location = nextResponse.RedirectLocation;
             }
 
             return Task.FromResult(response);

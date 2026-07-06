@@ -3,6 +3,8 @@ using ProjectPortfolio2026.Server.Domain.Portfolio;
 using ProjectPortfolio2026.Server.Repositories;
 using ProjectPortfolio2026.Server.Services.Interfaces;
 using ProjectPortfolio2026.Server.Services.ServiceModels;
+using System.Net;
+using System.Net.Sockets;
 
 namespace ProjectPortfolio2026.Server.Services.Implementations;
 
@@ -12,15 +14,23 @@ public sealed class ResumeImportService(
     IResumeConfigurationRepository resumeConfigurationRepository,
     HttpClient httpClient) : IResumeImportService
 {
+    private const int MaxConfiguredSourceRedirects = 5;
+    private const long MaxConfiguredSourceFileBytes = 10 * 1024 * 1024;
+    private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".pdf",
+        ".docx"
+    };
+    private static readonly Dictionary<string, string> ContentTypeExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["application/pdf"] = ".pdf",
+        ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"] = ".docx"
+    };
+
     public async Task<ResumeImportCandidateResult> ParseAsync(IFormFile file, CancellationToken cancellationToken = default)
     {
         await using var stagedFile = await resumeImportFileStore.StageAsync(file, cancellationToken);
-        await using var content = File.OpenRead(stagedFile.StoredFilePath);
-
-        var result = await resumeParserService.ParseAsync(content, stagedFile.OriginalFileName, cancellationToken);
-        result.SourceFileName ??= stagedFile.OriginalFileName;
-
-        return ResumeImportCandidateNormalizer.Normalize(result);
+        return await ParseStagedFileAsync(stagedFile, cancellationToken);
     }
 
     public async Task<ResumeImportCandidateResult> ParseConfiguredSourceAsync(CancellationToken cancellationToken = default)
@@ -31,6 +41,11 @@ public sealed class ResumeImportService(
         if (!ResumeConfigurationRules.HasCompletePublicConfiguration(configuration))
         {
             throw new ResumeImportValidationException("A complete resume source configuration is required before parsing.");
+        }
+
+        if (ResumeSourceTypes.Normalize(configuration.SourceType) != ResumeSourceTypes.HostedFile)
+        {
+            throw new ResumeImportValidationException("Only hosted file resume sources can be parsed from the configured source workflow.");
         }
 
         var sourceUrl = configuration.SourceUrl?.Trim();
@@ -44,44 +59,331 @@ public sealed class ResumeImportService(
             throw new ResumeImportValidationException("Only http and https configured resume source URLs are supported.");
         }
 
-        using var response = await httpClient.GetAsync(sourceUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        await using var stagedFile = await DownloadConfiguredSourceAsync(sourceUri, cancellationToken);
+        return await ParseStagedFileAsync(stagedFile, cancellationToken);
+    }
 
-        if (!response.IsSuccessStatusCode)
+    private async Task<ResumeImportCandidateResult> ParseStagedFileAsync(
+        StagedResumeFile stagedFile,
+        CancellationToken cancellationToken)
+    {
+        await using var content = File.OpenRead(stagedFile.StoredFilePath);
+
+        var result = await resumeParserService.ParseAsync(content, stagedFile.OriginalFileName, cancellationToken);
+        result.SourceFileName ??= stagedFile.OriginalFileName;
+
+        return ResumeImportCandidateNormalizer.Normalize(result);
+    }
+
+    private async Task<StagedResumeFile> DownloadConfiguredSourceAsync(Uri sourceUri, CancellationToken cancellationToken)
+    {
+        try
         {
-            throw new ResumeImportValidationException($"The configured resume source returned {(int)response.StatusCode}.");
+            return await DownloadConfiguredSourceCoreAsync(sourceUri, cancellationToken);
+        }
+        catch (ResumeImportValidationException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException exception)
+        {
+            throw new ResumeImportValidationException("Unable to download the configured resume source.", exception);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or IOException or SocketException)
+        {
+            throw new ResumeImportValidationException("Unable to download the configured resume source.", exception);
+        }
+    }
+
+    private async Task<StagedResumeFile> DownloadConfiguredSourceCoreAsync(Uri sourceUri, CancellationToken cancellationToken)
+    {
+        var currentUri = sourceUri;
+
+        for (var redirectCount = 0; redirectCount <= MaxConfiguredSourceRedirects; redirectCount++)
+        {
+            await EnsurePublicConfiguredSourceHostAsync(currentUri, cancellationToken);
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, currentUri);
+            using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+            if (IsRedirectStatusCode(response.StatusCode))
+            {
+                if (redirectCount == MaxConfiguredSourceRedirects)
+                {
+                    throw new ResumeImportValidationException("The configured resume source redirected too many times.");
+                }
+
+                currentUri = GetRedirectUri(currentUri, response.Headers.Location);
+                continue;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new ResumeImportValidationException($"The configured resume source returned {(int)response.StatusCode}.");
+            }
+
+            var fileName = GetConfiguredSourceFileName(currentUri, response);
+            return await StageConfiguredSourceDownloadAsync(fileName, response, cancellationToken);
         }
 
-        await using var content = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var stagedCopy = new MemoryStream();
-        await content.CopyToAsync(stagedCopy, cancellationToken);
-        stagedCopy.Position = 0;
+        throw new ResumeImportValidationException("The configured resume source redirected too many times.");
+    }
 
-        var stageFile = new FormFile(
-            stagedCopy,
-            0,
-            stagedCopy.Length,
-            "configured-source",
-            GetConfiguredSourceFileName(sourceUri, response))
+    private static async Task EnsurePublicConfiguredSourceHostAsync(Uri sourceUri, CancellationToken cancellationToken)
+    {
+        if (IPAddress.TryParse(sourceUri.DnsSafeHost, out var literalAddress))
         {
-            Headers = new HeaderDictionary(),
-            ContentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty
-        };
+            if (IsPrivateOrReservedAddress(literalAddress))
+            {
+                throw new ResumeImportValidationException("Configured resume source URLs must resolve to a public host.");
+            }
 
-        return await ParseAsync(stageFile, cancellationToken);
+            return;
+        }
+
+        var resolvedAddresses = await Dns.GetHostAddressesAsync(sourceUri.DnsSafeHost, cancellationToken);
+        if (resolvedAddresses.Length == 0 || resolvedAddresses.Any(IsPrivateOrReservedAddress))
+        {
+            throw new ResumeImportValidationException("Configured resume source URLs must resolve to a public host.");
+        }
+    }
+
+    private async Task<StagedResumeFile> StageConfiguredSourceDownloadAsync(
+        string fileName,
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        var normalizedFileName = ExtractFileName(fileName);
+        if (string.IsNullOrWhiteSpace(normalizedFileName))
+        {
+            throw new ResumeImportValidationException("A resume file is required.");
+        }
+
+        var extension = Path.GetExtension(normalizedFileName);
+        if (!SupportedExtensions.Contains(extension))
+        {
+            throw new ResumeImportValidationException("Only PDF and DOCX resume files are supported.");
+        }
+
+        var contentLength = response.Content.Headers.ContentLength;
+        if (contentLength is <= 0)
+        {
+            throw new ResumeImportValidationException("The configured resume source file is empty.");
+        }
+
+        if (contentLength > MaxConfiguredSourceFileBytes)
+        {
+            throw new ResumeImportValidationException("The configured resume source exceeds the 10 MB download limit.");
+        }
+
+        var stagingRootPath = Path.Combine(Path.GetTempPath(), "ProjectPortfolio2026", "resume-import-downloads");
+        Directory.CreateDirectory(stagingRootPath);
+
+        var stagedFilePath = Path.Combine(
+            stagingRootPath,
+            $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}");
+
+        long totalBytes = 0;
+
+        try
+        {
+            await using var sourceStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            await using var targetStream = new FileStream(
+                stagedFilePath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 81920,
+                useAsync: true);
+
+            var buffer = new byte[81920];
+            while (true)
+            {
+                var bytesRead = await sourceStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+                if (bytesRead == 0)
+                {
+                    break;
+                }
+
+                totalBytes += bytesRead;
+                if (totalBytes > MaxConfiguredSourceFileBytes)
+                {
+                    throw new ResumeImportValidationException("The configured resume source exceeds the 10 MB download limit.");
+                }
+
+                await targetStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
+            }
+        }
+        catch
+        {
+            if (File.Exists(stagedFilePath))
+            {
+                File.Delete(stagedFilePath);
+            }
+
+            throw;
+        }
+
+        if (totalBytes <= 0)
+        {
+            if (File.Exists(stagedFilePath))
+            {
+                File.Delete(stagedFilePath);
+            }
+
+            throw new ResumeImportValidationException("The configured resume source file is empty.");
+        }
+
+        return new StagedResumeFile(
+            stagedFilePath,
+            normalizedFileName,
+            response.Content.Headers.ContentType?.MediaType ?? string.Empty,
+            totalBytes);
     }
 
     private static string GetConfiguredSourceFileName(Uri sourceUri, HttpResponseMessage response)
     {
-        var contentDispositionFileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"');
-        if (!string.IsNullOrWhiteSpace(contentDispositionFileName))
+        var contentDisposition = response.Content.Headers.ContentDisposition;
+        var dispositionFileName = NormalizeContentDispositionFileName(contentDisposition?.FileNameStar)
+            ?? NormalizeContentDispositionFileName(contentDisposition?.FileName);
+        var dispositionCandidate = ExtractFileName(dispositionFileName ?? string.Empty);
+        if (HasSupportedExtension(dispositionCandidate))
         {
-            return contentDispositionFileName;
+            return dispositionCandidate;
         }
 
         var path = sourceUri.AbsolutePath;
-        var lastSegment = Path.GetFileName(path);
+        var lastSegment = ExtractFileName(Path.GetFileName(path));
+        if (HasSupportedExtension(lastSegment))
+        {
+            return lastSegment;
+        }
+
+        var inferredExtension = GetSupportedExtensionForContentType(response.Content.Headers.ContentType?.MediaType);
+        if (inferredExtension is not null)
+        {
+            var baseFileName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(dispositionCandidate) ? lastSegment : dispositionCandidate);
+            if (string.IsNullOrWhiteSpace(baseFileName))
+            {
+                baseFileName = "configured-resume";
+            }
+
+            return $"{baseFileName}{inferredExtension}";
+        }
+
         return string.IsNullOrWhiteSpace(lastSegment)
             ? "configured-resume"
             : lastSegment;
+    }
+
+    private static string? NormalizeContentDispositionFileName(string? value)
+    {
+        var trimmedValue = value?.Trim().Trim('"');
+        if (string.IsNullOrWhiteSpace(trimmedValue))
+        {
+            return null;
+        }
+
+        var encodedMarkerIndex = trimmedValue.IndexOf("''", StringComparison.Ordinal);
+        if (encodedMarkerIndex >= 0)
+        {
+            return Uri.UnescapeDataString(trimmedValue[(encodedMarkerIndex + 2)..]);
+        }
+
+        return trimmedValue;
+    }
+
+    private static Uri GetRedirectUri(Uri currentUri, Uri? redirectUri)
+    {
+        if (redirectUri is null)
+        {
+            throw new ResumeImportValidationException("The configured resume source returned a redirect without a destination.");
+        }
+
+        var nextUri = redirectUri.IsAbsoluteUri
+            ? redirectUri
+            : new Uri(currentUri, redirectUri);
+
+        if (nextUri.Scheme != Uri.UriSchemeHttp && nextUri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new ResumeImportValidationException("Only http and https configured resume source URLs are supported.");
+        }
+
+        return nextUri;
+    }
+
+    private static bool IsRedirectStatusCode(HttpStatusCode statusCode)
+    {
+        return statusCode is HttpStatusCode.Moved
+            or HttpStatusCode.Redirect
+            or HttpStatusCode.RedirectMethod
+            or HttpStatusCode.RedirectKeepVerb
+            or HttpStatusCode.TemporaryRedirect
+            or HttpStatusCode.PermanentRedirect;
+    }
+
+    private static bool IsPrivateOrReservedAddress(IPAddress address)
+    {
+        if (IPAddress.IsLoopback(address))
+        {
+            return true;
+        }
+
+        if (address.AddressFamily == AddressFamily.InterNetworkV6)
+        {
+            if (address.IsIPv4MappedToIPv6)
+            {
+                return IsPrivateOrReservedAddress(address.MapToIPv4());
+            }
+
+            if (address.IsIPv6LinkLocal || address.IsIPv6Multicast || address.IsIPv6SiteLocal)
+            {
+                return true;
+            }
+
+            var ipv6Bytes = address.GetAddressBytes();
+            return address.Equals(IPAddress.IPv6None)
+                || address.Equals(IPAddress.IPv6Any)
+                || (ipv6Bytes[0] & 0xFE) == 0xFC;
+        }
+
+        if (address.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = address.GetAddressBytes();
+        return bytes[0] == 0
+            || bytes[0] == 10
+            || bytes[0] == 127
+            || (bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127)
+            || (bytes[0] == 169 && bytes[1] == 254)
+            || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)
+            || (bytes[0] == 192 && bytes[1] == 168);
+    }
+
+    private static bool HasSupportedExtension(string fileName)
+    {
+        return !string.IsNullOrWhiteSpace(fileName)
+            && SupportedExtensions.Contains(Path.GetExtension(fileName));
+    }
+
+    private static string? GetSupportedExtensionForContentType(string? contentType)
+    {
+        return string.IsNullOrWhiteSpace(contentType)
+            ? null
+            : ContentTypeExtensions.GetValueOrDefault(contentType);
+    }
+
+    private static string ExtractFileName(string fileName)
+    {
+        var lastSeparatorIndex = Math.Max(fileName.LastIndexOf('/'), fileName.LastIndexOf('\\'));
+        return lastSeparatorIndex >= 0
+            ? fileName[(lastSeparatorIndex + 1)..]
+            : fileName;
     }
 }
