@@ -1,9 +1,12 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { parseResumeConfiguredAsync, parseResumeUploadAsync, type ResumeImportParseResponse } from '../../api/resumeImport';
 import type { NavigateFn } from '../../app/navigation';
 import { InternalLink } from '../common/InternalLink';
 
 type ResumeImportSource = 'upload' | 'configured';
+type ParseUploadHandler = (file: File, signal?: AbortSignal) => Promise<ResumeImportParseResponse>;
+type ParseConfiguredHandler = (signal?: AbortSignal) => Promise<ResumeImportParseResponse>;
+const inFlightSwitchConfirmationMessage = 'A resume parse is still in progress. Cancel the current parse before switching sources?';
 
 function formatCandidateCount(count: number, singularLabel: string, pluralLabel: string) {
     return `${count} ${count === 1 ? singularLabel : pluralLabel}`;
@@ -17,20 +20,76 @@ export function ResumeImportPage({
 }: {
     currentUserDisplayName: string;
     onNavigate: NavigateFn;
-    onParseUpload?: (file: File) => Promise<ResumeImportParseResponse>;
-    onParseConfigured?: () => Promise<ResumeImportParseResponse>;
+    onParseUpload?: ParseUploadHandler;
+    onParseConfigured?: ParseConfiguredHandler;
 }) {
     const [selectedSource, setSelectedSource] = useState<ResumeImportSource | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [parseResult, setParseResult] = useState<ResumeImportParseResponse | null>(null);
+    const activeParseControllerRef = useRef<AbortController | null>(null);
+    const activeParseRequestIdRef = useRef(0);
+    const activeParseSourceRef = useRef<ResumeImportSource | null>(null);
 
-    function handleSourceSelection(nextSource: ResumeImportSource) {
+    useEffect(() => {
+        return () => {
+            activeParseRequestIdRef.current += 1;
+            activeParseSourceRef.current = null;
+            activeParseControllerRef.current?.abort();
+            activeParseControllerRef.current = null;
+        };
+    }, []);
+
+    function applySourceSelection(nextSource: ResumeImportSource) {
         setSelectedSource(nextSource);
         setSelectedFile(null);
         setErrorMessage(null);
         setParseResult(null);
+    }
+
+    function beginParse(source: ResumeImportSource) {
+        const controller = new AbortController();
+        const requestId = activeParseRequestIdRef.current + 1;
+
+        activeParseRequestIdRef.current = requestId;
+        activeParseControllerRef.current = controller;
+        activeParseSourceRef.current = source;
+        setIsParsing(true);
+        setErrorMessage(null);
+
+        return { controller, requestId };
+    }
+
+    function isActiveParseRequest(requestId: number) {
+        return activeParseRequestIdRef.current === requestId;
+    }
+
+    function cancelActiveParse() {
+        activeParseRequestIdRef.current += 1;
+        activeParseSourceRef.current = null;
+        activeParseControllerRef.current?.abort();
+        activeParseControllerRef.current = null;
+        setIsParsing(false);
+        setErrorMessage(null);
+        setParseResult(null);
+    }
+
+    function handleSourceSelection(nextSource: ResumeImportSource) {
+        if (isParsing) {
+            if (activeParseSourceRef.current === nextSource) {
+                return;
+            }
+
+            const shouldCancelCurrentParse = window.confirm(inFlightSwitchConfirmationMessage);
+            if (!shouldCancelCurrentParse) {
+                return;
+            }
+
+            cancelActiveParse();
+        }
+
+        applySourceSelection(nextSource);
     }
 
     async function handleUploadSubmit(event: FormEvent<HTMLFormElement>) {
@@ -41,34 +100,56 @@ export function ResumeImportPage({
             return;
         }
 
-        setIsParsing(true);
-        setErrorMessage(null);
+        const { controller, requestId } = beginParse('upload');
 
         try {
-            const response = await onParseUpload(selectedFile);
+            const response = await onParseUpload(selectedFile, controller.signal);
+            if (!isActiveParseRequest(requestId) || controller.signal.aborted) {
+                return;
+            }
+
             setParseResult(response);
         } catch (caughtError) {
+            if ((caughtError as Error).name === 'AbortError' || !isActiveParseRequest(requestId)) {
+                return;
+            }
+
             setParseResult(null);
             setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Unable to start the resume import.');
         } finally {
-            setIsParsing(false);
+            if (isActiveParseRequest(requestId)) {
+                activeParseSourceRef.current = null;
+                activeParseControllerRef.current = null;
+                setIsParsing(false);
+            }
         }
     }
 
     async function handleConfiguredSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        setIsParsing(true);
-        setErrorMessage(null);
+        const { controller, requestId } = beginParse('configured');
 
         try {
-            const response = await onParseConfigured();
+            const response = await onParseConfigured(controller.signal);
+            if (!isActiveParseRequest(requestId) || controller.signal.aborted) {
+                return;
+            }
+
             setParseResult(response);
         } catch (caughtError) {
+            if ((caughtError as Error).name === 'AbortError' || !isActiveParseRequest(requestId)) {
+                return;
+            }
+
             setParseResult(null);
             setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Unable to start the resume import.');
         } finally {
-            setIsParsing(false);
+            if (isActiveParseRequest(requestId)) {
+                activeParseSourceRef.current = null;
+                activeParseControllerRef.current = null;
+                setIsParsing(false);
+            }
         }
     }
 
