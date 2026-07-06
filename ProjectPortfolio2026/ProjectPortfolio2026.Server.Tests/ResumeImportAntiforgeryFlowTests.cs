@@ -15,6 +15,7 @@ using NUnit.Framework;
 using ProjectPortfolio2026.Server.Contracts.Auth;
 using ProjectPortfolio2026.Server.Controllers;
 using ProjectPortfolio2026.Server.Domain.Identity;
+using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Infrastructure.Security;
 using ProjectPortfolio2026.Server.Services.Interfaces;
 using ProjectPortfolio2026.Server.Services.ServiceModels;
@@ -58,7 +59,7 @@ public sealed class ResumeImportAntiforgeryFlowTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
-        builder.Services.AddControllersWithViews().AddApplicationPart(typeof(ResumeImportController).Assembly);
+        builder.Services.AddProjectPortfolioControllers().AddApplicationPart(typeof(ResumeImportController).Assembly);
         builder.Services.AddAntiforgery(options =>
         {
             options.HeaderName = AntiforgeryCookieManager.HeaderName;

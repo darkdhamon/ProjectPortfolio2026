@@ -24,10 +24,7 @@ var resolvedConnectionString = ConnectionStringPathResolver.ResolveDataPaths(
     connectionString,
     builder.Environment.ContentRootPath);
 
-builder.Services.AddControllers(options =>
-{
-    options.Filters.Add<RequestTrackingFilter>();
-});
+builder.Services.AddProjectPortfolioControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddAntiforgery(options =>
 {
