@@ -13,6 +13,22 @@ namespace ProjectPortfolio2026.Server.Tests;
 public sealed class ResumeImportControllerTests
 {
     [Test]
+    public void ParseAsync_RequiresAntiforgeryValidation()
+    {
+        var method = typeof(ResumeImportController).GetMethod(nameof(ResumeImportController.ParseAsync));
+
+        Assert.That(method?.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), inherit: true), Is.Not.Empty);
+    }
+
+    [Test]
+    public void ParseConfiguredAsync_RequiresAntiforgeryValidation()
+    {
+        var method = typeof(ResumeImportController).GetMethod(nameof(ResumeImportController.ParseConfiguredAsync));
+
+        Assert.That(method?.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), inherit: true), Is.Not.Empty);
+    }
+
+    [Test]
     public async Task ParseAsync_ReturnsBadRequestWhenFileIsMissing()
     {
         var controller = new ResumeImportController(new StubResumeImportService());
@@ -37,6 +53,56 @@ public sealed class ResumeImportControllerTests
         Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
         var error = (result.Result as BadRequestObjectResult)?.Value as ApiErrorResponse;
         Assert.That(error?.Message, Is.EqualTo("Only PDF and DOCX resume files are supported."));
+    }
+
+    [Test]
+    public async Task ParseConfiguredAsync_ReturnsBadRequestWhenConfiguredSourceIsUnavailable()
+    {
+        var controller = new ResumeImportController(new StubResumeImportService
+        {
+            ExceptionToThrow = new ResumeImportValidationException("A complete resume source configuration is required before parsing.")
+        });
+
+        var result = await controller.ParseConfiguredAsync(CancellationToken.None);
+
+        Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+        var error = (result.Result as BadRequestObjectResult)?.Value as ApiErrorResponse;
+        Assert.That(error?.ErrorCode, Is.EqualTo("resume_source_invalid"));
+        Assert.That(error?.Message, Is.EqualTo("A complete resume source configuration is required before parsing."));
+    }
+
+    [Test]
+    public async Task ParseConfiguredAsync_ReturnsParsedPayloadWhenConfiguredSourceSucceeds()
+    {
+        var controller = new ResumeImportController(new StubResumeImportService
+        {
+            Result = new ResumeImportCandidateResult
+            {
+                SourceFileName = "configured-resume.pdf",
+                ParserName = "ConfiguredSourceParser",
+                CandidateWorkHistory =
+                [
+                    new ResumeImportEmployerCandidate
+                    {
+                        CandidateId = "employer-007",
+                        EmployerName = "Configured Corp"
+                    }
+                ]
+            }
+        });
+
+        var result = await controller.ParseConfiguredAsync(CancellationToken.None);
+
+        Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+        var response = (result.Result as OkObjectResult)?.Value as ResumeImportParseResponse;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response, Is.Not.Null);
+            Assert.That(response?.SourceFileName, Is.EqualTo("configured-resume.pdf"));
+            Assert.That(response?.ParserName, Is.EqualTo("ConfiguredSourceParser"));
+            Assert.That(response?.CandidateWorkHistory[0].CandidateId, Is.EqualTo("employer-007"));
+        });
     }
 
     [Test]
@@ -115,7 +181,19 @@ public sealed class ResumeImportControllerTests
 
         public ResumeImportCandidateResult Result { get; set; } = new();
 
-        public Task<ResumeImportCandidateResult> ParseAsync(IFormFile file, CancellationToken cancellationToken = default)
+        public Task<ResumeImportCandidateResult> ParseAsync(
+            IFormFile file,
+            CancellationToken cancellationToken = default)
+        {
+            if (ExceptionToThrow is not null)
+            {
+                throw ExceptionToThrow;
+            }
+
+            return Task.FromResult(Result);
+        }
+
+        public Task<ResumeImportCandidateResult> ParseConfiguredSourceAsync(CancellationToken cancellationToken = default)
         {
             if (ExceptionToThrow is not null)
             {

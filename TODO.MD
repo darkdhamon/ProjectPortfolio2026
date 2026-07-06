@@ -14,3 +14,4 @@
 - Add account lockout and related login hardening rules in a follow-up issue after the MVP authentication flow is in place.
 - Add an admin tag editor in a separate issue so shared skill and technology tags can be curated without coupling that UI to the current work history delivery scope.
 - Consider showing explicit per-role duration on the public resume page, not just start/end dates, for employers with multiple roles (for example, `Senior Software Engineer` vs `Software Engineer` at the same employer).
+- Scan downloaded configured resume files with installed antivirus before parsing. Tracked in issue #156.

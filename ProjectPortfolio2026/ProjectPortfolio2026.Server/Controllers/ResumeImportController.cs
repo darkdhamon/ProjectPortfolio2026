@@ -15,6 +15,7 @@ namespace ProjectPortfolio2026.Server.Controllers;
 public sealed class ResumeImportController(IResumeImportService resumeImportService) : ControllerBase
 {
     [HttpPost("parse")]
+    [ValidateAntiForgeryToken]
     [Consumes("multipart/form-data")]
     [ProducesResponseType<ResumeImportParseResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status400BadRequest)]
@@ -43,6 +44,28 @@ public sealed class ResumeImportController(IResumeImportService resumeImportServ
             {
                 StatusCode = StatusCodes.Status400BadRequest,
                 ErrorCode = "resume_file_invalid",
+                Message = exception.Message
+            });
+        }
+    }
+
+    [HttpPost("parse-configured")]
+    [ValidateAntiForgeryToken]
+    [ProducesResponseType<ResumeImportParseResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ResumeImportParseResponse>> ParseConfiguredAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await resumeImportService.ParseConfiguredSourceAsync(cancellationToken);
+            return Ok(ResumeImportContractMapper.Map(result));
+        }
+        catch (ResumeImportValidationException exception)
+        {
+            return BadRequest(new ApiErrorResponse
+            {
+                StatusCode = StatusCodes.Status400BadRequest,
+                ErrorCode = "resume_source_invalid",
                 Message = exception.Message
             });
         }

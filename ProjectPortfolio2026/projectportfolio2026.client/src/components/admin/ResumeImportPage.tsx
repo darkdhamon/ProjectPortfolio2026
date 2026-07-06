@@ -1,9 +1,12 @@
-import { useState, type FormEvent } from 'react';
-import { parseResumeUploadAsync, type ResumeImportParseResponse } from '../../api/resumeImport';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { parseResumeConfiguredAsync, parseResumeUploadAsync, type ResumeImportParseResponse } from '../../api/resumeImport';
 import type { NavigateFn } from '../../app/navigation';
 import { InternalLink } from '../common/InternalLink';
 
 type ResumeImportSource = 'upload' | 'configured';
+type ParseUploadHandler = (file: File, signal?: AbortSignal) => Promise<ResumeImportParseResponse>;
+type ParseConfiguredHandler = (signal?: AbortSignal) => Promise<ResumeImportParseResponse>;
+const inFlightSwitchConfirmationMessage = 'A resume parse is still in progress. Cancel the current parse before switching sources?';
 
 function formatCandidateCount(count: number, singularLabel: string, pluralLabel: string) {
     return `${count} ${count === 1 ? singularLabel : pluralLabel}`;
@@ -12,23 +15,81 @@ function formatCandidateCount(count: number, singularLabel: string, pluralLabel:
 export function ResumeImportPage({
     currentUserDisplayName,
     onNavigate,
-    onParseUpload = parseResumeUploadAsync
+    onParseUpload = parseResumeUploadAsync,
+    onParseConfigured = parseResumeConfiguredAsync
 }: {
     currentUserDisplayName: string;
     onNavigate: NavigateFn;
-    onParseUpload?: (file: File) => Promise<ResumeImportParseResponse>;
+    onParseUpload?: ParseUploadHandler;
+    onParseConfigured?: ParseConfiguredHandler;
 }) {
     const [selectedSource, setSelectedSource] = useState<ResumeImportSource | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [parseResult, setParseResult] = useState<ResumeImportParseResponse | null>(null);
+    const activeParseControllerRef = useRef<AbortController | null>(null);
+    const activeParseRequestIdRef = useRef(0);
+    const activeParseSourceRef = useRef<ResumeImportSource | null>(null);
 
-    function handleSourceSelection(nextSource: ResumeImportSource) {
+    useEffect(() => {
+        return () => {
+            activeParseRequestIdRef.current += 1;
+            activeParseSourceRef.current = null;
+            activeParseControllerRef.current?.abort();
+            activeParseControllerRef.current = null;
+        };
+    }, []);
+
+    function applySourceSelection(nextSource: ResumeImportSource) {
         setSelectedSource(nextSource);
         setSelectedFile(null);
         setErrorMessage(null);
         setParseResult(null);
+    }
+
+    function beginParse(source: ResumeImportSource) {
+        const controller = new AbortController();
+        const requestId = activeParseRequestIdRef.current + 1;
+
+        activeParseRequestIdRef.current = requestId;
+        activeParseControllerRef.current = controller;
+        activeParseSourceRef.current = source;
+        setIsParsing(true);
+        setErrorMessage(null);
+
+        return { controller, requestId };
+    }
+
+    function isActiveParseRequest(requestId: number) {
+        return activeParseRequestIdRef.current === requestId;
+    }
+
+    function cancelActiveParse() {
+        activeParseRequestIdRef.current += 1;
+        activeParseSourceRef.current = null;
+        activeParseControllerRef.current?.abort();
+        activeParseControllerRef.current = null;
+        setIsParsing(false);
+        setErrorMessage(null);
+        setParseResult(null);
+    }
+
+    function handleSourceSelection(nextSource: ResumeImportSource) {
+        if (isParsing) {
+            if (activeParseSourceRef.current === nextSource) {
+                return;
+            }
+
+            const shouldCancelCurrentParse = window.confirm(inFlightSwitchConfirmationMessage);
+            if (!shouldCancelCurrentParse) {
+                return;
+            }
+
+            cancelActiveParse();
+        }
+
+        applySourceSelection(nextSource);
     }
 
     async function handleUploadSubmit(event: FormEvent<HTMLFormElement>) {
@@ -39,17 +100,56 @@ export function ResumeImportPage({
             return;
         }
 
-        setIsParsing(true);
-        setErrorMessage(null);
+        const { controller, requestId } = beginParse('upload');
 
         try {
-            const response = await onParseUpload(selectedFile);
+            const response = await onParseUpload(selectedFile, controller.signal);
+            if (!isActiveParseRequest(requestId) || controller.signal.aborted) {
+                return;
+            }
+
             setParseResult(response);
         } catch (caughtError) {
+            if ((caughtError as Error).name === 'AbortError' || !isActiveParseRequest(requestId)) {
+                return;
+            }
+
             setParseResult(null);
             setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Unable to start the resume import.');
         } finally {
-            setIsParsing(false);
+            if (isActiveParseRequest(requestId)) {
+                activeParseSourceRef.current = null;
+                activeParseControllerRef.current = null;
+                setIsParsing(false);
+            }
+        }
+    }
+
+    async function handleConfiguredSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        const { controller, requestId } = beginParse('configured');
+
+        try {
+            const response = await onParseConfigured(controller.signal);
+            if (!isActiveParseRequest(requestId) || controller.signal.aborted) {
+                return;
+            }
+
+            setParseResult(response);
+        } catch (caughtError) {
+            if ((caughtError as Error).name === 'AbortError' || !isActiveParseRequest(requestId)) {
+                return;
+            }
+
+            setParseResult(null);
+            setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Unable to start the resume import.');
+        } finally {
+            if (isActiveParseRequest(requestId)) {
+                activeParseSourceRef.current = null;
+                activeParseControllerRef.current = null;
+                setIsParsing(false);
+            }
         }
     }
 
@@ -102,7 +202,7 @@ export function ResumeImportPage({
                     <p>Reserve a path for a stored resume file or external master source so recurring imports can skip another manual upload.</p>
                     <ul className="admin-section-list">
                         <li>Issue #67 will define where the master source is configured.</li>
-                        <li>Issue #96 will connect this choice to the stored or external source itself.</li>
+                        <li>Issue #96 connects this choice to the configured source fetch and parse behavior.</li>
                         <li>This choice should stay visible now so admins see both planned entry points.</li>
                     </ul>
                     <button
@@ -194,20 +294,64 @@ export function ResumeImportPage({
                 ) : selectedSource === 'configured' ? (
                     <article className="admin-card resume-import-panel">
                         <p className="eyebrow">Step 2</p>
-                        <h2>Configured source is reserved but not wired yet</h2>
-                        <p>
-                            The source-selection workflow now exposes the future configured-source path without forcing
-                            parsing internals or hidden configuration into the first-step UI.
-                        </p>
+                        <h2>Parse from the configured master resume source</h2>
+                        <p>The configured source is fetched only when this workflow is explicitly started, then routed through the same import parser used by upload.</p>
                         <ul className="admin-section-list">
-                            <li>Resume configuration under issue #67 will determine which stored or external source is available.</li>
-                            <li>Issue #96 will connect this route to the configured source fetch and parse behavior.</li>
-                            <li>Use the upload path today when you need to start an import immediately.</li>
+                            <li>Use a long-lived resume source when recurring imports should avoid new uploads.</li>
+                            <li>Parsing remains non-persistent until dedicated review and approval issues complete.</li>
+                            <li>Switch back to upload if you need to stage a fresh document instead.</li>
                         </ul>
+
+                        <form className="resume-import-file-form" onSubmit={handleConfiguredSubmit}>
+                            <p className="auth-helper">The configured source URL defined in resume settings will be downloaded and parsed when you continue.</p>
+
+                        <div className="auth-actions">
+                                <button type="submit" className="primary-action" disabled={isParsing}>
+                                    {isParsing ? 'Parsing Configured Resume...' : 'Parse Configured Resume Source'}
+                                </button>
+                            </div>
+                        </form>
+
+                        {errorMessage ? (
+                            <p className="resume-import-feedback error-message" role="alert">{errorMessage}</p>
+                        ) : null}
+
+                        {parseResult ? (
+                            <section className="resume-import-preview" aria-label="Resume import parse summary">
+                                <div className="resume-import-preview-heading">
+                                    <p className="eyebrow">Parse Summary</p>
+                                    <h3>Candidate data is ready for the next import stages</h3>
+                                </div>
+
+                                <div className="resume-import-preview-grid">
+                                    <article className="resume-import-preview-card">
+                                        <span className="stat-label">Source file</span>
+                                        <strong>{parseResult.sourceFileName ?? 'Configured resume source'}</strong>
+                                        <p>Parser: {parserName}</p>
+                                    </article>
+                                    <article className="resume-import-preview-card">
+                                        <span className="stat-label">Parsed candidates</span>
+                                        <strong>{formatCandidateCount(parsedWorkHistoryCount, 'role candidate', 'role candidates')}</strong>
+                                        <p>{formatCandidateCount(parsedEmployerCount, 'employer group', 'employer groups')} and {formatCandidateCount(parsedSkillsCount, 'global skill', 'global skills')}</p>
+                                    </article>
+                                    <article className="resume-import-preview-card">
+                                        <span className="stat-label">Detected person</span>
+                                        <strong>{parseResult.person?.fullName?.trim() || 'No person name extracted yet'}</strong>
+                                        <p>{parseResult.person?.headline?.trim() || 'Profile summary and review UI arrive in later child issues.'}</p>
+                                    </article>
+                                </div>
+
+                                <p className="resume-import-feedback">
+                                    This page starts the import safely. Candidate review, editing controls, duplicate flags,
+                                    and save approval continue in later resume-import issues.
+                                </p>
+                            </section>
+                        ) : null}
+
                         <div className="auth-actions">
                             <button
                                 type="button"
-                                className="primary-action secondary-action"
+                                className="admin-action-link"
                                 onClick={() => handleSourceSelection('upload')}>
                                 Switch to Upload Source
                             </button>
@@ -242,6 +386,7 @@ export function ResumeImportPage({
                     </p>
                     <ul className="admin-section-list">
                         <li>#89 starts the import and lets admins pick the source.</li>
+                        <li>#96 wires configured source fetch + parse for this source flow.</li>
                         <li>#91 handles the upload staging details behind the parse endpoint.</li>
                         <li>#94 and #95 pick up once candidate review and approval need UI and persistence.</li>
                     </ul>
