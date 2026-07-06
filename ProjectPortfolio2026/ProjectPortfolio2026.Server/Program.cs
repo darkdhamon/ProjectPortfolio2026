@@ -93,6 +93,7 @@ builder.Services.AddSingleton<IResumeImportFileStore>(_ => new TemporaryResumeFi
 builder.Services.AddScoped<IResumeParserService, DeferredResumeParserService>();
 builder.Services
     .AddHttpClient<IResumeImportService, ResumeImportService>()
+    .ConfigureHttpClient(static client => client.Timeout = Timeout.InfiniteTimeSpan)
     .ConfigurePrimaryHttpMessageHandler(ResumeImportService.CreateConfiguredSourceHttpMessageHandler);
 builder.Services.AddScoped<RequestTrackingFilter>();
 
