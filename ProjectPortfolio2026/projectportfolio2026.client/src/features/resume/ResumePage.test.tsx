@@ -228,7 +228,6 @@ describe('ResumePage', () => {
 
         expect(screen.getByRole('heading', { name: 'Resume shell ready for public portfolio data.' })).toBeInTheDocument();
         expect(screen.getByText('Waiting for published resume data')).toBeInTheDocument();
-        expect(screen.getByText('Needs config')).toBeInTheDocument();
         expect(screen.getByText('Public contact and social links will appear here once the portfolio profile is configured.')).toBeInTheDocument();
         expect(screen.getByText('Published work history will appear here once employer and job-role records are available.')).toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'Positioning for recruiters and hiring teams.' })).not.toBeInTheDocument();
@@ -241,6 +240,29 @@ describe('ResumePage', () => {
         expect(screen.getByRole('link', { name: 'Download Resume' })).toHaveAttribute('href', 'https://cdn.example.dev/resume.pdf');
         expect(screen.getByText('ATS-friendly PDF.')).toBeInTheDocument();
         expect(screen.getAllByText('Hosted file').length).toBeGreaterThan(0);
+    });
+
+    it('hides the resume source action when external configuration is incomplete', () => {
+        mockUseResumeConfiguration.mockReturnValue({
+            configuration: {
+                id: 1,
+                sourceType: 'none',
+                isConfigured: false,
+                sourceUrl: null,
+                displayLabel: null,
+                summary: null
+            },
+            isLoading: false,
+            error: null,
+            isMissing: true
+        });
+
+        render(<ResumePage />);
+
+        expect(screen.queryByRole('link', { name: 'Download Resume' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Open Resume Source/i })).not.toBeInTheDocument();
+        expect(screen.queryByText('Hosted file')).not.toBeInTheDocument();
+        expect(screen.queryByText('Needs config')).not.toBeInTheDocument();
     });
 
     it('exports the currently filtered resume view as a PDF download', async () => {
@@ -281,7 +303,6 @@ describe('ResumePage', () => {
         });
 
         render(<ResumePage />);
-
         fireEvent.click(screen.getByRole('button', { name: 'Last 5 years' }));
         fireEvent.click(screen.getByRole('button', { name: 'Download PDF' }));
 

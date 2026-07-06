@@ -305,7 +305,6 @@ export function ResumePage() {
         profile,
         isLoading: isProfileLoading,
         error: profileError,
-        isMissing: isProfileMissing
     } = usePortfolioProfile();
     const {
         employers,
@@ -316,7 +315,6 @@ export function ResumePage() {
         configuration: resumeConfiguration,
         isLoading: isResumeConfigurationLoading,
         error: resumeConfigurationError,
-        isMissing: isResumeConfigurationMissing
     } = useResumeConfiguration();
 
     const currentDate = new Date();
@@ -382,6 +380,9 @@ export function ResumePage() {
         totalRoleCount
     );
     const resumeSourceTypeLabel = resumeConfiguration?.sourceType === 'embed' ? 'Embed source' : 'Hosted file';
+    const hasStaticResumeSource = resumeConfiguration?.isConfigured === true
+        && Boolean(resumeConfiguration.sourceUrl?.trim())
+        && Boolean(resumeConfiguration.displayLabel?.trim());
     const canExportPdf = !isResumePdfLoading && resumePdfErrors.length === 0;
 
     async function handleDownloadPdf() {
@@ -558,42 +559,28 @@ export function ResumePage() {
                                 <span className="coming-soon-pill">{canExportPdf ? 'ATS-friendly' : isExportingPdf ? 'Preparing' : 'Unavailable'}</span>
                             </button>
                         </div>
-                        <div className="resume-action-card">
-                            <div className="resume-action-copy">
-                                <span className="meta-label">Resume Source</span>
-                                <span className="resume-action-note">
-                                    {resumeConfiguration?.isConfigured
-                                        ? resumeSourceTypeLabel
-                                        : isResumeConfigurationMissing || isProfileMissing
-                                            ? 'Needs config'
-                                            : 'Unavailable'}
-                                </span>
-                            </div>
-                            {resumeConfiguration?.isConfigured && resumeConfiguration.sourceUrl && resumeConfiguration.displayLabel ? (
+                        {hasStaticResumeSource ? (
+                            <div className="resume-action-card">
+                                <div className="resume-action-copy">
+                                    <span className="meta-label">Resume Source</span>
+                                    <span className="resume-action-note">
+                                        {resumeSourceTypeLabel}
+                                    </span>
+                                </div>
                                 <a
                                     className="resume-action-button"
-                                    href={resumeConfiguration.sourceUrl}
+                                    href={resumeConfiguration?.sourceUrl ?? ''}
                                     target="_blank"
                                     rel="noreferrer"
-                                    aria-label={resumeConfiguration.displayLabel}>
-                                    <span>{resumeConfiguration.displayLabel}</span>
+                                    aria-label={resumeConfiguration?.displayLabel ?? 'Open Resume Source'}>
+                                    <span>{resumeConfiguration?.displayLabel}</span>
                                     <span className="coming-soon-pill">{resumeSourceTypeLabel}</span>
                                 </a>
-                            ) : (
-                                <button
-                                    className="resume-action-button"
-                                    type="button"
-                                    disabled
-                                    aria-disabled="true"
-                                    aria-label="Open Resume Source">
-                                    <span>Open Resume Source</span>
-                                    <span className="coming-soon-pill">Needs Config</span>
-                                </button>
-                            )}
-                            {resumeConfiguration?.isConfigured && resumeConfiguration.summary ? (
-                                <p>{resumeConfiguration.summary}</p>
-                            ) : null}
-                        </div>
+                                {resumeConfiguration?.summary ? (
+                                    <p>{resumeConfiguration.summary}</p>
+                                ) : null}
+                            </div>
+                        ) : null}
                     </div>
                 </article>
             </section>
