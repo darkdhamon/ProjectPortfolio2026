@@ -93,10 +93,7 @@ builder.Services.AddSingleton<IResumeImportFileStore>(_ => new TemporaryResumeFi
 builder.Services.AddScoped<IResumeParserService, DeferredResumeParserService>();
 builder.Services
     .AddHttpClient<IResumeImportService, ResumeImportService>()
-    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-    {
-        AllowAutoRedirect = false
-    });
+    .ConfigurePrimaryHttpMessageHandler(ResumeImportService.CreateConfiguredSourceHttpMessageHandler);
 builder.Services.AddScoped<RequestTrackingFilter>();
 
 var app = builder.Build();

@@ -174,6 +174,35 @@ public sealed class ResumeImportServiceTests
     }
 
     [Test]
+    public void ParseConfiguredSourceAsync_WrapsTimedOutDownloadsAsValidationErrors()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var parser = new TrackingResumeParserService();
+        var repository = new StubResumeConfigurationRepository
+        {
+            Configuration = new ResumeConfiguration
+            {
+                SourceType = ResumeSourceTypes.HostedFile,
+                SourceUrl = "https://8.8.8.8/resume.pdf",
+                DisplayLabel = "Public Resume"
+            }
+        };
+        var httpClient = CreateHttpClient(new StubHttpResponse
+        {
+            ExceptionToThrow = new OperationCanceledException("Timed out.")
+        });
+        var service = new ResumeImportService(store, parser, repository, httpClient);
+
+        var exception = Assert.ThrowsAsync<ResumeImportValidationException>(async () => await service.ParseConfiguredSourceAsync());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception?.Message, Is.EqualTo("The configured resume source download timed out."));
+            Assert.That(exception?.InnerException, Is.TypeOf<OperationCanceledException>());
+        });
+    }
+
+    [Test]
     public void ParseConfiguredSourceAsync_RejectsPrivateConfiguredSourceHostsBeforeDownload()
     {
         var store = new TemporaryResumeFileStore(tempRootPath);
@@ -184,6 +213,32 @@ public sealed class ResumeImportServiceTests
             {
                 SourceType = ResumeSourceTypes.HostedFile,
                 SourceUrl = "https://127.0.0.1/resume.pdf",
+                DisplayLabel = "Public Resume"
+            }
+        };
+        var httpClient = CreateHttpClient(out var handler);
+        var service = new ResumeImportService(store, parser, repository, httpClient);
+
+        var exception = Assert.ThrowsAsync<ResumeImportValidationException>(async () => await service.ParseConfiguredSourceAsync());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception?.Message, Is.EqualTo("Configured resume source URLs must resolve to a public host."));
+            Assert.That(handler.RequestCount, Is.EqualTo(0));
+        });
+    }
+
+    [Test]
+    public void ParseConfiguredSourceAsync_RejectsReservedConfiguredSourceHostsBeforeDownload()
+    {
+        var store = new TemporaryResumeFileStore(tempRootPath);
+        var parser = new TrackingResumeParserService();
+        var repository = new StubResumeConfigurationRepository
+        {
+            Configuration = new ResumeConfiguration
+            {
+                SourceType = ResumeSourceTypes.HostedFile,
+                SourceUrl = "https://198.18.0.10/resume.pdf",
                 DisplayLabel = "Public Resume"
             }
         };

@@ -13,6 +13,22 @@ namespace ProjectPortfolio2026.Server.Tests;
 public sealed class ResumeImportControllerTests
 {
     [Test]
+    public void ParseAsync_RequiresAntiforgeryValidation()
+    {
+        var method = typeof(ResumeImportController).GetMethod(nameof(ResumeImportController.ParseAsync));
+
+        Assert.That(method?.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), inherit: true), Is.Not.Empty);
+    }
+
+    [Test]
+    public void ParseConfiguredAsync_RequiresAntiforgeryValidation()
+    {
+        var method = typeof(ResumeImportController).GetMethod(nameof(ResumeImportController.ParseConfiguredAsync));
+
+        Assert.That(method?.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), inherit: true), Is.Not.Empty);
+    }
+
+    [Test]
     public async Task ParseAsync_ReturnsBadRequestWhenFileIsMissing()
     {
         var controller = new ResumeImportController(new StubResumeImportService());

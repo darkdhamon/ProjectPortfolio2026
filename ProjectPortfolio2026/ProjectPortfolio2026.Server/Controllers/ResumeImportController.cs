@@ -15,6 +15,7 @@ namespace ProjectPortfolio2026.Server.Controllers;
 public sealed class ResumeImportController(IResumeImportService resumeImportService) : ControllerBase
 {
     [HttpPost("parse")]
+    [ValidateAntiForgeryToken]
     [Consumes("multipart/form-data")]
     [ProducesResponseType<ResumeImportParseResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status400BadRequest)]
@@ -49,6 +50,7 @@ public sealed class ResumeImportController(IResumeImportService resumeImportServ
     }
 
     [HttpPost("parse-configured")]
+    [ValidateAntiForgeryToken]
     [ProducesResponseType<ResumeImportParseResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ResumeImportParseResponse>> ParseConfiguredAsync(CancellationToken cancellationToken)

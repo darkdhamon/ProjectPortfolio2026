@@ -14,8 +14,12 @@ public sealed class ResumeImportService(
     IResumeConfigurationRepository resumeConfigurationRepository,
     HttpClient httpClient) : IResumeImportService
 {
+    private const string ConfiguredSourceDownloadFailureMessage = "Unable to download the configured resume source.";
+    private const string ConfiguredSourceDownloadTimeoutMessage = "The configured resume source download timed out.";
     private const int MaxConfiguredSourceRedirects = 5;
     private const long MaxConfiguredSourceFileBytes = 10 * 1024 * 1024;
+    private const string PublicHostValidationMessage = "Configured resume source URLs must resolve to a public host.";
+    private static readonly TimeSpan ConfiguredSourceDownloadTimeout = TimeSpan.FromMinutes(2);
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".pdf",
@@ -26,6 +30,15 @@ public sealed class ResumeImportService(
         ["application/pdf"] = ".pdf",
         ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"] = ".docx"
     };
+
+    public static HttpMessageHandler CreateConfiguredSourceHttpMessageHandler()
+    {
+        return new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            ConnectCallback = ConnectValidatedPublicHostAsync
+        };
+    }
 
     public async Task<ResumeImportCandidateResult> ParseAsync(IFormFile file, CancellationToken cancellationToken = default)
     {
@@ -77,9 +90,13 @@ public sealed class ResumeImportService(
 
     private async Task<StagedResumeFile> DownloadConfiguredSourceAsync(Uri sourceUri, CancellationToken cancellationToken)
     {
+        using var downloadTimeoutCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        downloadTimeoutCancellationSource.CancelAfter(ConfiguredSourceDownloadTimeout);
+        var downloadCancellationToken = downloadTimeoutCancellationSource.Token;
+
         try
         {
-            return await DownloadConfiguredSourceCoreAsync(sourceUri, cancellationToken);
+            return await DownloadConfiguredSourceCoreAsync(sourceUri, downloadCancellationToken);
         }
         catch (ResumeImportValidationException)
         {
@@ -91,11 +108,15 @@ public sealed class ResumeImportService(
         }
         catch (OperationCanceledException exception)
         {
-            throw new ResumeImportValidationException("Unable to download the configured resume source.", exception);
+            throw new ResumeImportValidationException(ConfiguredSourceDownloadTimeoutMessage, exception);
+        }
+        catch (HttpRequestException exception) when (string.Equals(exception.Message, PublicHostValidationMessage, StringComparison.Ordinal))
+        {
+            throw new ResumeImportValidationException(PublicHostValidationMessage, exception);
         }
         catch (Exception exception) when (exception is HttpRequestException or IOException or SocketException)
         {
-            throw new ResumeImportValidationException("Unable to download the configured resume source.", exception);
+            throw new ResumeImportValidationException(ConfiguredSourceDownloadFailureMessage, exception);
         }
     }
 
@@ -139,7 +160,7 @@ public sealed class ResumeImportService(
         {
             if (IsPrivateOrReservedAddress(literalAddress))
             {
-                throw new ResumeImportValidationException("Configured resume source URLs must resolve to a public host.");
+                throw new ResumeImportValidationException(PublicHostValidationMessage);
             }
 
             return;
@@ -148,7 +169,7 @@ public sealed class ResumeImportService(
         var resolvedAddresses = await Dns.GetHostAddressesAsync(sourceUri.DnsSafeHost, cancellationToken);
         if (resolvedAddresses.Length == 0 || resolvedAddresses.Any(IsPrivateOrReservedAddress))
         {
-            throw new ResumeImportValidationException("Configured resume source URLs must resolve to a public host.");
+            throw new ResumeImportValidationException(PublicHostValidationMessage);
         }
     }
 
@@ -348,6 +369,7 @@ public sealed class ResumeImportService(
             var ipv6Bytes = address.GetAddressBytes();
             return address.Equals(IPAddress.IPv6None)
                 || address.Equals(IPAddress.IPv6Any)
+                || IsIPv6DocumentationAddress(ipv6Bytes)
                 || (ipv6Bytes[0] & 0xFE) == 0xFC;
         }
 
@@ -363,7 +385,12 @@ public sealed class ResumeImportService(
             || (bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127)
             || (bytes[0] == 169 && bytes[1] == 254)
             || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)
-            || (bytes[0] == 192 && bytes[1] == 168);
+            || (bytes[0] == 192 && bytes[1] == 0 && (bytes[2] == 0 || bytes[2] == 2 || (bytes[2] == 88 && bytes[3] == 99)))
+            || (bytes[0] == 192 && bytes[1] == 168)
+            || (bytes[0] == 198 && (bytes[1] == 18 || bytes[1] == 19))
+            || (bytes[0] == 198 && bytes[1] == 51 && bytes[2] == 100)
+            || (bytes[0] == 203 && bytes[1] == 0 && bytes[2] == 113)
+            || bytes[0] >= 224;
     }
 
     private static bool HasSupportedExtension(string fileName)
@@ -385,5 +412,80 @@ public sealed class ResumeImportService(
         return lastSeparatorIndex >= 0
             ? fileName[(lastSeparatorIndex + 1)..]
             : fileName;
+    }
+
+    private static async ValueTask<Stream> ConnectValidatedPublicHostAsync(
+        SocketsHttpConnectionContext connectionContext,
+        CancellationToken cancellationToken)
+    {
+        var port = connectionContext.DnsEndPoint.Port;
+        var host = connectionContext.DnsEndPoint.Host;
+
+        if (IPAddress.TryParse(host, out var literalAddress))
+        {
+            if (IsPrivateOrReservedAddress(literalAddress))
+            {
+                throw new HttpRequestException(PublicHostValidationMessage);
+            }
+
+            return await ConnectToAddressAsync(literalAddress, port, cancellationToken);
+        }
+
+        var resolvedAddresses = await Dns.GetHostAddressesAsync(host, cancellationToken);
+        var publicAddresses = resolvedAddresses
+            .Where(address => !IsPrivateOrReservedAddress(address))
+            .ToArray();
+
+        if (publicAddresses.Length == 0)
+        {
+            throw new HttpRequestException(PublicHostValidationMessage);
+        }
+
+        Exception? lastConnectionException = null;
+        foreach (var address in publicAddresses)
+        {
+            try
+            {
+                return await ConnectToAddressAsync(address, port, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception) when (exception is SocketException or IOException)
+            {
+                lastConnectionException = exception;
+            }
+        }
+
+        throw new HttpRequestException(ConfiguredSourceDownloadFailureMessage, lastConnectionException);
+    }
+
+    private static async ValueTask<Stream> ConnectToAddressAsync(
+        IPAddress address,
+        int port,
+        CancellationToken cancellationToken)
+    {
+        var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+        try
+        {
+            await socket.ConnectAsync(address, port, cancellationToken);
+            return new NetworkStream(socket, ownsSocket: true);
+        }
+        catch
+        {
+            socket.Dispose();
+            throw;
+        }
+    }
+
+    private static bool IsIPv6DocumentationAddress(byte[] addressBytes)
+    {
+        return addressBytes.Length >= 4
+            && addressBytes[0] == 0x20
+            && addressBytes[1] == 0x01
+            && addressBytes[2] == 0x0D
+            && addressBytes[3] == 0xB8;
     }
 }
