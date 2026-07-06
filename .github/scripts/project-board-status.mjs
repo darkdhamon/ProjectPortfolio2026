@@ -57,8 +57,10 @@ function collectClosingIssueNumbers(sourceText, repositoryFullName) {
   const issueNumbers = new Set();
   const issueReferencePatternSource =
     String.raw`(?:(?:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)?#\d+\b)`;
+  const closingListSeparatorPatternSource =
+    String.raw`(?:\s*,\s*and\s*|\s+and\s+|\s*,\s*)`;
   const closingReferencePattern = new RegExp(
-    String.raw`\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s*((?:${issueReferencePatternSource})(?:\s*(?:,|and)\s*(?:${issueReferencePatternSource}))*)`,
+    String.raw`\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s*((?:${issueReferencePatternSource})(?:${closingListSeparatorPatternSource}(?:${issueReferencePatternSource}))*)`,
     "gi",
   );
 
