@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import projectImageUnavailable from '../../assets/Placeholders/Project-Image-Unavailable.png';
 import type { NavigateFn } from '../../app/navigation';
 import type { ProjectSummary } from '../../app/types';
@@ -21,6 +21,8 @@ export function ProjectListPage({
     filters,
     onNavigate
 }: ProjectListPageProps) {
+    const [isFilterTrayCollapsed, setIsFilterTrayCollapsed] = useState(false);
+    const [isSkillFiltersCollapsed, setIsSkillFiltersCollapsed] = useState(false);
     const {
         searchInput,
         selectedSkills,
@@ -44,6 +46,15 @@ export function ProjectListPage({
     const showingCount = projects.length;
     const activeFilterCount = selectedSkills.length + (searchInput.trim().length > 0 ? 1 : 0);
     const isEmpty = !isLoading && !error && showingCount === 0;
+    const resultSummary = showingCount === totalCount
+        ? `Showing ${showingCount} ${getProjectLabel(showingCount)}`
+        : `Showing ${showingCount} of ${totalCount} ${getProjectLabel(totalCount)}`;
+    const activeFilterSummary = activeFilterCount === 0
+        ? 'No active filters'
+        : `${activeFilterCount} active ${activeFilterCount === 1 ? 'filter' : 'filters'}`;
+    const collapsedSkillSummary = selectedSkills.length > 0
+        ? `${selectedSkills.length} selected ${selectedSkills.length === 1 ? 'skill' : 'skills'}`
+        : `${availableSkills.length} available ${availableSkills.length === 1 ? 'skill' : 'skills'}`;
 
     return (
         <main className="portfolio-page">
@@ -75,51 +86,117 @@ export function ProjectListPage({
                 </div>
             </section>
 
-            <section className="sticky-filters">
-                <div className="toolbar" aria-label="Project filters">
-                    <label className="search-panel" htmlFor="project-search">
-                        <span className="search-label">Search projects</span>
-                        <input
-                            id="project-search"
-                            name="project-search"
-                            type="search"
-                            value={searchInput}
-                            onChange={event => handleSearchChange(event.target.value)}
-                            placeholder="Search by title, summary, technology, or skill"
-                        />
-                    </label>
+            <section className={`sticky-filters${isFilterTrayCollapsed ? ' collapsed' : ''}`}>
+                <div className="filter-heading">
+                    <div className="filter-heading-copy">
+                        <p className="eyebrow">Refine The Results</p>
+                        <h2>Search the archive, then stack skills to narrow the field.</h2>
+                    </div>
 
-                    <button
-                        className="clear-button"
-                        type="button"
-                        onClick={clearFilters}
-                        disabled={searchInput.length === 0 && selectedSkills.length === 0}>
-                        Reset filters
-                    </button>
+                    <div className="filter-heading-side">
+                        <div className="filter-summary" aria-label="Filter summary">
+                            <div className="filter-stat">
+                                <span className="search-label">Results</span>
+                                <strong>{resultSummary}</strong>
+                            </div>
+                            <div className="filter-stat">
+                                <span className="search-label">Selection</span>
+                                <strong>{activeFilterSummary}</strong>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="filter-toggle"
+                            aria-expanded={!isFilterTrayCollapsed}
+                            aria-controls="project-filter-workspace"
+                            onClick={() => setIsFilterTrayCollapsed(current => !current)}>
+                            {isFilterTrayCollapsed ? 'Expand filters' : 'Collapse filters'}
+                        </button>
+                    </div>
                 </div>
 
-                <section className="skill-strip" aria-label="Skill filters">
-                    {availableSkills.length === 0 && isInitialLoad ? (
-                        <p className="helper-copy">Loading skill filters...</p>
-                    ) : availableSkills.length === 0 ? (
-                        <p className="helper-copy">Skill filters will appear once published projects are available.</p>
-                    ) : (
-                        availableSkills.map(skill => {
-                            const isSelected = selectedSkills.includes(skill);
+                {!isFilterTrayCollapsed ? (
+                    <div id="project-filter-workspace" className="filter-workspace">
+                        <div className="toolbar" aria-label="Project filters">
+                            <div className="search-panel">
+                                <label className="search-panel-label" htmlFor="project-search">
+                                    <span className="search-label">Search projects</span>
+                                    <input
+                                        id="project-search"
+                                        name="project-search"
+                                        type="search"
+                                        value={searchInput}
+                                        onChange={event => handleSearchChange(event.target.value)}
+                                        aria-describedby="project-search-helper"
+                                        placeholder="Search by title, summary, technology, or skill"
+                                    />
+                                </label>
+                                <p id="project-search-helper" className="toolbar-helper">
+                                    Search titles, summaries, technologies, or skill tags.
+                                </p>
+                            </div>
 
-                            return (
+                            <div className="filter-actions">
                                 <button
-                                    key={skill}
-                                    className={`skill-chip${isSelected ? ' selected' : ''}`}
+                                    className="clear-button"
                                     type="button"
-                                    onClick={() => toggleSkill(skill)}
-                                    aria-pressed={isSelected}>
-                                    {skill}
+                                    onClick={clearFilters}
+                                    disabled={searchInput.length === 0 && selectedSkills.length === 0}>
+                                    Reset filters
                                 </button>
-                            );
-                        })
-                    )}
-                </section>
+                                <p className="toolbar-helper">The current filters stay in the URL and carry into detail views.</p>
+                            </div>
+                        </div>
+
+                        <section className={`skill-filter-panel${isSkillFiltersCollapsed ? ' collapsed' : ''}`} aria-label="Skill filters">
+                            <div className="skill-filter-header">
+                                <div>
+                                    <span className="search-label">Skill filters</span>
+                                    <p className="toolbar-helper">Layer skills onto the current search without losing context.</p>
+                                </div>
+                                <div className="skill-filter-actions">
+                                    <p className={`active-filter-pill${activeFilterCount === 0 ? ' muted' : ''}`}>{activeFilterSummary}</p>
+                                    <button
+                                        type="button"
+                                        className="filter-toggle"
+                                        aria-expanded={!isSkillFiltersCollapsed}
+                                        aria-controls="project-skill-filter-list"
+                                        onClick={() => setIsSkillFiltersCollapsed(current => !current)}>
+                                        {isSkillFiltersCollapsed ? 'Show skills' : 'Hide skills'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {!isSkillFiltersCollapsed ? (
+                                <div id="project-skill-filter-list" className="skill-strip">
+                                    {availableSkills.length === 0 && isInitialLoad ? (
+                                        <p className="helper-copy">Loading skill filters...</p>
+                                    ) : availableSkills.length === 0 ? (
+                                        <p className="helper-copy">Skill filters will appear once published projects are available.</p>
+                                    ) : (
+                                        availableSkills.map(skill => {
+                                            const isSelected = selectedSkills.includes(skill);
+
+                                            return (
+                                                <button
+                                                    key={skill}
+                                                    className={`skill-chip${isSelected ? ' selected' : ''}`}
+                                                    type="button"
+                                                    onClick={() => toggleSkill(skill)}
+                                                    aria-pressed={isSelected}>
+                                                    {skill}
+                                                </button>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="filter-collapsed-copy">{collapsedSkillSummary}</p>
+                            )}
+                        </section>
+                    </div>
+                ) : null}
             </section>
 
             {error ? <p className="status-banner error">{error}</p> : null}
@@ -145,6 +222,10 @@ export function ProjectListPage({
             {!hasMore && projects.length > 0 ? <p className="helper-copy">You&apos;ve reached the end of the published project list.</p> : null}
         </main>
     );
+}
+
+function getProjectLabel(count: number) {
+    return `${count === 1 ? 'published project' : 'published projects'}`;
 }
 
 interface ProjectCardProps {
@@ -197,17 +278,31 @@ function ProjectCard({
 
                     <p className="project-summary">{project.shortDescription}</p>
 
-                    <div className="tag-group" aria-label={`${project.title} skills`}>
-                        {project.skills.map(skill => (
-                            <span key={skill} className="tag skill">{skill}</span>
-                        ))}
-                    </div>
+                    {project.skills.length > 0 || project.technologies.length > 0 ? (
+                        <div className="project-card-metadata">
+                            {project.skills.length > 0 ? (
+                                <section className="project-card-metadata-group">
+                                    <span className="meta-label">Skills</span>
+                                    <div className="tag-group" aria-label={`${project.title} skills`}>
+                                        {project.skills.map(skill => (
+                                            <span key={skill} className="tag skill">{skill}</span>
+                                        ))}
+                                    </div>
+                                </section>
+                            ) : null}
 
-                    <div className="tag-group secondary" aria-label={`${project.title} technologies`}>
-                        {project.technologies.map(technology => (
-                            <span key={technology} className="tag technology">{technology}</span>
-                        ))}
-                    </div>
+                            {project.technologies.length > 0 ? (
+                                <section className="project-card-metadata-group">
+                                    <span className="meta-label">Technology Stack</span>
+                                    <div className="tag-group secondary" aria-label={`${project.title} technologies`}>
+                                        {project.technologies.map(technology => (
+                                            <span key={technology} className="tag technology">{technology}</span>
+                                        ))}
+                                    </div>
+                                </section>
+                            ) : null}
+                        </div>
+                    ) : null}
 
                     <div className="card-links">
                         <InternalLink

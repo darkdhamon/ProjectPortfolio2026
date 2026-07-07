@@ -21,13 +21,14 @@ const navItems: readonly NavItem[] = [
     { label: 'Work History', href: '/work-history', description: 'Employers, roles, and resume-ready timeline data.' },
     { label: 'Admin', description: 'Authentication, dashboard access, and account management.' },
     { label: 'About', description: 'Background, strengths, and developer story.' },
-    { label: 'Resume', description: 'Resume hub and downloadable materials.' },
+    { label: 'Resume', href: '/resume', description: 'Recruiter-focused resume layout and career snapshot.' },
     { label: 'Contact', href: '/contact', description: 'Direct outreach paths and social links.' },
     { label: 'Blog', description: 'Writing, updates, and thought pieces.' }
 ] as const;
 
 interface SiteShellProps {
     activeNavLabel: string;
+    activePathname: string;
     content: SiteShellContent;
     currentUserDisplayName: string;
     isAuthenticated: boolean;
@@ -39,6 +40,7 @@ interface SiteShellProps {
 
 export function SiteShell({
     activeNavLabel,
+    activePathname,
     content,
     currentUserDisplayName,
     isAuthenticated,
@@ -86,16 +88,16 @@ export function SiteShell({
                                     {isAuthenticated ? (
                                         <div className="admin-subnav" aria-label="Admin navigation">
                                             <InternalLink
-                                                className={`subnav-link${content.title === 'Admin Dashboard' ? ' active' : ''}`}
+                                                className={`subnav-link${activePathname.startsWith('/admin') && activePathname !== '/admin/account' ? ' active' : ''}`}
                                                 href="/admin"
-                                                ariaCurrent={content.title === 'Admin Dashboard' ? 'page' : undefined}
+                                                ariaCurrent={activePathname.startsWith('/admin') && activePathname !== '/admin/account' ? 'page' : undefined}
                                                 onNavigate={onNavigate}>
-                                                Dashboard
+                                                Workspace
                                             </InternalLink>
                                             <InternalLink
-                                                className={`subnav-link${content.title === 'Account Settings' ? ' active' : ''}`}
+                                                className={`subnav-link${activePathname === '/admin/account' ? ' active' : ''}`}
                                                 href="/admin/account"
-                                                ariaCurrent={content.title === 'Account Settings' ? 'page' : undefined}
+                                                ariaCurrent={activePathname === '/admin/account' ? 'page' : undefined}
                                                 onNavigate={onNavigate}>
                                                 Account Settings
                                             </InternalLink>

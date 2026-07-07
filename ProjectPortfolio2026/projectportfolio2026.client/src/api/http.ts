@@ -115,8 +115,40 @@ export async function fetchAuthJson<TPayload>(
     fallbackMessage: string,
     acceptedErrorStatuses: number[] = []
 ) {
+    return fetchAuthPayload<TPayload>(
+        input,
+        init,
+        fallbackMessage,
+        acceptedErrorStatuses,
+        'application/json'
+    );
+}
+
+export async function fetchAuthFormData<TPayload>(
+    input: string,
+    init: RequestInit,
+    fallbackMessage: string,
+    acceptedErrorStatuses: number[] = []
+) {
+    return fetchAuthPayload<TPayload>(
+        input,
+        init,
+        fallbackMessage,
+        acceptedErrorStatuses
+    );
+}
+
+async function fetchAuthPayload<TPayload>(
+    input: string,
+    init: RequestInit,
+    fallbackMessage: string,
+    acceptedErrorStatuses: number[] = [],
+    contentType?: string
+) {
     const headers = new Headers(init.headers);
-    headers.set('Content-Type', 'application/json');
+    if (contentType) {
+        headers.set('Content-Type', contentType);
+    }
 
     const csrfToken = shouldSendCsrfToken(init.method) ? readCookieValue(csrfCookieName) : null;
     if (csrfToken) {

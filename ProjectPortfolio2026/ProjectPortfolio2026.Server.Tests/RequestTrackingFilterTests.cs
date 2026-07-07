@@ -110,6 +110,49 @@ public sealed class RequestTrackingFilterTests
     }
 
     [Test]
+    public async Task Filter_WrapsNotFoundObjectResultString_InApiErrorResponse()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers["X-Request-Id"] = "header-id";
+        httpContext.Request.Path = "/api/resume-configuration";
+
+        var actionContext = CreateActionContext(httpContext);
+        var executingContext = new ActionExecutingContext(
+            actionContext,
+            [],
+            new Dictionary<string, object?>(),
+            controller: new object());
+
+        var filter = new RequestTrackingFilter();
+        ActionExecutedContext? finalContext = null;
+
+        await filter.OnActionExecutionAsync(
+            executingContext,
+            () =>
+            {
+                finalContext = new ActionExecutedContext(actionContext, [], new object())
+                {
+                    Result = new NotFoundObjectResult("The requested resume configuration could not be found.")
+                };
+
+                return Task.FromResult(finalContext);
+            });
+
+        var notFoundObjectResult = finalContext!.Result as ObjectResult;
+        var response = notFoundObjectResult?.Value as ApiErrorResponse;
+
+        Assert.That(response, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(notFoundObjectResult!.StatusCode, Is.EqualTo(StatusCodes.Status404NotFound));
+            Assert.That(response!.RequestId, Is.EqualTo("header-id"));
+            Assert.That(response.StatusCode, Is.EqualTo(StatusCodes.Status404NotFound));
+            Assert.That(response.ErrorCode, Is.EqualTo("resource_not_found"));
+            Assert.That(response.Message, Is.EqualTo("The requested resume configuration could not be found."));
+        });
+    }
+
+    [Test]
     public async Task Filter_UsesHeaderRequestId_WhenBodyAndQueryAreMissing()
     {
         var httpContext = new DefaultHttpContext();
