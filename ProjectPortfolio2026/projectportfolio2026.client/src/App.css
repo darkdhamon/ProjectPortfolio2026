@@ -3320,7 +3320,13 @@
 
     .image-shell,
     .detail-visual {
+        aspect-ratio: auto;
         min-height: 0;
+        overflow: visible;
+    }
+
+    .detail-visual img {
+        height: auto;
     }
 
     .carousel-shell {

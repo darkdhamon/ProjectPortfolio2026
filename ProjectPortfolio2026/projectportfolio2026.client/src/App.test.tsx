@@ -971,6 +971,7 @@ describe('App', () => {
         expect(screen.getByText('Taylor Dev')).toBeInTheDocument();
         expect(screen.getByText('Designer | QA')).toBeInTheDocument();
         expect(screen.getByText('Roles, skills, and technologies that shaped the delivery.')).toBeInTheDocument();
+        expect(screen.getByText('Primary Preview')).toBeInTheDocument();
         expect(screen.getByText('The screenshot gallery below expands on this project view.')).toBeInTheDocument();
         expect(screen.getByText('The delivery story, implementation context, and outcome for this project.')).toBeInTheDocument();
         expect(screen.getByText('Overview dashboard')).toBeInTheDocument();
