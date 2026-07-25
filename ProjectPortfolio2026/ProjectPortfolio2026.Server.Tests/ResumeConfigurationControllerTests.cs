@@ -60,7 +60,12 @@ public sealed class ResumeConfigurationControllerTests
         var notFoundResult = actionResult.Result as NotFoundObjectResult;
 
         Assert.That(notFoundResult, Is.Not.Null);
-        Assert.That(notFoundResult?.Value, Is.EqualTo("The requested resume configuration could not be found."));
+        var error = notFoundResult?.Value as ApiErrorResponse;
+
+        Assert.That(error, Is.Not.Null);
+        Assert.That(error?.StatusCode, Is.EqualTo(StatusCodes.Status404NotFound));
+        Assert.That(error?.ErrorCode, Is.EqualTo("resume_configuration_missing"));
+        Assert.That(error?.Message, Is.EqualTo("The requested resume configuration could not be found."));
     }
 
     private static ResumeConfigurationController CreateController(IResumeConfigurationRepository repository)
