@@ -36,6 +36,8 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(project => project.IsFeatured)
             .HasDefaultValue(false);
 
+        builder.Property(project => project.FeaturedOrder);
+
         builder.HasMany(project => project.Screenshots)
             .WithOne(screenshot => screenshot.Project)
             .HasForeignKey(screenshot => screenshot.ProjectId)

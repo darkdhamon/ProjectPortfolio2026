@@ -9,6 +9,7 @@ export interface ProjectSummary {
     gitHubUrl?: string | null;
     demoUrl?: string | null;
     isFeatured: boolean;
+    featuredOrder?: number | null;
     skills: string[];
     technologies: string[];
 }

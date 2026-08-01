@@ -34,6 +34,8 @@ public sealed class Project
 
     public bool IsFeatured { get; set; }
 
+    public int? FeaturedOrder { get; set; }
+
     public List<ProjectScreenshot> Screenshots { get; set; } = [];
 
     public List<ProjectDeveloperRole> DeveloperRoles { get; set; } = [];
