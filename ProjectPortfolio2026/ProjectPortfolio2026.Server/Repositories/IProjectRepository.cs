@@ -21,4 +21,13 @@ public interface IProjectRepository
         CancellationToken cancellationToken = default);
 
     Task<Project?> UpdateAsync(Project project, CancellationToken cancellationToken = default);
+
+    Task<Project?> UpdateFeaturedStateAsync(
+        int projectId,
+        bool isFeatured,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ReorderFeaturedProjectsAsync(
+        IReadOnlyCollection<int> orderedFeaturedProjectIds,
+        CancellationToken cancellationToken = default);
 }

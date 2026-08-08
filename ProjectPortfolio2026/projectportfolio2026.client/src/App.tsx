@@ -4,6 +4,7 @@ import { parseRoute, readLocation, type AppLocation } from './appSupport';
 import { AccountSettingsPage } from './components/admin/AccountSettingsPage';
 import { getAdminSection } from './components/admin/adminSections';
 import { AdminWorkspacePage } from './components/admin/AdminWorkspacePage';
+import { ProjectManagementSection } from './components/admin/ProjectManagementSection';
 import { LoginPage } from './components/admin/LoginPage';
 import { ResumeImportPage } from './components/admin/ResumeImportPage';
 import { ResumeConfigurationSection } from './components/admin/ResumeConfigurationSection';
@@ -229,7 +230,13 @@ function App() {
                     activeSection={route.section}
                     currentUserDisplayName={displayName}
                     onNavigate={navigate}
-                    sectionContent={route.section === 'resume' ? <ResumeConfigurationSection /> : undefined}
+                    sectionContent={
+                        route.section === 'projects'
+                            ? <ProjectManagementSection />
+                            : route.section === 'resume'
+                                ? <ResumeConfigurationSection />
+                                : undefined
+                    }
                 />
             ) : route.kind === 'admin-account' && currentUser ? (
                 <AccountSettingsPage

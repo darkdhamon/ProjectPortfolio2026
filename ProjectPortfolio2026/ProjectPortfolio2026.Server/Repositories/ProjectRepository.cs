@@ -86,6 +86,7 @@ public sealed class ProjectRepository(
                 GitHubUrl = project.GitHubUrl,
                 DemoUrl = project.DemoUrl,
                 IsFeatured = project.IsFeatured,
+                FeaturedOrder = project.FeaturedOrder,
                 Skills = project.ProjectTags
                     .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
                     .Select(projectTag => projectTag.Tag!.DisplayName)
@@ -138,6 +139,7 @@ public sealed class ProjectRepository(
                 GitHubUrl = project.GitHubUrl,
                 DemoUrl = project.DemoUrl,
                 IsFeatured = project.IsFeatured,
+                FeaturedOrder = project.FeaturedOrder,
                 Skills = project.ProjectTags
                     .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
                     .Select(projectTag => projectTag.Tag!.DisplayName)
@@ -182,6 +184,87 @@ public sealed class ProjectRepository(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRequiredProjectAsync(project.Id, cancellationToken);
+    }
+
+    public async Task<Project?> UpdateFeaturedStateAsync(
+        int projectId,
+        bool isFeatured,
+        CancellationToken cancellationToken = default)
+    {
+        var project = await dbContext.Projects
+            .SingleOrDefaultAsync(existingProject => existingProject.Id == projectId, cancellationToken);
+
+        if (project is null)
+        {
+            return null;
+        }
+
+        project.IsFeatured = isFeatured;
+
+        if (isFeatured)
+        {
+            if (!project.FeaturedOrder.HasValue)
+            {
+                var highestOrder = await dbContext.Projects
+                    .Where(existing => existing.IsFeatured && existing.FeaturedOrder.HasValue)
+                    .MaxAsync(existing => (int?)existing.FeaturedOrder, cancellationToken) ?? -1;
+                project.FeaturedOrder = highestOrder + 1;
+            }
+        }
+        else
+        {
+            project.FeaturedOrder = null;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetRequiredProjectAsync(projectId, cancellationToken);
+    }
+
+    public async Task<bool> ReorderFeaturedProjectsAsync(
+        IReadOnlyCollection<int> orderedFeaturedProjectIds,
+        CancellationToken cancellationToken = default)
+    {
+        var distinctOrderedProjectIds = orderedFeaturedProjectIds
+            .Where(projectId => projectId > 0)
+            .Distinct()
+            .ToList();
+
+        var projectsForReorder = await dbContext.Projects
+            .Where(project => distinctOrderedProjectIds.Contains(project.Id))
+            .ToListAsync(cancellationToken);
+
+        if (projectsForReorder.Count != distinctOrderedProjectIds.Count)
+        {
+            return false;
+        }
+
+        var allFeaturedProjectIds = await dbContext.Projects
+            .Where(project => project.IsFeatured)
+            .Select(project => project.Id)
+            .ToListAsync(cancellationToken);
+
+        var currentFeaturedProjects = await dbContext.Projects
+            .Where(project => allFeaturedProjectIds.Contains(project.Id))
+            .ToListAsync(cancellationToken);
+
+        foreach (var project in currentFeaturedProjects)
+        {
+            project.IsFeatured = true;
+            project.FeaturedOrder = null;
+        }
+
+        var rankedProjects = distinctOrderedProjectIds
+            .Select((projectId, rank) => new { projectId, rank })
+            .ToDictionary(item => item.projectId, item => item.rank);
+
+        foreach (var project in projectsForReorder)
+        {
+            project.IsFeatured = true;
+            project.FeaturedOrder = rankedProjects[project.Id];
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     private IQueryable<Project> CreateProjectQuery()
