@@ -56,7 +56,7 @@ public sealed class FeaturedProjectSelectorTests
         {
             Assert.That(singleResult, Has.Count.EqualTo(1));
             Assert.That(cappedResult, Has.Count.EqualTo(5));
-            Assert.That(cappedResult.Select(item => item.Id).Distinct(), Has.Count.EqualTo(5));
+            Assert.That(cappedResult.Select(item => item.Id).Distinct().Count(), Is.EqualTo(5));
         });
     }
 
