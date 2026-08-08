@@ -71,6 +71,115 @@ public sealed class PortfolioProfileRepositoryTests
         });
     }
 
+    [Test]
+    public async Task GetSocialLinksAsync_ReturnsOnlyPublicProfileSocialLinks()
+    {
+        await using var dbContext = CreateDbContext();
+        dbContext.PortfolioProfiles.Add(new PortfolioProfile
+        {
+            DisplayName = "Visible Profile",
+            ContactHeadline = "Open for contact",
+            ContactIntro = "Visible profile",
+            IsPublic = true,
+            SocialLinks =
+            [
+                new PortfolioSocialLink
+                {
+                    Platform = "github",
+                    Label = "GitHub",
+                    Url = "https://github.com/darkdhamon",
+                    SortOrder = 2,
+                    IsVisible = true
+                },
+                new PortfolioSocialLink
+                {
+                    Platform = "linkedin",
+                    Label = "LinkedIn",
+                    Url = "https://www.linkedin.com/in/darkdhamon",
+                    SortOrder = 1,
+                    IsVisible = true
+                }
+            ]
+        });
+        dbContext.PortfolioProfiles.Add(new PortfolioProfile
+        {
+            DisplayName = "Hidden Profile",
+            ContactHeadline = "Draft profile",
+            ContactIntro = "Hidden profile",
+            IsPublic = false,
+            SocialLinks =
+            [
+                new PortfolioSocialLink
+                {
+                    Platform = "x",
+                    Label = "Private",
+                    Url = "https://x.com/private",
+                    SortOrder = 1,
+                    IsVisible = true
+                }
+            ]
+        });
+        await dbContext.SaveChangesAsync();
+
+        var repository = new PortfolioProfileRepository(dbContext);
+        var links = await repository.GetSocialLinksAsync();
+
+        Assert.That(links.Select(link => link.Label), Is.EqualTo(new[] { "GitHub", "LinkedIn" }));
+    }
+
+    [Test]
+    public async Task SaveSocialLinksAsync_UpdatesExistingAndAddsNewLinks()
+    {
+        await using var dbContext = CreateDbContext();
+        var profile = new PortfolioProfile
+        {
+            DisplayName = "Public Profile",
+            ContactHeadline = "Contact updates",
+            ContactIntro = "Contact section",
+            IsPublic = true,
+            SocialLinks =
+            [
+                new PortfolioSocialLink
+                {
+                    Platform = "github",
+                    Label = "GitHub",
+                    Url = "https://github.com/darkdhamon",
+                    SortOrder = 1,
+                    IsVisible = true
+                }
+            ]
+        };
+        dbContext.PortfolioProfiles.Add(profile);
+        await dbContext.SaveChangesAsync();
+
+        var repository = new PortfolioProfileRepository(dbContext);
+        var updated = await repository.SaveSocialLinksAsync(
+            [
+                new PortfolioSocialLink
+                {
+                    Id = profile.SocialLinks[0].Id,
+                    Platform = "github",
+                    Label = "GitHub Updated",
+                    Url = "https://github.com/darkdhamon/updated",
+                    SortOrder = 2,
+                    IsVisible = false
+                },
+                new PortfolioSocialLink
+                {
+                    Platform = "dev",
+                    Label = "DEV",
+                    Url = "https://dev.to/example",
+                    SortOrder = 1,
+                    IsVisible = true
+                }
+            ]);
+
+        Assert.That(updated, Has.Count.EqualTo(2));
+        Assert.That(updated.OrderBy(link => link.SortOrder).Select(link => link.Label), Is.EqualTo(new[] { "DEV", "GitHub Updated" }));
+        Assert.That(updated.Any(link => link.Label == "DEV"), Is.True);
+        Assert.That(updated.Any(link => link.Label == "GitHub Updated"), Is.True);
+    }
+
     private static PortfolioDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<PortfolioDbContext>()

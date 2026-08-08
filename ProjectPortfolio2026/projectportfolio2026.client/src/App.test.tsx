@@ -1298,6 +1298,35 @@ describe('App', () => {
         expect(window.location.pathname).toBe('/admin/resume/import');
     });
 
+    it('loads the social links section directly from /admin/social-links', async () => {
+        window.history.replaceState({}, '', '/admin/social-links');
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/admin/social-links', [
+            {
+                id: 2,
+                platform: 'github',
+                label: 'GitHub',
+                url: 'https://github.com/darkdhamon',
+                handle: '@darkdhamon',
+                summary: 'Primary code profile.',
+                sortOrder: 1,
+                isVisible: true
+            }
+        ]);
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Manage social links' })).toBeInTheDocument();
+        expect(await screen.findByLabelText('Platform 1')).toHaveValue('github');
+        expect(screen.getByRole('button', { name: 'Save social links' })).toBeInTheDocument();
+        expect(window.location.pathname).toBe('/admin/social-links');
+    });
+
     it('redirects direct account access to login when signed out', async () => {
         window.history.replaceState({}, '', '/admin/account');
         queueFetchJson('/api/auth/me', {
@@ -1410,6 +1439,11 @@ describe('App helpers', () => {
         expect(parseRoute({ pathname: '/admin/resume', search: '' })).toEqual({
             kind: 'admin',
             section: 'resume'
+        });
+
+        expect(parseRoute({ pathname: '/admin/social-links', search: '' })).toEqual({
+            kind: 'admin',
+            section: 'social-links'
         });
 
         expect(parseRoute({ pathname: '/admin/resume/import', search: '' })).toEqual({

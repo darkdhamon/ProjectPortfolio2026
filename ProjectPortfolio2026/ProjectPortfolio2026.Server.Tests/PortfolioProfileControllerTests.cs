@@ -113,10 +113,23 @@ public sealed class PortfolioProfileControllerTests
     private sealed class StubPortfolioProfileRepository : IPortfolioProfileRepository
     {
         public PortfolioProfile? Profile { get; set; }
+        public List<PortfolioSocialLink> SocialLinks { get; set; } = [];
+        public List<PortfolioSocialLink>? SavedLinks { get; private set; }
 
         public Task<PortfolioProfile?> GetPublicAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Profile);
+        }
+
+        public Task<List<PortfolioSocialLink>> GetSocialLinksAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(SocialLinks);
+        }
+
+        public Task<List<PortfolioSocialLink>> SaveSocialLinksAsync(IEnumerable<PortfolioSocialLink> socialLinks, CancellationToken cancellationToken = default)
+        {
+            SavedLinks = socialLinks.ToList();
+            return Task.FromResult(SavedLinks);
         }
     }
 
