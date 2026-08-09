@@ -30,6 +30,12 @@ const emptyLink: Omit<EditableSocialLink, 'localId'> = {
     isVisible: true
 };
 
+const maxPlatformLength = 50;
+const maxLabelLength = 100;
+const maxUrlLength = 500;
+const maxHandleLength = 150;
+const maxSummaryLength = 500;
+
 function createRow(localId: string, draft: AdminPortfolioSocialLink | Omit<EditableSocialLink, 'localId'>, sortOrder: number): EditableSocialLink {
     return {
         localId,
@@ -261,6 +267,7 @@ export function SocialLinksSection() {
                                 <input
                                     type="text"
                                     value={link.platform}
+                                    maxLength={maxPlatformLength}
                                     onChange={(event: ChangeEvent<HTMLInputElement>) => updateLink(link.localId, 'platform', event.target.value)}
                                     disabled={isSaving}
                                     aria-label={`Platform ${index + 1}`}
@@ -275,6 +282,7 @@ export function SocialLinksSection() {
                                 <input
                                     type="text"
                                     value={link.label}
+                                    maxLength={maxLabelLength}
                                     onChange={(event: ChangeEvent<HTMLInputElement>) => updateLink(link.localId, 'label', event.target.value)}
                                     disabled={isSaving}
                                     aria-label={`Label ${index + 1}`}
@@ -289,6 +297,7 @@ export function SocialLinksSection() {
                                 <input
                                     type="url"
                                     value={link.url}
+                                    maxLength={maxUrlLength}
                                     onChange={(event: ChangeEvent<HTMLInputElement>) => updateLink(link.localId, 'url', event.target.value)}
                                     disabled={isSaving}
                                     aria-label={`URL ${index + 1}`}
@@ -303,6 +312,7 @@ export function SocialLinksSection() {
                                 <input
                                     type="text"
                                     value={link.handle}
+                                    maxLength={maxHandleLength}
                                     onChange={(event: ChangeEvent<HTMLInputElement>) => updateLink(link.localId, 'handle', event.target.value)}
                                     disabled={isSaving}
                                     aria-label={`Handle ${index + 1}`}
@@ -313,6 +323,7 @@ export function SocialLinksSection() {
                                 <span>Summary</span>
                                 <textarea
                                     value={link.summary}
+                                    maxLength={maxSummaryLength}
                                     onChange={(event: ChangeEvent<HTMLTextAreaElement>) => updateLink(link.localId, 'summary', event.target.value)}
                                     disabled={isSaving}
                                     aria-label={`Summary ${index + 1}`}

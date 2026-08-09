@@ -12,6 +12,12 @@ namespace ProjectPortfolio2026.Server.Controllers;
 [Authorize(Roles = RoleNames.Admin)]
 public sealed class AdminSocialLinksController(IPortfolioProfileRepository portfolioProfileRepository) : ControllerBase
 {
+    private const int MaxHandleLength = 150;
+    private const int MaxLabelLength = 100;
+    private const int MaxPlatformLength = 50;
+    private const int MaxSummaryLength = 500;
+    private const int MaxUrlLength = 500;
+
     [HttpGet]
     [ProducesResponseType<List<AdminSocialLinkResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<List<AdminSocialLinkResponse>>> GetAsync(CancellationToken cancellationToken)
@@ -68,16 +74,45 @@ public sealed class AdminSocialLinksController(IPortfolioProfileRepository portf
             {
                 errors[$"{entryKey}.platform"] = ["A platform is required for each social link."];
             }
+            else if (platform.Length > MaxPlatformLength)
+            {
+                errors[$"{entryKey}.platform"] = ["A platform must be 50 characters or fewer."];
+            }
 
             var label = link.Label?.Trim();
             if (string.IsNullOrWhiteSpace(label))
             {
                 errors[$"{entryKey}.label"] = ["A label is required for each social link."];
             }
+            else if (label.Length > MaxLabelLength)
+            {
+                errors[$"{entryKey}.label"] = ["A label must be 100 characters or fewer."];
+            }
 
-            if (!IsValidAbsoluteHttpUrl(link.Url))
+            var url = link.Url?.Trim();
+            if (string.IsNullOrWhiteSpace(url))
             {
                 errors[$"{entryKey}.url"] = ["A valid http or https URL is required for each social link."];
+            }
+            else if (url.Length > MaxUrlLength)
+            {
+                errors[$"{entryKey}.url"] = ["A URL must be 500 characters or fewer."];
+            }
+            else if (!IsValidAbsoluteHttpUrl(url))
+            {
+                errors[$"{entryKey}.url"] = ["A valid http or https URL is required for each social link."];
+            }
+
+            var handle = link.Handle?.Trim();
+            if (!string.IsNullOrWhiteSpace(handle) && handle.Length > MaxHandleLength)
+            {
+                errors[$"{entryKey}.handle"] = ["A handle must be 150 characters or fewer."];
+            }
+
+            var summary = link.Summary?.Trim();
+            if (!string.IsNullOrWhiteSpace(summary) && summary.Length > MaxSummaryLength)
+            {
+                errors[$"{entryKey}.summary"] = ["A summary must be 500 characters or fewer."];
             }
         }
 

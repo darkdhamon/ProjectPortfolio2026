@@ -75,6 +75,26 @@ public sealed class AdminSocialLinksControllerTests
         Assert.That(validationProblem?.Errors, Contains.Key("socialLinks[0].platform"));
     }
 
+    [TestCase("platform", 51, "socialLinks[0].platform")]
+    [TestCase("label", 101, "socialLinks[0].label")]
+    [TestCase("url", 501, "socialLinks[0].url")]
+    [TestCase("handle", 151, "socialLinks[0].handle")]
+    [TestCase("summary", 501, "socialLinks[0].summary")]
+    public async Task UpdateAsync_ReturnsValidationProblemWhenFieldExceedsDatabaseLimit(
+        string field,
+        int length,
+        string expectedErrorKey)
+    {
+        var repository = new StubPortfolioProfileRepository();
+        var controller = CreateController(repository);
+
+        var actionResult = await controller.UpdateAsync(CreateRequestWithFieldLength(field, length), CancellationToken.None);
+
+        Assert.That(actionResult.Result, Is.InstanceOf<BadRequestObjectResult>());
+        var validationProblem = (actionResult.Result as BadRequestObjectResult)?.Value as ValidationProblemDetails;
+        Assert.That(validationProblem?.Errors, Contains.Key(expectedErrorKey));
+    }
+
     [Test]
     public async Task UpdateAsync_PersistsNormalizedSocialLinks()
     {
@@ -113,6 +133,37 @@ public sealed class AdminSocialLinksControllerTests
             Assert.That(response![0].Label, Is.EqualTo("GitHub Profile"));
             Assert.That(response![0].Url, Is.EqualTo("https://github.com/darkdhamon"));
         });
+    }
+
+    private static AdminSocialLinksUpdateRequest CreateRequestWithFieldLength(string field, int length)
+    {
+        var excessiveValue = new string('a', length);
+
+        return new AdminSocialLinksUpdateRequest
+        {
+            SocialLinks =
+            [
+                new AdminSocialLinkRequest
+                {
+                    Platform = field == "platform" ? excessiveValue : "github",
+                    Label = field == "label" ? excessiveValue : "GitHub",
+                    Url = field == "url" ? BuildLongUrl(length) : "https://github.com/darkdhamon",
+                    Handle = field == "handle" ? excessiveValue : "handle",
+                    Summary = field == "summary" ? excessiveValue : "summary"
+                }
+            ]
+        };
+    }
+
+    private static string BuildLongUrl(int length)
+    {
+        const string urlPrefix = "https://example.com/";
+        if (length <= urlPrefix.Length)
+        {
+            return urlPrefix[..length];
+        }
+
+        return $"{urlPrefix}{new string('a', length - urlPrefix.Length)}";
     }
 
     private static AdminSocialLinksController CreateController(IPortfolioProfileRepository repository)
