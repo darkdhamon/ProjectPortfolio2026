@@ -78,4 +78,22 @@ public sealed class FeaturedProjectSelectorTests
         Assert.That(result.Select(project => project.Id), Has.All.InRange(1, 4));
         Assert.That(result, Has.Count.EqualTo(2));
     }
+
+    [Test]
+    public void Select_OrdersFeaturedProjectsByFeaturedOrderAndFallbacksToStartDateTitle()
+    {
+        var selector = new FeaturedProjectSelector();
+        var publishedProjects = new List<ProjectListItem>
+        {
+            new() { Id = 1, Title = "NoRankLater", IsFeatured = true, StartDate = new DateOnly(2026, 2, 1) },
+            new() { Id = 2, Title = "TopRank", IsFeatured = true, FeaturedOrder = 0, StartDate = new DateOnly(2025, 1, 1) },
+            new() { Id = 3, Title = "NoRankLatest", IsFeatured = true, StartDate = new DateOnly(2026, 8, 1) },
+            new() { Id = 4, Title = "SecondRank", IsFeatured = true, FeaturedOrder = 1, StartDate = new DateOnly(2026, 1, 1) },
+            new() { Id = 5, Title = "SecondLatestTiebreak", IsFeatured = true, StartDate = new DateOnly(2026, 8, 1) }
+        };
+
+        var result = selector.Select(publishedProjects, 5);
+
+        Assert.That(result.Select(item => item.Id), Is.EqualTo(new[] { 2, 4, 3, 5, 1 }));
+    }
 }
