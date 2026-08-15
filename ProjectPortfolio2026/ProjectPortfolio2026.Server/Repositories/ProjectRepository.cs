@@ -23,7 +23,7 @@ public sealed class ProjectRepository(
     public async Task<Project?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         return await CreateProjectQuery()
-            .SingleOrDefaultAsync(project => project.Id == id, cancellationToken);
+            .SingleOrDefaultAsync(project => project.Id == id && !project.IsArchived, cancellationToken);
     }
 
     public async Task<ProjectListPage> ListAsync(
@@ -309,7 +309,8 @@ public sealed class ProjectRepository(
 
     private async Task<Project> GetRequiredProjectAsync(int id, CancellationToken cancellationToken)
     {
-        return await GetByIdAsync(id, cancellationToken)
+        return await CreateProjectQuery()
+            .SingleOrDefaultAsync(project => project.Id == id, cancellationToken)
             ?? throw new InvalidOperationException($"Project {id} was expected to exist after persistence.");
     }
 
