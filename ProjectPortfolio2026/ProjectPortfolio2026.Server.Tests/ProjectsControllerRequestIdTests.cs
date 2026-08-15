@@ -257,6 +257,14 @@ public sealed class ProjectsControllerRequestIdTests
             return Task.FromResult<Project?>(null);
         }
 
+        public Task<Project?> SetArchivedStateAsync(
+            int projectId,
+            bool isArchived,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Project?>(null);
+        }
+
         public Task<bool> ReorderFeaturedProjectsAsync(
             IReadOnlyCollection<int> orderedFeaturedProjectIds,
             CancellationToken cancellationToken = default)

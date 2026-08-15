@@ -24,6 +24,10 @@ public sealed class ProjectSummaryResponse : ApiResponseDto
 
     public int? FeaturedOrder { get; set; }
 
+    public bool IsArchived { get; set; }
+
+    public DateTimeOffset? ArchivedAt { get; set; }
+
     public List<string> Skills { get; set; } = [];
 
     public List<string> Technologies { get; set; } = [];

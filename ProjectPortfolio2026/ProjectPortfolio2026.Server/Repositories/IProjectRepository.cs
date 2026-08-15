@@ -27,6 +27,11 @@ public interface IProjectRepository
         bool isFeatured,
         CancellationToken cancellationToken = default);
 
+    Task<Project?> SetArchivedStateAsync(
+        int projectId,
+        bool isArchived,
+        CancellationToken cancellationToken = default);
+
     Task<bool> ReorderFeaturedProjectsAsync(
         IReadOnlyCollection<int> orderedFeaturedProjectIds,
         CancellationToken cancellationToken = default);

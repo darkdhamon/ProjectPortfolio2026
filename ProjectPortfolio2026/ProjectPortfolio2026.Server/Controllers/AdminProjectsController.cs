@@ -34,6 +34,42 @@ public sealed class AdminProjectsController(IProjectRepository projectRepository
         return Ok(updatedProject.ToResponse());
     }
 
+    [HttpPut("{id:int}/archive")]
+    [ValidateAntiForgeryToken]
+    [ProducesResponseType<ProjectResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ProjectResponse>> ArchiveAsync(int id, CancellationToken cancellationToken)
+    {
+        var updatedProject = await projectRepository.SetArchivedStateAsync(id, true, cancellationToken);
+        if (updatedProject is null)
+        {
+            return NotFound(new ApiErrorResponse
+            {
+                Message = "The requested project could not be found."
+            });
+        }
+
+        return Ok(updatedProject.ToResponse());
+    }
+
+    [HttpPut("{id:int}/restore")]
+    [ValidateAntiForgeryToken]
+    [ProducesResponseType<ProjectResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ProjectResponse>> RestoreAsync(int id, CancellationToken cancellationToken)
+    {
+        var updatedProject = await projectRepository.SetArchivedStateAsync(id, false, cancellationToken);
+        if (updatedProject is null)
+        {
+            return NotFound(new ApiErrorResponse
+            {
+                Message = "The requested project could not be found."
+            });
+        }
+
+        return Ok(updatedProject.ToResponse());
+    }
+
     [HttpPut("featured-order")]
     [ValidateAntiForgeryToken]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

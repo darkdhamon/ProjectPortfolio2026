@@ -121,6 +121,77 @@ public sealed class AdminProjectsControllerTests
         Assert.That(repository.LastOrder, Is.EqualTo(new[] { 10, 11 }));
     }
 
+    [Test]
+    public async Task ArchiveAsync_ReturnsUpdatedProject_WhenProjectExists()
+    {
+        var repository = new StubProjectRepository
+        {
+            Projects = [new Project
+            {
+                Id = 10,
+                Title = "Portfolio Refresh",
+                StartDate = new DateOnly(2026, 4, 1),
+                ShortDescription = "Portfolio project.",
+                LongDescriptionMarkdown = "Portfolio details.",
+                IsPublished = true
+            }]
+        };
+
+        var controller = new AdminProjectsController(repository);
+
+        var actionResult = await controller.ArchiveAsync(10, default);
+        var okResult = actionResult.Result as OkObjectResult;
+        var response = okResult?.Value as ProjectResponse;
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response!.IsArchived, Is.True);
+        Assert.That(response.ArchivedAt, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task RestoreAsync_ReturnsUpdatedProject_WhenProjectExists()
+    {
+        var repository = new StubProjectRepository
+        {
+            Projects = [new Project
+            {
+                Id = 10,
+                Title = "Portfolio Refresh",
+                StartDate = new DateOnly(2026, 4, 1),
+                ShortDescription = "Portfolio project.",
+                LongDescriptionMarkdown = "Portfolio details.",
+                IsPublished = true,
+                IsArchived = true,
+                ArchivedAt = new DateTimeOffset(2026, 4, 1, 10, 0, 0, TimeSpan.Zero)
+            }]
+        };
+
+        var controller = new AdminProjectsController(repository);
+
+        var actionResult = await controller.RestoreAsync(10, default);
+        var okResult = actionResult.Result as OkObjectResult;
+        var response = okResult?.Value as ProjectResponse;
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response!.IsArchived, Is.False);
+        Assert.That(response.ArchivedAt, Is.Null);
+    }
+
+    [Test]
+    public async Task ArchiveAsync_ReturnsNotFound_WhenProjectMissing()
+    {
+        var repository = new StubProjectRepository();
+        var controller = new AdminProjectsController(repository);
+
+        var actionResult = await controller.ArchiveAsync(999, default);
+        var notFoundResult = actionResult.Result as NotFoundObjectResult;
+        var payload = notFoundResult?.Value as ApiErrorResponse;
+
+        Assert.That(notFoundResult, Is.Not.Null);
+        Assert.That(payload, Is.Not.Null);
+        Assert.That(payload!.Message, Is.EqualTo("The requested project could not be found."));
+    }
+
     private sealed class StubProjectRepository : IProjectRepository
     {
         public List<Project> Projects { get; init; } = [];
@@ -174,6 +245,21 @@ public sealed class AdminProjectsControllerTests
 
             project.IsFeatured = isFeatured;
             project.FeaturedOrder = isFeatured ? 0 : null;
+            return Task.FromResult<Project?>(project);
+        }
+
+        public Task<Project?> SetArchivedStateAsync(int projectId, bool isArchived, CancellationToken cancellationToken = default)
+        {
+            var project = Projects.SingleOrDefault(existing => existing.Id == projectId);
+            if (project is null)
+            {
+                return Task.FromResult<Project?>(null);
+            }
+
+            project.IsArchived = isArchived;
+            project.ArchivedAt = isArchived
+                ? new DateTimeOffset(2026, 4, 1, 10, 0, 0, TimeSpan.Zero)
+                : null;
             return Task.FromResult<Project?>(project);
         }
 

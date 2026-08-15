@@ -43,7 +43,7 @@ public sealed class ProjectRepository(
             .ToList();
 
         var query = CreateProjectQuery()
-            .Where(project => project.IsPublished);
+            .Where(project => project.IsPublished && !project.IsArchived);
 
         if (!string.IsNullOrWhiteSpace(normalizedSearch))
         {
@@ -87,6 +87,8 @@ public sealed class ProjectRepository(
                 DemoUrl = project.DemoUrl,
                 IsFeatured = project.IsFeatured,
                 FeaturedOrder = project.FeaturedOrder,
+                IsArchived = project.IsArchived,
+                ArchivedAt = project.ArchivedAt,
                 Skills = project.ProjectTags
                     .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
                     .Select(projectTag => projectTag.Tag!.DisplayName)
@@ -102,6 +104,7 @@ public sealed class ProjectRepository(
 
         var availableSkills = await CreateProjectQuery()
             .Where(project => project.IsPublished)
+            .Where(project => !project.IsArchived)
             .SelectMany(project => project.ProjectTags
                 .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
                 .Select(projectTag => projectTag.Tag!.DisplayName))
@@ -125,7 +128,7 @@ public sealed class ProjectRepository(
         CancellationToken cancellationToken = default)
     {
         var publishedProjects = await CreateProjectQuery()
-            .Where(project => project.IsPublished)
+            .Where(project => project.IsPublished && !project.IsArchived)
             .OrderByDescending(project => project.StartDate)
             .ThenBy(project => project.Title)
             .Select(project => new ProjectListItem
@@ -140,6 +143,8 @@ public sealed class ProjectRepository(
                 DemoUrl = project.DemoUrl,
                 IsFeatured = project.IsFeatured,
                 FeaturedOrder = project.FeaturedOrder,
+                IsArchived = project.IsArchived,
+                ArchivedAt = project.ArchivedAt,
                 Skills = project.ProjectTags
                     .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
                     .Select(projectTag => projectTag.Tag!.DisplayName)
@@ -215,6 +220,28 @@ public sealed class ProjectRepository(
         {
             project.FeaturedOrder = null;
         }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetRequiredProjectAsync(projectId, cancellationToken);
+    }
+
+    public async Task<Project?> SetArchivedStateAsync(
+        int projectId,
+        bool isArchived,
+        CancellationToken cancellationToken = default)
+    {
+        var project = await dbContext.Projects
+            .SingleOrDefaultAsync(existingProject => existingProject.Id == projectId, cancellationToken);
+
+        if (project is null)
+        {
+            return null;
+        }
+
+        project.IsArchived = isArchived;
+        project.ArchivedAt = isArchived
+            ? DateTimeOffset.UtcNow
+            : null;
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRequiredProjectAsync(projectId, cancellationToken);
