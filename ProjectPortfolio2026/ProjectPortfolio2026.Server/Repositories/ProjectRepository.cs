@@ -123,6 +123,100 @@ public sealed class ProjectRepository(
         };
     }
 
+    public async Task<ProjectListPage> ListAdminAsync(
+        string? search,
+        IReadOnlyCollection<string> skillFilters,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedPage = Math.Max(page, 1);
+        var normalizedPageSize = Math.Clamp(pageSize, 1, 50);
+        var normalizedSearch = search?.Trim();
+        var normalizedSkillFilters = skillFilters
+            .Where(skill => !string.IsNullOrWhiteSpace(skill))
+            .Select(skill => skill.Trim().ToUpperInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var query = CreateProjectQuery();
+
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            query = query.Where(project =>
+                EF.Functions.Like(project.Title, $"%{normalizedSearch}%") ||
+                EF.Functions.Like(project.ShortDescription, $"%{normalizedSearch}%") ||
+                EF.Functions.Like(project.LongDescriptionMarkdown, $"%{normalizedSearch}%") ||
+                project.ProjectTags.Any(projectTag => EF.Functions.Like(projectTag.Tag!.DisplayName, $"%{normalizedSearch}%")));
+        }
+
+        if (normalizedSkillFilters.Count > 0)
+        {
+            foreach (var filter in normalizedSkillFilters)
+            {
+                var skillFilter = filter;
+                query = query.Where(project =>
+                    project.ProjectTags.Any(projectTag =>
+                        projectTag.Tag!.Category == TagCategory.Skill &&
+                        projectTag.Tag.NormalizedName == skillFilter));
+            }
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderBy(project => project.EndDate.HasValue ? 1 : 0)
+            .ThenByDescending(project => project.EndDate ?? project.StartDate)
+            .ThenByDescending(project => project.StartDate)
+            .ThenBy(project => project.Title)
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .Select(project => new ProjectListItem
+            {
+                Id = project.Id,
+                Title = project.Title,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                PrimaryImageUrl = project.PrimaryImageUrl,
+                ShortDescription = project.ShortDescription,
+                GitHubUrl = project.GitHubUrl,
+                DemoUrl = project.DemoUrl,
+                IsFeatured = project.IsFeatured,
+                FeaturedOrder = project.FeaturedOrder,
+                IsArchived = project.IsArchived,
+                ArchivedAt = project.ArchivedAt,
+                Skills = project.ProjectTags
+                    .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
+                    .Select(projectTag => projectTag.Tag!.DisplayName)
+                    .OrderBy(skill => skill)
+                    .ToList(),
+                Technologies = project.ProjectTags
+                    .Where(projectTag => projectTag.Tag!.Category == TagCategory.Technology)
+                    .Select(projectTag => projectTag.Tag!.DisplayName)
+                    .OrderBy(technology => technology)
+                    .ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        var availableSkills = await CreateProjectQuery()
+            .SelectMany(project => project.ProjectTags
+                .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
+                .Select(projectTag => projectTag.Tag!.DisplayName))
+            .Distinct()
+            .OrderBy(skill => skill)
+            .ToListAsync(cancellationToken);
+
+        return new ProjectListPage
+        {
+            Items = items,
+            Page = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalCount = totalCount,
+            HasMore = (normalizedPage * normalizedPageSize) < totalCount,
+            AvailableSkills = availableSkills
+        };
+    }
+
     public async Task<IReadOnlyList<ProjectListItem>> ListFeaturedAsync(
         int limit,
         CancellationToken cancellationToken = default)
@@ -236,6 +330,11 @@ public sealed class ProjectRepository(
         if (project is null)
         {
             return null;
+        }
+
+        if (project.IsArchived == isArchived)
+        {
+            return project;
         }
 
         project.IsArchived = isArchived;

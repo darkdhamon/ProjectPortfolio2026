@@ -12,7 +12,7 @@ export interface ProjectFeaturedOrderRequest {
 export async function fetchAdminProjects(signal?: AbortSignal): Promise<ProjectSummary[]> {
     const requestId = crypto.randomUUID();
     const response = await fetchJsonWithStartupRetry<ProjectListResponse>(
-        `/api/projects?page=1&pageSize=50&requestId=${requestId}`,
+        `/api/admin/projects?page=1&pageSize=50&requestId=${requestId}`,
         {
             signal: signal ?? new AbortController().signal
         },

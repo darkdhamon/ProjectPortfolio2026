@@ -192,6 +192,33 @@ public sealed class AdminProjectsControllerTests
         Assert.That(payload!.Message, Is.EqualTo("The requested project could not be found."));
     }
 
+    [Test]
+    public async Task ListAsync_ReturnsProjectSummaries()
+    {
+        var repository = new StubProjectRepository
+        {
+            Projects = [new Project
+            {
+                Id = 10,
+                Title = "Portfolio Refresh",
+                StartDate = new DateOnly(2026, 4, 1),
+                ShortDescription = "Portfolio project.",
+                LongDescriptionMarkdown = "Portfolio details.",
+                IsPublished = true
+            }]
+        };
+
+        var controller = new AdminProjectsController(repository);
+
+        var actionResult = await controller.ListAsync(new ProjectListQueryRequest(), default);
+        var okResult = actionResult.Result as OkObjectResult;
+        var response = okResult?.Value as ProjectListResponse;
+
+        Assert.That(okResult, Is.Not.Null);
+        Assert.That(response?.Items, Has.Count.EqualTo(1));
+        Assert.That(response!.Items[0].Title, Is.EqualTo("Portfolio Refresh"));
+    }
+
     private sealed class StubProjectRepository : IProjectRepository
     {
         public List<Project> Projects { get; init; } = [];
@@ -218,6 +245,33 @@ public sealed class AdminProjectsControllerTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new ProjectListPage());
+        }
+
+        public Task<ProjectListPage> ListAdminAsync(
+            string? search,
+            IReadOnlyCollection<string> skillFilters,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new ProjectListPage
+            {
+                Items = Projects
+                    .Select(project => new ProjectListItem
+                    {
+                        Id = project.Id,
+                        Title = project.Title,
+                        StartDate = project.StartDate,
+                        ShortDescription = project.ShortDescription,
+                        IsArchived = project.IsArchived,
+                        IsFeatured = project.IsFeatured,
+                        FeaturedOrder = project.FeaturedOrder
+                    })
+                    .ToList(),
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = Projects.Count
+            });
         }
 
         public Task<IReadOnlyList<ProjectListItem>> ListFeaturedAsync(

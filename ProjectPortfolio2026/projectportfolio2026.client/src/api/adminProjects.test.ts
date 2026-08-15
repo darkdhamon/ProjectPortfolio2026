@@ -50,7 +50,7 @@ describe('adminProjects api helpers', () => {
         const projects = await fetchAdminProjects();
 
         expect(projects).toHaveLength(1);
-        expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=50&requestId=request-103', expect.objectContaining({
+        expect(fetchMock).toHaveBeenCalledWith('/api/admin/projects?page=1&pageSize=50&requestId=request-103', expect.objectContaining({
             signal: expect.any(AbortSignal)
         }));
     });

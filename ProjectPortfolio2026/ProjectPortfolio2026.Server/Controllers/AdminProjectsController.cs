@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProjectPortfolio2026.Server.Contracts;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Domain.Identity;
+using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Mappers;
 using ProjectPortfolio2026.Server.Repositories;
 
@@ -13,6 +14,35 @@ namespace ProjectPortfolio2026.Server.Controllers;
 [Authorize(Roles = RoleNames.Admin)]
 public sealed class AdminProjectsController(IProjectRepository projectRepository) : ControllerBase
 {
+    [HttpGet]
+    [ProducesResponseType<ProjectListResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ProjectListResponse>> ListAsync(
+        [FromQuery] ProjectListQueryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var projects = await projectRepository.ListAdminAsync(
+            request.Search,
+            ParseSkills(request.Skills),
+            request.Page,
+            request.PageSize,
+            cancellationToken);
+
+        var requestId = HttpContext?.Items[RequestIdContext.ItemKey] as string;
+
+        return Ok(new ProjectListResponse
+        {
+            RequestId = requestId,
+            Items = projects.Items
+                .Select(project => project.ToResponse(requestId))
+                .ToList(),
+            Page = projects.Page,
+            PageSize = projects.PageSize,
+            TotalCount = projects.TotalCount,
+            HasMore = projects.HasMore,
+            AvailableSkills = projects.AvailableSkills.ToList()
+        });
+    }
+
     [HttpPut("{id:int}/featured-state")]
     [ValidateAntiForgeryToken]
     [ProducesResponseType<ProjectResponse>(StatusCodes.Status200OK)]
@@ -90,5 +120,15 @@ public sealed class AdminProjectsController(IProjectRepository projectRepository
         }
 
         return NoContent();
+    }
+
+    private static IReadOnlyCollection<string> ParseSkills(string? skills)
+    {
+        return string.IsNullOrWhiteSpace(skills)
+            ? []
+            : skills
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
     }
 }

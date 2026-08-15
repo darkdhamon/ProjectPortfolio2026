@@ -277,6 +277,44 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task ListAdminAsync_IncludesArchivedProjectsInResult()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Archived Project",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Historical project.",
+            LongDescriptionMarkdown = "Archived content.",
+            IsPublished = true,
+            IsArchived = true,
+            ProjectTags = [CreateProjectTag(TagCategory.Skill, "React")]
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Active Project",
+            StartDate = new DateOnly(2026, 3, 1),
+            ShortDescription = "Live project.",
+            LongDescriptionMarkdown = "Available to public.",
+            IsPublished = true,
+            IsArchived = false,
+            ProjectTags = [CreateProjectTag(TagCategory.Skill, "Blazor")]
+        });
+
+        var page = await repository.ListAdminAsync(null, [], 1, 10);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.TotalCount, Is.EqualTo(2));
+            Assert.That(page.Items, Has.Count.EqualTo(2));
+            Assert.That(page.Items.Select(item => item.IsArchived), Is.EquivalentTo(new[] { true, false }));
+        });
+    }
+
+    [Test]
     public async Task ListFeaturedAsync_ReturnsAtMostFiveFeaturedProjects_WhenEnoughFeaturedProjectsExist()
     {
         await using var dbContext = CreateDbContext();
@@ -627,6 +665,30 @@ public sealed class ProjectRepositoryTests
         Assert.That(restored, Is.Not.Null);
         Assert.That(restored!.IsArchived, Is.False);
         Assert.That(restored.ArchivedAt, Is.Null);
+    }
+
+    [Test]
+    public async Task SetArchivedStateAsync_DoesNotRefreshTimestamp_WhenAlreadyArchived()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var project = await repository.AddAsync(new Project
+        {
+            Title = "Retry Project",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Live project.",
+            LongDescriptionMarkdown = "Project body.",
+            IsPublished = true
+        });
+
+        var archived = await repository.SetArchivedStateAsync(project.Id, true);
+        var archivedAtAtInitialArchive = archived?.ArchivedAt;
+
+        var archivedAgain = await repository.SetArchivedStateAsync(project.Id, true);
+
+        Assert.That(archivedAgain, Is.Not.Null);
+        Assert.That(archivedAgain!.ArchivedAt, Is.EqualTo(archivedAtAtInitialArchive));
     }
 
     private static PortfolioDbContext CreateDbContext()

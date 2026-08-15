@@ -261,6 +261,16 @@ public sealed class ProjectsControllerRequestIdTests
             return Task.FromResult(ListResult);
         }
 
+        public Task<ProjectListPage> ListAdminAsync(
+            string? search,
+            IReadOnlyCollection<string> skillFilters,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new ProjectListPage());
+        }
+
         public Task<IReadOnlyList<ProjectListItem>> ListFeaturedAsync(
             int limit,
             CancellationToken cancellationToken = default)
