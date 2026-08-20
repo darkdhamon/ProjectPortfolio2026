@@ -237,6 +237,11 @@ public sealed class ProjectsControllerRequestIdTests
             return Task.FromResult(FeaturedResult);
         }
 
+        public Task<IReadOnlyList<ProjectListItem>> ListAllAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult((IReadOnlyList<ProjectListItem>)[]);
+        }
+
         public Task<Project?> UpdateAsync(Project project, CancellationToken cancellationToken = default)
         {
             var existingIndex = Projects.FindIndex(existing => existing.Id == project.Id);

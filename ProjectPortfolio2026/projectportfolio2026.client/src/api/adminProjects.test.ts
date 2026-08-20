@@ -11,9 +11,6 @@ const fetchMock = vi.fn<typeof fetch>();
 describe('adminProjects api helpers', () => {
     beforeEach(() => {
         vi.stubGlobal('fetch', fetchMock);
-        vi.stubGlobal('crypto', {
-            randomUUID: vi.fn(() => 'request-103')
-        });
         document.cookie = `${csrfCookieName}=csrf-token-value`;
     });
 
@@ -24,9 +21,7 @@ describe('adminProjects api helpers', () => {
     });
 
     it('fetches project summaries for admin with a default page', async () => {
-        fetchMock.mockResolvedValueOnce(jsonResponse({
-            requestId: 'request-103',
-            items: [
+        fetchMock.mockResolvedValueOnce(jsonResponse([
                 {
                     id: 10,
                     title: 'Portfolio Refresh',
@@ -39,18 +34,13 @@ describe('adminProjects api helpers', () => {
                     skills: ['React'],
                     technologies: ['TypeScript']
                 }
-            ],
-            page: 1,
-            pageSize: 50,
-            totalCount: 1,
-            hasMore: false,
-            availableSkills: ['React', 'TypeScript']
-        }));
+            ]));
 
         const projects = await fetchAdminProjects();
 
         expect(projects).toHaveLength(1);
-        expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=50&requestId=request-103', expect.objectContaining({
+        expect(fetchMock).toHaveBeenCalledWith('/api/admin/projects', expect.objectContaining({
+            credentials: 'include',
             signal: expect.any(AbortSignal)
         }));
     });

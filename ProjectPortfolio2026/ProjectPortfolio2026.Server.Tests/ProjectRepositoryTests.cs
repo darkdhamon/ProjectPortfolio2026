@@ -524,6 +524,71 @@ public sealed class ProjectRepositoryTests
         Assert.That(isUpdated, Is.False);
     }
 
+    [Test]
+    public async Task ReorderFeaturedProjectsAsync_ReturnsFalse_WhenProjectIsNotFeatured()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var featuredProject = await repository.AddAsync(new Project
+        {
+            Title = "Featured",
+            StartDate = new DateOnly(2026, 1, 1),
+            ShortDescription = "Featured project.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = true,
+            FeaturedOrder = 0
+        });
+        var unfeaturedProject = await repository.AddAsync(new Project
+        {
+            Title = "Not featured",
+            StartDate = new DateOnly(2026, 2, 1),
+            ShortDescription = "Available project.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = false
+        });
+
+        var isUpdated = await repository.ReorderFeaturedProjectsAsync([
+            featuredProject.Id,
+            unfeaturedProject.Id
+        ]);
+
+        Assert.That(isUpdated, Is.False);
+        var unchangedProject = await repository.GetByIdAsync(unfeaturedProject.Id);
+        Assert.That(unchangedProject!.IsFeatured, Is.False);
+        Assert.That(unchangedProject.FeaturedOrder, Is.Null);
+    }
+
+    [Test]
+    public async Task ListAllAsync_IncludesUnpublishedProjects()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Published",
+            StartDate = new DateOnly(2026, 1, 1),
+            ShortDescription = "Published project.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true
+        });
+        await repository.AddAsync(new Project
+        {
+            Title = "Draft",
+            StartDate = new DateOnly(2026, 2, 1),
+            ShortDescription = "Draft project.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = false
+        });
+
+        var projects = await repository.ListAllAsync();
+
+        Assert.That(projects.Select(project => project.Title), Is.EquivalentTo(new[] { "Published", "Draft" }));
+    }
+
     private static PortfolioDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<PortfolioDbContext>()

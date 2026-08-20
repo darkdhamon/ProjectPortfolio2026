@@ -13,6 +13,14 @@ namespace ProjectPortfolio2026.Server.Controllers;
 [Authorize(Roles = RoleNames.Admin)]
 public sealed class AdminProjectsController(IProjectRepository projectRepository) : ControllerBase
 {
+    [HttpGet]
+    [ProducesResponseType<IReadOnlyList<ProjectSummaryResponse>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<ProjectSummaryResponse>>> ListAsync(CancellationToken cancellationToken)
+    {
+        var projects = await projectRepository.ListAllAsync(cancellationToken);
+        return Ok(projects.Select(project => project.ToResponse()).ToList());
+    }
+
     [HttpPut("{id:int}/featured-state")]
     [ValidateAntiForgeryToken]
     [ProducesResponseType<ProjectResponse>(StatusCodes.Status200OK)]

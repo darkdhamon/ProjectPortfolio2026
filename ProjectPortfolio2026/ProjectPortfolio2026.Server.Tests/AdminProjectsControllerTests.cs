@@ -12,6 +12,27 @@ namespace ProjectPortfolio2026.Server.Tests;
 public sealed class AdminProjectsControllerTests
 {
     [Test]
+    public async Task ListAsync_ReturnsPublishedAndUnpublishedProjects()
+    {
+        var repository = new StubProjectRepository
+        {
+            Projects = [
+                new Project { Id = 10, Title = "Published", IsPublished = true },
+                new Project { Id = 11, Title = "Draft", IsPublished = false }
+            ]
+        };
+
+        var controller = new AdminProjectsController(repository);
+
+        var actionResult = await controller.ListAsync(default);
+        var okResult = actionResult.Result as OkObjectResult;
+        var response = okResult?.Value as IReadOnlyList<ProjectSummaryResponse>;
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response!.Select(project => project.Id), Is.EquivalentTo(new[] { 10, 11 }));
+    }
+
+    [Test]
     public async Task SetFeaturedStateAsync_ReturnsUpdatedProject_WhenProjectExists()
     {
         var repository = new StubProjectRepository
@@ -147,6 +168,19 @@ public sealed class AdminProjectsControllerTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new ProjectListPage());
+        }
+
+        public Task<IReadOnlyList<ProjectListItem>> ListAllAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult((IReadOnlyList<ProjectListItem>)Projects
+                .Select(project => new ProjectListItem
+                {
+                    Id = project.Id,
+                    Title = project.Title,
+                    IsFeatured = project.IsFeatured,
+                    FeaturedOrder = project.FeaturedOrder
+                })
+                .ToList());
         }
 
         public Task<IReadOnlyList<ProjectListItem>> ListFeaturedAsync(

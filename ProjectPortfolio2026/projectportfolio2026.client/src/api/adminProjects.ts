@@ -1,5 +1,5 @@
-import { fetchAuthJson, fetchJsonWithStartupRetry } from './http';
-import type { ProjectListResponse, ProjectSummary } from '../app/types';
+import { fetchAuthJson } from './http';
+import type { ProjectSummary } from '../app/types';
 
 export interface ProjectFeaturedStateRequest {
     isFeatured: boolean;
@@ -10,16 +10,15 @@ export interface ProjectFeaturedOrderRequest {
 }
 
 export async function fetchAdminProjects(signal?: AbortSignal): Promise<ProjectSummary[]> {
-    const requestId = crypto.randomUUID();
-    const response = await fetchJsonWithStartupRetry<ProjectListResponse>(
-        `/api/projects?page=1&pageSize=50&requestId=${requestId}`,
+    const { payload } = await fetchAuthJson<ProjectSummary[]>(
+        '/api/admin/projects',
         {
             signal: signal ?? new AbortController().signal
         },
         'Unable to load projects right now.'
     );
 
-    return response.items;
+    return payload as ProjectSummary[];
 }
 
 export async function setProjectFeaturedState(projectId: number, isFeatured: boolean): Promise<ProjectSummary> {

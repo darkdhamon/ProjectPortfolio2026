@@ -100,6 +100,7 @@ public sealed class ProjectContractMapperTests
             StartDate = new DateOnly(2025, 1, 1),
             ShortDescription = "Old short.",
             LongDescriptionMarkdown = "Old long.",
+            FeaturedOrder = 3,
             DeveloperRoles = [new ProjectDeveloperRole { Name = "Old Role" }],
             ProjectTags =
             [
@@ -150,7 +151,7 @@ public sealed class ProjectContractMapperTests
             Assert.That(existingProject.DemoUrl, Is.EqualTo("https://example.test/new-demo"));
             Assert.That(existingProject.IsPublished, Is.True);
             Assert.That(existingProject.IsFeatured, Is.True);
-            Assert.That(existingProject.FeaturedOrder, Is.EqualTo(7));
+            Assert.That(existingProject.FeaturedOrder, Is.EqualTo(3));
             Assert.That(existingProject.DeveloperRoles.Select(role => role.Name), Is.EquivalentTo(["Backend"]));
             Assert.That(existingProject.ProjectTags.Where(projectTag => projectTag.Tag?.Category == TagCategory.Technology).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(["SQL Server"]));
             Assert.That(existingProject.ProjectTags.Where(projectTag => projectTag.Tag?.Category == TagCategory.Skill).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(["Testing"]));

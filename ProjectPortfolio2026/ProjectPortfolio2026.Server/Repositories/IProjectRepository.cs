@@ -16,6 +16,8 @@ public interface IProjectRepository
         int pageSize,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ProjectListItem>> ListAllAsync(CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<ProjectListItem>> ListFeaturedAsync(
         int limit,
         CancellationToken cancellationToken = default);

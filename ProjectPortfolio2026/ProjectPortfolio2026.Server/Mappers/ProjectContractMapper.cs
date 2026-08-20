@@ -73,7 +73,6 @@ public static class ProjectContractMapper
         project.DemoUrl = updatedProject.DemoUrl;
         project.IsPublished = updatedProject.IsPublished;
         project.IsFeatured = updatedProject.IsFeatured;
-        project.FeaturedOrder = updatedProject.FeaturedOrder;
         project.Screenshots = updatedProject.Screenshots;
         project.DeveloperRoles = updatedProject.DeveloperRoles;
         project.ProjectTags = updatedProject.ProjectTags;

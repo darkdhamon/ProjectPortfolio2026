@@ -156,6 +156,37 @@ public sealed class ProjectRepository(
         return featuredProjectSelector.Select(publishedProjects, limit);
     }
 
+    public async Task<IReadOnlyList<ProjectListItem>> ListAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await CreateProjectQuery()
+            .OrderByDescending(project => project.StartDate)
+            .ThenBy(project => project.Title)
+            .Select(project => new ProjectListItem
+            {
+                Id = project.Id,
+                Title = project.Title,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                PrimaryImageUrl = project.PrimaryImageUrl,
+                ShortDescription = project.ShortDescription,
+                GitHubUrl = project.GitHubUrl,
+                DemoUrl = project.DemoUrl,
+                IsFeatured = project.IsFeatured,
+                FeaturedOrder = project.FeaturedOrder,
+                Skills = project.ProjectTags
+                    .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
+                    .Select(projectTag => projectTag.Tag!.DisplayName)
+                    .OrderBy(skill => skill)
+                    .ToList(),
+                Technologies = project.ProjectTags
+                    .Where(projectTag => projectTag.Tag!.Category == TagCategory.Technology)
+                    .Select(projectTag => projectTag.Tag!.DisplayName)
+                    .OrderBy(technology => technology)
+                    .ToList()
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Project?> UpdateAsync(Project project, CancellationToken cancellationToken = default)
     {
         await projectTagNormalizer.NormalizeAsync(project, cancellationToken);
@@ -233,7 +264,8 @@ public sealed class ProjectRepository(
             .Where(project => distinctOrderedProjectIds.Contains(project.Id))
             .ToListAsync(cancellationToken);
 
-        if (projectsForReorder.Count != distinctOrderedProjectIds.Count)
+        if (projectsForReorder.Count != distinctOrderedProjectIds.Count ||
+            projectsForReorder.Any(project => !project.IsFeatured))
         {
             return false;
         }
@@ -259,7 +291,6 @@ public sealed class ProjectRepository(
 
         foreach (var project in projectsForReorder)
         {
-            project.IsFeatured = true;
             project.FeaturedOrder = rankedProjects[project.Id];
         }
 
