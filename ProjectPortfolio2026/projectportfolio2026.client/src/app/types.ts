@@ -10,6 +10,8 @@ export interface ProjectSummary {
     demoUrl?: string | null;
     isFeatured: boolean;
     featuredOrder?: number | null;
+    isArchived?: boolean;
+    archivedAt?: string | null;
     skills: string[];
     technologies: string[];
 }

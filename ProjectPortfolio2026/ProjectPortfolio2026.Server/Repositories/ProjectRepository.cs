@@ -334,7 +334,7 @@ public sealed class ProjectRepository(
 
         if (project.IsArchived == isArchived)
         {
-            return project;
+            return await GetRequiredProjectAsync(projectId, cancellationToken);
         }
 
         project.IsArchived = isArchived;

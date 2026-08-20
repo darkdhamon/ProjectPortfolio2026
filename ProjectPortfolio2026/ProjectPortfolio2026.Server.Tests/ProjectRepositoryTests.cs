@@ -691,6 +691,39 @@ public sealed class ProjectRepositoryTests
         Assert.That(archivedAgain!.ArchivedAt, Is.EqualTo(archivedAtAtInitialArchive));
     }
 
+    [Test]
+    public async Task SetArchivedStateAsync_ReturnsLoadedRelationships_WhenStateIsUnchanged()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var project = await repository.AddAsync(new Project
+        {
+            Title = "Retry Project With Relationships",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Live project.",
+            LongDescriptionMarkdown = "Project body.",
+            IsPublished = true,
+            Screenshots =
+            [
+                new ProjectScreenshot
+                {
+                    ImageUrl = "/images/retry.png",
+                    SortOrder = 0
+                }
+            ]
+        });
+
+        await repository.SetArchivedStateAsync(project.Id, true);
+        dbContext.ChangeTracker.Clear();
+
+        var archivedAgain = await repository.SetArchivedStateAsync(project.Id, true);
+
+        Assert.That(archivedAgain, Is.Not.Null);
+        Assert.That(archivedAgain!.Screenshots, Has.Count.EqualTo(1));
+        Assert.That(archivedAgain.Screenshots.Single().ImageUrl, Is.EqualTo("/images/retry.png"));
+    }
+
     private static PortfolioDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<PortfolioDbContext>()
