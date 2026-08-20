@@ -28,7 +28,7 @@ public sealed class PortfolioProfileRepository(PortfolioDbContext dbContext) : I
             .FirstOrDefaultAsync(cancellationToken) ?? [];
     }
 
-    public async Task<List<PortfolioSocialLink>> SaveSocialLinksAsync(
+    public async Task<List<PortfolioSocialLink>?> SaveSocialLinksAsync(
         IEnumerable<PortfolioSocialLink> socialLinks,
         CancellationToken cancellationToken = default)
     {
@@ -40,7 +40,7 @@ public sealed class PortfolioProfileRepository(PortfolioDbContext dbContext) : I
 
         if (profile is null)
         {
-            return [];
+            return null;
         }
 
         var sortedLinks = socialLinks

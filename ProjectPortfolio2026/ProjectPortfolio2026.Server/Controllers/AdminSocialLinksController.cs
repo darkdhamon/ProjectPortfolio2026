@@ -36,6 +36,7 @@ public sealed class AdminSocialLinksController(IPortfolioProfileRepository portf
     [ValidateAntiForgeryToken]
     [ProducesResponseType<List<AdminSocialLinkResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<List<AdminSocialLinkResponse>>> UpdateAsync(
         [FromBody] AdminSocialLinksUpdateRequest request,
         CancellationToken cancellationToken)
@@ -51,6 +52,16 @@ public sealed class AdminSocialLinksController(IPortfolioProfileRepository portf
             .ToList();
 
         var savedSocialLinks = await portfolioProfileRepository.SaveSocialLinksAsync(payloadLinks, cancellationToken);
+        if (savedSocialLinks is null)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Social links could not be saved.",
+                Detail = "No public portfolio profile is available to receive social links."
+            });
+        }
+
         var response = savedSocialLinks
             .OrderBy(link => link.SortOrder)
             .ThenBy(link => link.Label)

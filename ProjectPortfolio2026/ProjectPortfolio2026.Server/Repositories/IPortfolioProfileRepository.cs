@@ -8,5 +8,5 @@ public interface IPortfolioProfileRepository
 
     Task<List<PortfolioSocialLink>> GetSocialLinksAsync(CancellationToken cancellationToken = default);
 
-    Task<List<PortfolioSocialLink>> SaveSocialLinksAsync(IEnumerable<PortfolioSocialLink> socialLinks, CancellationToken cancellationToken = default);
+    Task<List<PortfolioSocialLink>?> SaveSocialLinksAsync(IEnumerable<PortfolioSocialLink> socialLinks, CancellationToken cancellationToken = default);
 }

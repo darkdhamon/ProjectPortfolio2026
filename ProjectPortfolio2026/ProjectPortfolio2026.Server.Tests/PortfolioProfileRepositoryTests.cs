@@ -175,9 +175,39 @@ public sealed class PortfolioProfileRepositoryTests
             ]);
 
         Assert.That(updated, Has.Count.EqualTo(2));
-        Assert.That(updated.OrderBy(link => link.SortOrder).Select(link => link.Label), Is.EqualTo(new[] { "DEV", "GitHub Updated" }));
-        Assert.That(updated.Any(link => link.Label == "DEV"), Is.True);
-        Assert.That(updated.Any(link => link.Label == "GitHub Updated"), Is.True);
+        var updatedLinks = updated!;
+        Assert.That(updatedLinks.OrderBy(link => link.SortOrder).Select(link => link.Label), Is.EqualTo(new[] { "DEV", "GitHub Updated" }));
+        Assert.That(updatedLinks.Any(link => link.Label == "DEV"), Is.True);
+        Assert.That(updatedLinks.Any(link => link.Label == "GitHub Updated"), Is.True);
+    }
+
+    [Test]
+    public async Task SaveSocialLinksAsync_ReturnsNullWhenNoPublicProfileExists()
+    {
+        await using var dbContext = CreateDbContext();
+        dbContext.PortfolioProfiles.Add(new PortfolioProfile
+        {
+            DisplayName = "Draft Profile",
+            ContactHeadline = "Draft",
+            ContactIntro = "Not public",
+            IsPublic = false
+        });
+        await dbContext.SaveChangesAsync();
+
+        var repository = new PortfolioProfileRepository(dbContext);
+        var result = await repository.SaveSocialLinksAsync(
+            [
+                new PortfolioSocialLink
+                {
+                    Platform = "github",
+                    Label = "GitHub",
+                    Url = "https://github.com/darkdhamon",
+                    IsVisible = true
+                }
+            ]);
+
+        Assert.That(result, Is.Null);
+        Assert.That(await dbContext.PortfolioSocialLinks.CountAsync(), Is.Zero);
     }
 
     private static PortfolioDbContext CreateDbContext()

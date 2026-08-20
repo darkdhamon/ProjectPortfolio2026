@@ -135,6 +135,35 @@ public sealed class AdminSocialLinksControllerTests
         });
     }
 
+    [Test]
+    public async Task UpdateAsync_ReturnsConflictWhenNoPublicProfileExists()
+    {
+        var repository = new StubPortfolioProfileRepository
+        {
+            SaveResult = null
+        };
+        var controller = CreateController(repository);
+
+        var actionResult = await controller.UpdateAsync(
+            new AdminSocialLinksUpdateRequest
+            {
+                SocialLinks =
+                [
+                    new AdminSocialLinkRequest
+                    {
+                        Platform = "github",
+                        Label = "GitHub",
+                        Url = "https://github.com/darkdhamon"
+                    }
+                ]
+            },
+            CancellationToken.None);
+
+        Assert.That(actionResult.Result, Is.InstanceOf<ConflictObjectResult>());
+        var problem = (actionResult.Result as ConflictObjectResult)?.Value as ProblemDetails;
+        Assert.That(problem?.Detail, Does.Contain("No public portfolio profile"));
+    }
+
     private static AdminSocialLinksUpdateRequest CreateRequestWithFieldLength(string field, int length)
     {
         var excessiveValue = new string('a', length);
@@ -183,6 +212,8 @@ public sealed class AdminSocialLinksControllerTests
 
         public List<PortfolioSocialLink>? SavedLinks { get; private set; }
 
+        public List<PortfolioSocialLink>? SaveResult { get; set; } = [];
+
         public Task<PortfolioProfile?> GetPublicAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult<PortfolioProfile?>(null);
@@ -196,10 +227,10 @@ public sealed class AdminSocialLinksControllerTests
                 .ToList());
         }
 
-        public Task<List<PortfolioSocialLink>> SaveSocialLinksAsync(IEnumerable<PortfolioSocialLink> socialLinks, CancellationToken cancellationToken = default)
+        public Task<List<PortfolioSocialLink>?> SaveSocialLinksAsync(IEnumerable<PortfolioSocialLink> socialLinks, CancellationToken cancellationToken = default)
         {
             SavedLinks = [..socialLinks];
-            return Task.FromResult(SavedLinks);
+            return Task.FromResult(SaveResult is null ? null : SavedLinks);
         }
     }
 }

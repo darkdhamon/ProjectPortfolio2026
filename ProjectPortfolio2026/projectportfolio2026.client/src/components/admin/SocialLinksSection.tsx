@@ -96,6 +96,7 @@ function validateDrafts(drafts: EditableSocialLink[]) {
 export function SocialLinksSection() {
     const [links, setLinks] = useState<EditableSocialLink[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [hasLoadedSuccessfully, setHasLoadedSuccessfully] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
@@ -110,6 +111,7 @@ export function SocialLinksSection() {
 
         async function loadSocialLinks() {
             setIsLoading(true);
+            setHasLoadedSuccessfully(false);
             setError(null);
             setNotice(null);
             setRowErrors({});
@@ -122,6 +124,7 @@ export function SocialLinksSection() {
 
                 setLinks(normalized);
                 setNextLocalId(socialLinks.length + 2);
+                setHasLoadedSuccessfully(true);
             } catch (caughtError) {
                 if ((caughtError as Error).name === 'AbortError') {
                     return;
@@ -239,7 +242,7 @@ export function SocialLinksSection() {
                                         type="button"
                                         className="admin-action-link"
                                         onClick={() => moveLink(link.localId, -1)}
-                                        disabled={index === 0 || isSaving}
+                                        disabled={index === 0 || isSaving || !hasLoadedSuccessfully}
                                     >
                                         Move up
                                     </button>
@@ -247,7 +250,7 @@ export function SocialLinksSection() {
                                         type="button"
                                         className="admin-action-link"
                                         onClick={() => moveLink(link.localId, 1)}
-                                        disabled={index === links.length - 1 || isSaving}
+                                        disabled={index === links.length - 1 || isSaving || !hasLoadedSuccessfully}
                                     >
                                         Move down
                                     </button>
@@ -255,7 +258,7 @@ export function SocialLinksSection() {
                                         type="button"
                                         className="admin-action-link"
                                         onClick={() => removeLink(link.localId)}
-                                        disabled={isSaving}
+                                        disabled={isSaving || !hasLoadedSuccessfully}
                                     >
                                         Remove
                                     </button>
@@ -269,7 +272,7 @@ export function SocialLinksSection() {
                                     value={link.platform}
                                     maxLength={maxPlatformLength}
                                     onChange={(event: ChangeEvent<HTMLInputElement>) => updateLink(link.localId, 'platform', event.target.value)}
-                                    disabled={isSaving}
+                                    disabled={isSaving || !hasLoadedSuccessfully}
                                     aria-label={`Platform ${index + 1}`}
                                 />
                                 {rowErrors[link.localId]?.platform ? (
@@ -284,7 +287,7 @@ export function SocialLinksSection() {
                                     value={link.label}
                                     maxLength={maxLabelLength}
                                     onChange={(event: ChangeEvent<HTMLInputElement>) => updateLink(link.localId, 'label', event.target.value)}
-                                    disabled={isSaving}
+                                    disabled={isSaving || !hasLoadedSuccessfully}
                                     aria-label={`Label ${index + 1}`}
                                 />
                                 {rowErrors[link.localId]?.label ? (
@@ -299,7 +302,7 @@ export function SocialLinksSection() {
                                     value={link.url}
                                     maxLength={maxUrlLength}
                                     onChange={(event: ChangeEvent<HTMLInputElement>) => updateLink(link.localId, 'url', event.target.value)}
-                                    disabled={isSaving}
+                                    disabled={isSaving || !hasLoadedSuccessfully}
                                     aria-label={`URL ${index + 1}`}
                                 />
                                 {rowErrors[link.localId]?.url ? (
@@ -314,7 +317,7 @@ export function SocialLinksSection() {
                                     value={link.handle}
                                     maxLength={maxHandleLength}
                                     onChange={(event: ChangeEvent<HTMLInputElement>) => updateLink(link.localId, 'handle', event.target.value)}
-                                    disabled={isSaving}
+                                    disabled={isSaving || !hasLoadedSuccessfully}
                                     aria-label={`Handle ${index + 1}`}
                                 />
                             </label>
@@ -325,7 +328,7 @@ export function SocialLinksSection() {
                                     value={link.summary}
                                     maxLength={maxSummaryLength}
                                     onChange={(event: ChangeEvent<HTMLTextAreaElement>) => updateLink(link.localId, 'summary', event.target.value)}
-                                    disabled={isSaving}
+                                    disabled={isSaving || !hasLoadedSuccessfully}
                                     aria-label={`Summary ${index + 1}`}
                                     rows={3}
                                 />
@@ -342,7 +345,7 @@ export function SocialLinksSection() {
                                             ? { ...currentLink, isVisible: nextValue }
                                             : currentLink));
                                     }}
-                                    disabled={isSaving}
+                                    disabled={isSaving || !hasLoadedSuccessfully}
                                 />
                             </label>
                         </section>
@@ -354,11 +357,11 @@ export function SocialLinksSection() {
                         type="button"
                         className="admin-action-link"
                         onClick={addNewLink}
-                        disabled={isSaving}
+                        disabled={isSaving || !hasLoadedSuccessfully}
                     >
                         Add social link
                     </button>
-                    <button className="admin-action-link" type="button" onClick={() => setLinks([])} disabled={isSaving}>
+                    <button className="admin-action-link" type="button" onClick={() => setLinks([])} disabled={isSaving || !hasLoadedSuccessfully}>
                         Clear draft
                     </button>
                 </div>
@@ -367,7 +370,7 @@ export function SocialLinksSection() {
                 {notice ? <p className="status-banner">{notice}</p> : null}
                 {isLoading ? <p className="secondary-copy">Loading social links...</p> : null}
 
-                <button className="primary-action" type="submit" disabled={isLoading || isSaving}>
+                <button className="primary-action" type="submit" disabled={isLoading || isSaving || !hasLoadedSuccessfully}>
                     {isSaving ? 'Saving social links...' : 'Save social links'}
                 </button>
             </form>

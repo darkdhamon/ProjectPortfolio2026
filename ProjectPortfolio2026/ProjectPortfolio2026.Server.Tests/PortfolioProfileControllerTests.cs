@@ -126,10 +126,10 @@ public sealed class PortfolioProfileControllerTests
             return Task.FromResult(SocialLinks);
         }
 
-        public Task<List<PortfolioSocialLink>> SaveSocialLinksAsync(IEnumerable<PortfolioSocialLink> socialLinks, CancellationToken cancellationToken = default)
+        public Task<List<PortfolioSocialLink>?> SaveSocialLinksAsync(IEnumerable<PortfolioSocialLink> socialLinks, CancellationToken cancellationToken = default)
         {
             SavedLinks = socialLinks.ToList();
-            return Task.FromResult(SavedLinks);
+            return Task.FromResult<List<PortfolioSocialLink>?>(SavedLinks);
         }
     }
 

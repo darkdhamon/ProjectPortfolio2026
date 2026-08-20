@@ -56,6 +56,27 @@ describe('SocialLinksSection', () => {
         expect(screen.getByLabelText('URL 1')).toHaveValue('https://github.com/darkdhamon');
     });
 
+    it('disables draft mutations while social links are loading', () => {
+        mockFetchAdminSocialLinks.mockReturnValue(new Promise(() => undefined));
+
+        render(<SocialLinksSection />);
+
+        expect(screen.getByRole('button', { name: 'Add social link' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Clear draft' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Save social links' })).toBeDisabled();
+    });
+
+    it('keeps destructive actions disabled after loading fails', async () => {
+        mockFetchAdminSocialLinks.mockRejectedValue(new Error('Unable to load social links.'));
+
+        render(<SocialLinksSection />);
+
+        expect(await screen.findByText('Unable to load social links.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add social link' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Clear draft' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Save social links' })).toBeDisabled();
+    });
+
     it('adds and removes social links in local draft state', async () => {
         render(<SocialLinksSection />);
 
