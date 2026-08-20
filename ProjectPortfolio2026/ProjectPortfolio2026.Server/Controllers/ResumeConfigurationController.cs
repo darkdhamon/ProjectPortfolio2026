@@ -18,12 +18,19 @@ public sealed class ResumeConfigurationController(IResumeConfigurationRepository
     public async Task<ActionResult<ResumeConfigurationResponse>> GetAsync(CancellationToken cancellationToken)
     {
         var configuration = await resumeConfigurationRepository.GetAsync(cancellationToken);
+        var requestId = HttpContext.Items[RequestIdContext.ItemKey] as string;
         if (!ResumeConfigurationRules.HasCompletePublicConfiguration(configuration))
         {
-            return NotFound("The requested resume configuration could not be found.");
+        return NotFound(new ApiErrorResponse
+            {
+            RequestId = requestId,
+            StatusCode = StatusCodes.Status404NotFound,
+            ErrorCode = "resume_configuration_missing",
+            Message = "The requested resume configuration could not be found."
+            });
         }
 
-        var requestId = HttpContext.Items[RequestIdContext.ItemKey] as string;
         return Ok(configuration!.ToResponse(requestId));
     }
 }
+
