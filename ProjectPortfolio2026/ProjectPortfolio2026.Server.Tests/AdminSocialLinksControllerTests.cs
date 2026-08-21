@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NUnit.Framework;
+using System.Text.Json;
 using ProjectPortfolio2026.Server.Contracts.Admin;
 using ProjectPortfolio2026.Server.Controllers;
 using ProjectPortfolio2026.Server.Domain.Portfolio;
@@ -11,6 +12,23 @@ namespace ProjectPortfolio2026.Server.Tests;
 [TestFixture]
 public sealed class AdminSocialLinksControllerTests
 {
+    [Test]
+    public void UpdateRequest_RejectsAnOmittedSocialLinksProperty()
+    {
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<AdminSocialLinksUpdateRequest>("{}"));
+    }
+
+    [Test]
+    public void UpdateRequest_AllowsAnExplicitEmptySocialLinksList()
+    {
+        var request = JsonSerializer.Deserialize<AdminSocialLinksUpdateRequest>("{\"socialLinks\":[]}", new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        Assert.That(request?.SocialLinks, Is.Empty);
+    }
+
     [Test]
     public async Task GetAsync_ReturnsSortedLinksForAdministration()
     {

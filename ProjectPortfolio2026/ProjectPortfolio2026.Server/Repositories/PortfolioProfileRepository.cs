@@ -87,9 +87,11 @@ public sealed class PortfolioProfileRepository(PortfolioDbContext dbContext) : I
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return profile.SocialLinks
+        return await dbContext.PortfolioSocialLinks
+            .AsNoTracking()
+            .Where(link => link.PortfolioProfileId == profile.Id)
             .OrderBy(link => link.SortOrder)
             .ThenBy(link => link.Label)
-            .ToList();
+            .ToListAsync(cancellationToken);
     }
 }

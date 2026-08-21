@@ -1,8 +1,13 @@
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+
 namespace ProjectPortfolio2026.Server.Contracts.Admin;
 
 public sealed class AdminSocialLinksUpdateRequest
 {
-    public List<AdminSocialLinkRequest> SocialLinks { get; set; } = [];
+    [Required]
+    [JsonRequired]
+    public List<AdminSocialLinkRequest> SocialLinks { get; set; } = null!;
 }
 
 public sealed class AdminSocialLinkRequest
