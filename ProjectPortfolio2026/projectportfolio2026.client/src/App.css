@@ -3318,7 +3318,10 @@
         position: static;
     }
 
-    .image-shell,
+    .image-shell {
+        min-height: 0;
+    }
+
     .detail-visual {
         aspect-ratio: auto;
         min-height: 0;
