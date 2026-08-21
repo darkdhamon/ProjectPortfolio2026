@@ -418,17 +418,20 @@ public sealed class ProjectRepository(
                 .ToList();
 
             var projectsForReorder = await dbContext.Projects
-                .Where(project => distinctOrderedProjectIds.Contains(project.Id))
+                .Where(project =>
+                    distinctOrderedProjectIds.Contains(project.Id) &&
+                    project.IsFeatured &&
+                    project.IsPublished &&
+                    !project.IsArchived)
                 .ToListAsync(cancellationToken);
 
-            if (projectsForReorder.Count != distinctOrderedProjectIds.Count ||
-                projectsForReorder.Any(project => !project.IsFeatured))
+            if (projectsForReorder.Count != distinctOrderedProjectIds.Count)
             {
                 return false;
             }
 
             var allFeaturedProjectIds = await dbContext.Projects
-                .Where(project => project.IsFeatured)
+                .Where(project => project.IsFeatured && project.IsPublished && !project.IsArchived)
                 .Select(project => project.Id)
                 .ToListAsync(cancellationToken);
 

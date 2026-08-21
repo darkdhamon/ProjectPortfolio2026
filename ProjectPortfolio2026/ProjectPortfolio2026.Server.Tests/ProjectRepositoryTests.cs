@@ -712,6 +712,37 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task ReorderFeaturedProjectsAsync_IgnoresArchivedAndUnpublishedFeaturedProjects()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var firstVisible = await repository.AddAsync(CreateFeaturedProject("First visible", 0));
+        var secondVisible = await repository.AddAsync(CreateFeaturedProject("Second visible", 1));
+        var archived = CreateFeaturedProject("Archived", 2);
+        archived.IsArchived = true;
+        archived.ArchivedAt = DateTimeOffset.UtcNow;
+        archived = await repository.AddAsync(archived);
+        var unpublished = CreateFeaturedProject("Unpublished", 3);
+        unpublished.IsPublished = false;
+        unpublished = await repository.AddAsync(unpublished);
+
+        var isUpdated = await repository.ReorderFeaturedProjectsAsync([secondVisible.Id, firstVisible.Id]);
+        var persistedProjects = await dbContext.Projects
+            .AsNoTracking()
+            .ToDictionaryAsync(project => project.Id);
+
+        Assert.That(isUpdated, Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(persistedProjects[secondVisible.Id].FeaturedOrder, Is.EqualTo(0));
+            Assert.That(persistedProjects[firstVisible.Id].FeaturedOrder, Is.EqualTo(1));
+            Assert.That(persistedProjects[archived.Id].FeaturedOrder, Is.EqualTo(2));
+            Assert.That(persistedProjects[unpublished.Id].FeaturedOrder, Is.EqualTo(3));
+        });
+    }
+
+    [Test]
     public async Task SetArchivedStateAsync_RecordsTimestamp_WhenArchivedAndClearsWhenRestored()
     {
         await using var dbContext = CreateDbContext();
