@@ -10,9 +10,13 @@ public sealed class FeaturedProjectSelector : IFeaturedProjectSelector
         var normalizedLimit = Math.Clamp(limit, 1, 5);
         var featuredProjects = publishedProjects
             .Where(project => project.IsFeatured)
+            .OrderBy(project => project.FeaturedOrder.HasValue ? 0 : 1)
+            .ThenBy(project => project.FeaturedOrder ?? int.MaxValue)
+            .ThenByDescending(project => project.StartDate)
+            .ThenBy(project => project.Title)
             .ToList();
         var selectedProjects = featuredProjects.Count > normalizedLimit
-            ? Shuffle(featuredProjects).Take(normalizedLimit).ToList()
+            ? featuredProjects.Take(normalizedLimit).ToList()
             : featuredProjects.Take(normalizedLimit).ToList();
 
         if (selectedProjects.Count < normalizedLimit)
@@ -28,18 +32,5 @@ public sealed class FeaturedProjectSelector : IFeaturedProjectSelector
         }
 
         return selectedProjects;
-    }
-
-    private static IEnumerable<TItem> Shuffle<TItem>(IReadOnlyList<TItem> items)
-    {
-        var shuffledItems = items.ToList();
-
-        for (var index = shuffledItems.Count - 1; index > 0; index -= 1)
-        {
-            var swapIndex = Random.Shared.Next(index + 1);
-            (shuffledItems[index], shuffledItems[swapIndex]) = (shuffledItems[swapIndex], shuffledItems[index]);
-        }
-
-        return shuffledItems;
     }
 }

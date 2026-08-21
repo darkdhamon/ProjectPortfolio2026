@@ -20,6 +20,7 @@ public static class ProjectContractMapper
             DemoUrl = request.DemoUrl,
             IsPublished = request.IsPublished,
             IsFeatured = request.IsFeatured,
+            FeaturedOrder = request.FeaturedOrder,
             Screenshots = (request.Screenshots ?? [])
                 .Select(screenshot => new ProjectScreenshot
                 {
@@ -72,6 +73,7 @@ public static class ProjectContractMapper
         project.DemoUrl = updatedProject.DemoUrl;
         project.IsPublished = updatedProject.IsPublished;
         project.IsFeatured = updatedProject.IsFeatured;
+        project.FeaturedOrder = updatedProject.FeaturedOrder;
         project.Screenshots = updatedProject.Screenshots;
         project.DeveloperRoles = updatedProject.DeveloperRoles;
         project.ProjectTags = updatedProject.ProjectTags;
@@ -95,6 +97,7 @@ public static class ProjectContractMapper
             DemoUrl = project.DemoUrl,
             IsPublished = project.IsPublished,
             IsFeatured = project.IsFeatured,
+            FeaturedOrder = project.FeaturedOrder,
             Screenshots = project.Screenshots
                 .OrderBy(screenshot => screenshot.SortOrder)
                 .Select(screenshot => new ProjectScreenshotResponse
@@ -160,6 +163,7 @@ public static class ProjectContractMapper
             GitHubUrl = project.GitHubUrl,
             DemoUrl = project.DemoUrl,
             IsFeatured = project.IsFeatured,
+            FeaturedOrder = project.FeaturedOrder,
             Skills = project.Skills.OrderBy(skill => skill).ToList(),
             Technologies = project.Technologies.OrderBy(technology => technology).ToList()
         };

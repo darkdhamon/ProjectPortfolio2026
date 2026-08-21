@@ -34,6 +34,8 @@ public sealed class ProjectRequest : ApiRequestDto
 
     public bool IsFeatured { get; set; }
 
+    public int? FeaturedOrder { get; set; }
+
     public List<ProjectScreenshotRequest> Screenshots { get; set; } = [];
 
     public List<string> DeveloperRoles { get; set; } = [];

@@ -22,6 +22,8 @@ public sealed class ProjectSummaryResponse : ApiResponseDto
 
     public bool IsFeatured { get; set; }
 
+    public int? FeaturedOrder { get; set; }
+
     public List<string> Skills { get; set; } = [];
 
     public List<string> Technologies { get; set; } = [];

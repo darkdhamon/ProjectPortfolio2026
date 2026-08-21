@@ -248,5 +248,20 @@ public sealed class ProjectsControllerRequestIdTests
             Projects[existingIndex] = project;
             return Task.FromResult<Project?>(project);
         }
+
+        public Task<Project?> UpdateFeaturedStateAsync(
+            int projectId,
+            bool isFeatured,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Project?>(null);
+        }
+
+        public Task<bool> ReorderFeaturedProjectsAsync(
+            IReadOnlyCollection<int> orderedFeaturedProjectIds,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(false);
+        }
     }
 }

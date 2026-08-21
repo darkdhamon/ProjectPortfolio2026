@@ -46,6 +46,7 @@ public sealed class ResumeConfigurationControllerTests
     [Test]
     public async Task GetAsync_ReturnsNotFoundWhenConfigurationIsIncomplete()
     {
+        const string expectedRequestId = "resume-config-request";
         var controller = CreateController(new StubResumeConfigurationRepository
         {
             Configuration = new ResumeConfiguration
@@ -55,12 +56,19 @@ public sealed class ResumeConfigurationControllerTests
                 DisplayLabel = null
             }
         });
+        controller.ControllerContext.HttpContext.Items[RequestIdContext.ItemKey] = expectedRequestId;
 
         var actionResult = await controller.GetAsync(CancellationToken.None);
         var notFoundResult = actionResult.Result as NotFoundObjectResult;
 
         Assert.That(notFoundResult, Is.Not.Null);
-        Assert.That(notFoundResult?.Value, Is.EqualTo("The requested resume configuration could not be found."));
+        var error = notFoundResult?.Value as ApiErrorResponse;
+
+        Assert.That(error, Is.Not.Null);
+        Assert.That(error?.RequestId, Is.EqualTo(expectedRequestId));
+        Assert.That(error?.StatusCode, Is.EqualTo(StatusCodes.Status404NotFound));
+        Assert.That(error?.ErrorCode, Is.EqualTo("resume_configuration_missing"));
+        Assert.That(error?.Message, Is.EqualTo("The requested resume configuration could not be found."));
     }
 
     private static ResumeConfigurationController CreateController(IResumeConfigurationRepository repository)
