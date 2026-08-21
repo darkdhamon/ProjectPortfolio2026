@@ -14,6 +14,41 @@ export default defineConfig(({ command }) => {
 
     return {
         plugins: [plugin()],
+        build: {
+            // The Unicode PDF export engine is lazy-loaded, so a higher warning limit
+            // keeps build output focused on chunks that affect initial page load.
+            chunkSizeWarningLimit: 900,
+            rollupOptions: {
+                output: {
+                    manualChunks(id) {
+                        const normalizedId = id.replace(/\\/g, '/');
+
+                        if (normalizedId.includes('/node_modules/pdf-lib/')) {
+                            return 'pdf-lib';
+                        }
+
+                        if (normalizedId.includes('/node_modules/@pdf-lib/fontkit/')
+                            || normalizedId.includes('/node_modules/fontkit/')
+                            || normalizedId.includes('/node_modules/restructure/')) {
+                            return 'pdf-fontkit-core';
+                        }
+
+                        if (normalizedId.includes('/node_modules/unicode-properties/')
+                            || normalizedId.includes('/node_modules/unicode-trie/')
+                            || normalizedId.includes('/node_modules/dfa/')
+                            || normalizedId.includes('/node_modules/linebreak/')) {
+                            return 'pdf-fontkit-unicode';
+                        }
+
+                        if (normalizedId.includes('/node_modules/tiny-inflate/')
+                            || normalizedId.includes('/node_modules/brotli/')
+                            || normalizedId.includes('/node_modules/clone/')) {
+                            return 'pdf-fontkit-utils';
+                        }
+                    }
+                }
+            }
+        },
         resolve: {
             alias: {
                 '@': fileURLToPath(new URL('./src', import.meta.url))
