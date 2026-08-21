@@ -516,17 +516,30 @@ public sealed class ProjectRepositoryTests
             IsFeatured = true
         });
 
+        var secondFeaturedProject = await repository.AddAsync(new Project
+        {
+            Title = "Beta",
+            StartDate = new DateOnly(2026, 2, 1),
+            ShortDescription = "Featured beta.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = true
+        });
+
         var isUpdated = await repository.ReorderFeaturedProjectsAsync([
-            featuredProject.Id,
             0,
-            -1
+            featuredProject.Id,
+            -1,
+            secondFeaturedProject.Id
         ]);
 
         var featuredProjects = await repository.ListFeaturedAsync(5);
-        var featuredOrder = featuredProjects.Single(project => project.Id == featuredProject.Id).FeaturedOrder;
+        var featuredOrders = featuredProjects
+            .ToDictionary(project => project.Id, project => project.FeaturedOrder);
 
         Assert.That(isUpdated, Is.True);
-        Assert.That(featuredOrder, Is.EqualTo(0));
+        Assert.That(featuredOrders[featuredProject.Id], Is.EqualTo(0));
+        Assert.That(featuredOrders[secondFeaturedProject.Id], Is.EqualTo(1));
     }
 
     [Test]

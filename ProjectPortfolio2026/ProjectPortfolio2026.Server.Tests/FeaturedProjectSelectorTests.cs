@@ -87,9 +87,9 @@ public sealed class FeaturedProjectSelectorTests
         {
             new() { Id = 1, Title = "NoRankLater", IsFeatured = true, StartDate = new DateOnly(2026, 2, 1) },
             new() { Id = 2, Title = "TopRank", IsFeatured = true, FeaturedOrder = 0, StartDate = new DateOnly(2025, 1, 1) },
-            new() { Id = 3, Title = "NoRankLatest", IsFeatured = true, StartDate = new DateOnly(2026, 8, 1) },
+            new() { Id = 5, Title = "SecondLatestTiebreak", IsFeatured = true, StartDate = new DateOnly(2026, 8, 1) },
             new() { Id = 4, Title = "SecondRank", IsFeatured = true, FeaturedOrder = 1, StartDate = new DateOnly(2026, 1, 1) },
-            new() { Id = 5, Title = "SecondLatestTiebreak", IsFeatured = true, StartDate = new DateOnly(2026, 8, 1) }
+            new() { Id = 3, Title = "NoRankLatest", IsFeatured = true, StartDate = new DateOnly(2026, 8, 1) }
         };
 
         var result = selector.Select(publishedProjects, 5);
