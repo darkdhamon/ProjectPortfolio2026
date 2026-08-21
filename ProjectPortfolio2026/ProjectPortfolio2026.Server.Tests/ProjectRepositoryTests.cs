@@ -501,6 +501,48 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task ReorderFeaturedProjectsAsync_IgnoresNonPositiveProjectIds()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var featuredProject = await repository.AddAsync(new Project
+        {
+            Title = "Alpha",
+            StartDate = new DateOnly(2026, 1, 1),
+            ShortDescription = "Featured alpha.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = true
+        });
+
+        var secondFeaturedProject = await repository.AddAsync(new Project
+        {
+            Title = "Beta",
+            StartDate = new DateOnly(2026, 2, 1),
+            ShortDescription = "Featured beta.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = true
+        });
+
+        var isUpdated = await repository.ReorderFeaturedProjectsAsync([
+            0,
+            featuredProject.Id,
+            -1,
+            secondFeaturedProject.Id
+        ]);
+
+        var featuredProjects = await repository.ListFeaturedAsync(5);
+        var featuredOrders = featuredProjects
+            .ToDictionary(project => project.Id, project => project.FeaturedOrder);
+
+        Assert.That(isUpdated, Is.True);
+        Assert.That(featuredOrders[featuredProject.Id], Is.EqualTo(0));
+        Assert.That(featuredOrders[secondFeaturedProject.Id], Is.EqualTo(1));
+    }
+
+    [Test]
     public async Task ReorderFeaturedProjectsAsync_ReturnsFalse_WhenAnyFeatureProjectCannotBeFound()
     {
         await using var dbContext = CreateDbContext();
