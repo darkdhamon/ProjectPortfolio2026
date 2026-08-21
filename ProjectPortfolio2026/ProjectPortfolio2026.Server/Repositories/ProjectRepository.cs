@@ -230,11 +230,12 @@ public sealed class ProjectRepository(
             return null;
         }
 
+        var wasFeatured = project.IsFeatured;
         project.IsFeatured = isFeatured;
 
         if (isFeatured)
         {
-            if (!project.FeaturedOrder.HasValue)
+            if (!wasFeatured || !project.FeaturedOrder.HasValue)
             {
                 var highestOrder = await dbContext.Projects
                     .Where(existing => existing.IsFeatured && existing.FeaturedOrder.HasValue)
@@ -274,6 +275,12 @@ public sealed class ProjectRepository(
             .Where(project => project.IsFeatured)
             .Select(project => project.Id)
             .ToListAsync(cancellationToken);
+
+        if (allFeaturedProjectIds.Count != distinctOrderedProjectIds.Count ||
+            allFeaturedProjectIds.Except(distinctOrderedProjectIds).Any())
+        {
+            return false;
+        }
 
         var currentFeaturedProjects = await dbContext.Projects
             .Where(project => allFeaturedProjectIds.Contains(project.Id))

@@ -448,6 +448,39 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task UpdateFeaturedStateAsync_AssignsFreshOrder_WhenReFeaturingProjectWithStaleRank()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Currently featured",
+            StartDate = new DateOnly(2026, 1, 1),
+            ShortDescription = "Featured project.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = true,
+            FeaturedOrder = 4
+        });
+        var staleProject = await repository.AddAsync(new Project
+        {
+            Title = "Stale rank",
+            StartDate = new DateOnly(2026, 2, 1),
+            ShortDescription = "Previously featured project.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = false,
+            FeaturedOrder = 1
+        });
+
+        var updatedProject = await repository.UpdateFeaturedStateAsync(staleProject.Id, true);
+
+        Assert.That(updatedProject!.IsFeatured, Is.True);
+        Assert.That(updatedProject.FeaturedOrder, Is.EqualTo(5));
+    }
+
+    [Test]
     public async Task ReorderFeaturedProjectsAsync_ReordersFeaturedProjectsAndReturnsTrue()
     {
         await using var dbContext = CreateDbContext();
@@ -559,6 +592,40 @@ public sealed class ProjectRepositoryTests
         var unchangedProject = await repository.GetByIdAsync(unfeaturedProject.Id);
         Assert.That(unchangedProject!.IsFeatured, Is.False);
         Assert.That(unchangedProject.FeaturedOrder, Is.Null);
+    }
+
+    [Test]
+    public async Task ReorderFeaturedProjectsAsync_ReturnsFalse_WhenFeaturedProjectIsOmitted()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var firstProject = await repository.AddAsync(new Project
+        {
+            Title = "First",
+            StartDate = new DateOnly(2026, 1, 1),
+            ShortDescription = "First project.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = true,
+            FeaturedOrder = 0
+        });
+        var omittedProject = await repository.AddAsync(new Project
+        {
+            Title = "Omitted",
+            StartDate = new DateOnly(2026, 2, 1),
+            ShortDescription = "Omitted project.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = true,
+            FeaturedOrder = 1
+        });
+
+        var isUpdated = await repository.ReorderFeaturedProjectsAsync([firstProject.Id]);
+
+        Assert.That(isUpdated, Is.False);
+        var unchangedProject = await repository.GetByIdAsync(omittedProject.Id);
+        Assert.That(unchangedProject!.FeaturedOrder, Is.EqualTo(1));
     }
 
     [Test]

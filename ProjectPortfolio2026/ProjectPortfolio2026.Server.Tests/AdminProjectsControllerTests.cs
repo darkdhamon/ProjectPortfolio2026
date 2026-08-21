@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using NUnit.Framework;
 using ProjectPortfolio2026.Server.Contracts;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Controllers;
 using ProjectPortfolio2026.Server.Domain.Projects;
+using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Repositories;
 
 namespace ProjectPortfolio2026.Server.Tests;
@@ -22,7 +24,8 @@ public sealed class AdminProjectsControllerTests
             ]
         };
 
-        var controller = new AdminProjectsController(repository);
+        var controller = CreateController(repository);
+        controller.ControllerContext.HttpContext.Items[RequestIdContext.ItemKey] = "admin-projects-request";
 
         var actionResult = await controller.ListAsync(default);
         var okResult = actionResult.Result as OkObjectResult;
@@ -30,6 +33,7 @@ public sealed class AdminProjectsControllerTests
 
         Assert.That(response, Is.Not.Null);
         Assert.That(response!.Select(project => project.Id), Is.EquivalentTo(new[] { 10, 11 }));
+        Assert.That(response!.All(project => project.RequestId == "admin-projects-request"), Is.True);
     }
 
     [Test]
@@ -228,5 +232,16 @@ public sealed class AdminProjectsControllerTests
 
             return Task.FromResult(true);
         }
+    }
+
+    private static AdminProjectsController CreateController(IProjectRepository repository)
+    {
+        return new AdminProjectsController(repository)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
     }
 }

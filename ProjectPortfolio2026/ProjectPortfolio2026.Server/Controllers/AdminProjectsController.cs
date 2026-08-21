@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProjectPortfolio2026.Server.Contracts;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Domain.Identity;
+using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Mappers;
 using ProjectPortfolio2026.Server.Repositories;
 
@@ -18,7 +19,8 @@ public sealed class AdminProjectsController(IProjectRepository projectRepository
     public async Task<ActionResult<IReadOnlyList<ProjectSummaryResponse>>> ListAsync(CancellationToken cancellationToken)
     {
         var projects = await projectRepository.ListAllAsync(cancellationToken);
-        return Ok(projects.Select(project => project.ToResponse()).ToList());
+        var requestId = HttpContext.Items[RequestIdContext.ItemKey] as string;
+        return Ok(projects.Select(project => project.ToResponse(requestId)).ToList());
     }
 
     [HttpPut("{id:int}/featured-state")]

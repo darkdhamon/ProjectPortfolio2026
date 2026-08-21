@@ -20,7 +20,7 @@ public static class ProjectContractMapper
             DemoUrl = request.DemoUrl,
             IsPublished = request.IsPublished,
             IsFeatured = request.IsFeatured,
-            FeaturedOrder = request.FeaturedOrder,
+            FeaturedOrder = null,
             Screenshots = (request.Screenshots ?? [])
                 .Select(screenshot => new ProjectScreenshot
                 {
@@ -73,6 +73,10 @@ public static class ProjectContractMapper
         project.DemoUrl = updatedProject.DemoUrl;
         project.IsPublished = updatedProject.IsPublished;
         project.IsFeatured = updatedProject.IsFeatured;
+        if (!project.IsFeatured)
+        {
+            project.FeaturedOrder = null;
+        }
         project.Screenshots = updatedProject.Screenshots;
         project.DeveloperRoles = updatedProject.DeveloperRoles;
         project.ProjectTags = updatedProject.ProjectTags;
