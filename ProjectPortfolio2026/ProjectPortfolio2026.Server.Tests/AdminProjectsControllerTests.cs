@@ -32,8 +32,11 @@ public sealed class AdminProjectsControllerTests
         var response = okResult?.Value as IReadOnlyList<ProjectSummaryResponse>;
 
         Assert.That(response, Is.Not.Null);
-        Assert.That(response!.Select(project => project.Id), Is.EquivalentTo(new[] { 10, 11 }));
-        Assert.That(response!.All(project => project.RequestId == "admin-projects-request"), Is.True);
+        var responseItems = response!;
+        Assert.That(responseItems.Select(project => project.Id), Is.EquivalentTo(new[] { 10, 11 }));
+        Assert.That(responseItems.All(project => project.RequestId == "admin-projects-request"), Is.True);
+        Assert.That(responseItems.Single(project => project.Id == 10).IsPublished, Is.True);
+        Assert.That(responseItems.Single(project => project.Id == 11).IsPublished, Is.False);
     }
 
     [Test]
@@ -181,6 +184,7 @@ public sealed class AdminProjectsControllerTests
                 {
                     Id = project.Id,
                     Title = project.Title,
+                    IsPublished = project.IsPublished,
                     IsFeatured = project.IsFeatured,
                     FeaturedOrder = project.FeaturedOrder
                 })

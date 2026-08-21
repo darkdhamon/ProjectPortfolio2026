@@ -481,6 +481,33 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task UpdateFeaturedStateAsync_SerializesConcurrentRankAllocation()
+    {
+        var databaseName = Guid.NewGuid().ToString("N");
+        var options = new DbContextOptionsBuilder<PortfolioDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+
+        await using (var seedContext = new PortfolioDbContext(options))
+        {
+            var seedRepository = CreateRepository(seedContext);
+            await seedRepository.AddAsync(CreateProject("First candidate"));
+            await seedRepository.AddAsync(CreateProject("Second candidate"));
+        }
+
+        await using var firstContext = new PortfolioDbContext(options);
+        await using var secondContext = new PortfolioDbContext(options);
+        var firstRepository = CreateRepository(firstContext);
+        var secondRepository = CreateRepository(secondContext);
+
+        var updates = await Task.WhenAll(
+            firstRepository.UpdateFeaturedStateAsync(1, true),
+            secondRepository.UpdateFeaturedStateAsync(2, true));
+
+        Assert.That(updates.Select(project => project!.FeaturedOrder), Is.EquivalentTo(new[] { 0, 1 }));
+    }
+
+    [Test]
     public async Task ReorderFeaturedProjectsAsync_ReordersFeaturedProjectsAndReturnsTrue()
     {
         await using var dbContext = CreateDbContext();
@@ -671,6 +698,18 @@ public sealed class ProjectRepositoryTests
             dbContext,
             new ProjectTagNormalizer(dbContext),
             new FeaturedProjectSelector());
+    }
+
+    private static Project CreateProject(string title)
+    {
+        return new Project
+        {
+            Title = title,
+            StartDate = new DateOnly(2026, 1, 1),
+            ShortDescription = $"{title} description.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true
+        };
     }
 
     private static ProjectTag CreateProjectTag(TagCategory category, string name)

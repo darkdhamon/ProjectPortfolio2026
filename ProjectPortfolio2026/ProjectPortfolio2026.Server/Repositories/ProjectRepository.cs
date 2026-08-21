@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Domain.Projects;
@@ -12,6 +13,8 @@ public sealed class ProjectRepository(
     IProjectTagNormalizer projectTagNormalizer,
     IFeaturedProjectSelector featuredProjectSelector) : IProjectRepository
 {
+    private static readonly SemaphoreSlim FeaturedOrderLock = new(1, 1);
+
     public async Task<Project> AddAsync(Project project, CancellationToken cancellationToken = default)
     {
         await projectTagNormalizer.NormalizeAsync(project, cancellationToken);
@@ -85,6 +88,7 @@ public sealed class ProjectRepository(
                 ShortDescription = project.ShortDescription,
                 GitHubUrl = project.GitHubUrl,
                 DemoUrl = project.DemoUrl,
+                IsPublished = project.IsPublished,
                 IsFeatured = project.IsFeatured,
                 FeaturedOrder = project.FeaturedOrder,
                 Skills = project.ProjectTags
@@ -138,6 +142,7 @@ public sealed class ProjectRepository(
                 ShortDescription = project.ShortDescription,
                 GitHubUrl = project.GitHubUrl,
                 DemoUrl = project.DemoUrl,
+                IsPublished = project.IsPublished,
                 IsFeatured = project.IsFeatured,
                 FeaturedOrder = project.FeaturedOrder,
                 Skills = project.ProjectTags
@@ -171,6 +176,7 @@ public sealed class ProjectRepository(
                 ShortDescription = project.ShortDescription,
                 GitHubUrl = project.GitHubUrl,
                 DemoUrl = project.DemoUrl,
+                IsPublished = project.IsPublished,
                 IsFeatured = project.IsFeatured,
                 FeaturedOrder = project.FeaturedOrder,
                 Skills = project.ProjectTags
@@ -222,34 +228,50 @@ public sealed class ProjectRepository(
         bool isFeatured,
         CancellationToken cancellationToken = default)
     {
-        var project = await dbContext.Projects
-            .SingleOrDefaultAsync(existingProject => existingProject.Id == projectId, cancellationToken);
-
-        if (project is null)
+        await FeaturedOrderLock.WaitAsync(cancellationToken);
+        try
         {
-            return null;
-        }
+            await using var transaction = dbContext.Database.IsRelational()
+                ? await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
+                : null;
+            var project = await dbContext.Projects
+                .SingleOrDefaultAsync(existingProject => existingProject.Id == projectId, cancellationToken);
 
-        var wasFeatured = project.IsFeatured;
-        project.IsFeatured = isFeatured;
-
-        if (isFeatured)
-        {
-            if (!wasFeatured || !project.FeaturedOrder.HasValue)
+            if (project is null)
             {
-                var highestOrder = await dbContext.Projects
-                    .Where(existing => existing.IsFeatured && existing.FeaturedOrder.HasValue)
-                    .MaxAsync(existing => (int?)existing.FeaturedOrder, cancellationToken) ?? -1;
-                project.FeaturedOrder = highestOrder + 1;
+                return null;
             }
-        }
-        else
-        {
-            project.FeaturedOrder = null;
-        }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return await GetRequiredProjectAsync(projectId, cancellationToken);
+            var wasFeatured = project.IsFeatured;
+            project.IsFeatured = isFeatured;
+
+            if (isFeatured)
+            {
+                if (!wasFeatured || !project.FeaturedOrder.HasValue)
+                {
+                    var highestOrder = await dbContext.Projects
+                        .Where(existing => existing.IsFeatured && existing.FeaturedOrder.HasValue)
+                        .MaxAsync(existing => (int?)existing.FeaturedOrder, cancellationToken) ?? -1;
+                    project.FeaturedOrder = highestOrder + 1;
+                }
+            }
+            else
+            {
+                project.FeaturedOrder = null;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            return await GetRequiredProjectAsync(projectId, cancellationToken);
+        }
+        finally
+        {
+            FeaturedOrderLock.Release();
+        }
     }
 
     public async Task<bool> ReorderFeaturedProjectsAsync(

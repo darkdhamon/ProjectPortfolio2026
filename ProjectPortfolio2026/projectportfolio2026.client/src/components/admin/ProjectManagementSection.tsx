@@ -207,13 +207,16 @@ export function ProjectManagementSection() {
                                     <div>
                                         <strong>{project.title}</strong>
                                         <p className="admin-project-meta">{project.shortDescription}</p>
+                                        {project.isPublished === false ? (
+                                            <p className="admin-project-meta">Draft — publish this project before featuring it.</p>
+                                        ) : null}
                                     </div>
 
                                     <div className="admin-project-actions">
                                         <button
                                             className="primary-action"
                                             type="button"
-                                            disabled={inFlightProjectId !== null}
+                                            disabled={inFlightProjectId !== null || project.isPublished === false}
                                             onClick={() => handleSetFeatured(project.id, true)}>
                                             Feature
                                         </button>
