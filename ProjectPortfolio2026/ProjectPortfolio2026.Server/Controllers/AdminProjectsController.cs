@@ -15,12 +15,32 @@ namespace ProjectPortfolio2026.Server.Controllers;
 public sealed class AdminProjectsController(IProjectRepository projectRepository) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<ProjectSummaryResponse>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ProjectSummaryResponse>>> ListAsync(CancellationToken cancellationToken)
+    [ProducesResponseType<ProjectListResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ProjectListResponse>> ListAsync(
+        [FromQuery] ProjectListQueryRequest request,
+        CancellationToken cancellationToken)
     {
-        var projects = await projectRepository.ListAllAsync(cancellationToken);
-        var requestId = HttpContext.Items[RequestIdContext.ItemKey] as string;
-        return Ok(projects.Select(project => project.ToResponse(requestId)).ToList());
+        var projects = await projectRepository.ListAdminAsync(
+            request.Search,
+            ParseSkills(request.Skills),
+            request.Page,
+            request.PageSize,
+            cancellationToken);
+
+        var requestId = HttpContext?.Items[RequestIdContext.ItemKey] as string;
+
+        return Ok(new ProjectListResponse
+        {
+            RequestId = requestId,
+            Items = projects.Items
+                .Select(project => project.ToResponse(requestId))
+                .ToList(),
+            Page = projects.Page,
+            PageSize = projects.PageSize,
+            TotalCount = projects.TotalCount,
+            HasMore = projects.HasMore,
+            AvailableSkills = projects.AvailableSkills.ToList()
+        });
     }
 
     [HttpPut("{id:int}/featured-state")]
@@ -33,6 +53,42 @@ public sealed class AdminProjectsController(IProjectRepository projectRepository
         CancellationToken cancellationToken)
     {
         var updatedProject = await projectRepository.UpdateFeaturedStateAsync(id, request.IsFeatured, cancellationToken);
+        if (updatedProject is null)
+        {
+            return NotFound(new ApiErrorResponse
+            {
+                Message = "The requested project could not be found."
+            });
+        }
+
+        return Ok(updatedProject.ToResponse());
+    }
+
+    [HttpPut("{id:int}/archive")]
+    [ValidateAntiForgeryToken]
+    [ProducesResponseType<ProjectResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ProjectResponse>> ArchiveAsync(int id, CancellationToken cancellationToken)
+    {
+        var updatedProject = await projectRepository.SetArchivedStateAsync(id, true, cancellationToken);
+        if (updatedProject is null)
+        {
+            return NotFound(new ApiErrorResponse
+            {
+                Message = "The requested project could not be found."
+            });
+        }
+
+        return Ok(updatedProject.ToResponse());
+    }
+
+    [HttpPut("{id:int}/restore")]
+    [ValidateAntiForgeryToken]
+    [ProducesResponseType<ProjectResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ProjectResponse>> RestoreAsync(int id, CancellationToken cancellationToken)
+    {
+        var updatedProject = await projectRepository.SetArchivedStateAsync(id, false, cancellationToken);
         if (updatedProject is null)
         {
             return NotFound(new ApiErrorResponse
@@ -64,5 +120,15 @@ public sealed class AdminProjectsController(IProjectRepository projectRepository
         }
 
         return NoContent();
+    }
+
+    private static IReadOnlyCollection<string> ParseSkills(string? skills)
+    {
+        return string.IsNullOrWhiteSpace(skills)
+            ? []
+            : skills
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
     }
 }

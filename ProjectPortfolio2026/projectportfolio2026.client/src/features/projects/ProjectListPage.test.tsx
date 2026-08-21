@@ -89,6 +89,7 @@ function buildProject(id: number, title: string): ProjectSummary {
         endDate: null,
         primaryImageUrl: null,
         shortDescription: `${title} summary`,
+        isPublished: true,
         isFeatured: false,
         skills: ['React'],
         technologies: ['TypeScript']

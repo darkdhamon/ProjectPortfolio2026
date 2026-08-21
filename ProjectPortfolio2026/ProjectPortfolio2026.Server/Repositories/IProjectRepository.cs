@@ -16,7 +16,12 @@ public interface IProjectRepository
         int pageSize,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<ProjectListItem>> ListAllAsync(CancellationToken cancellationToken = default);
+    Task<ProjectListPage> ListAdminAsync(
+        string? search,
+        IReadOnlyCollection<string> skillFilters,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ProjectListItem>> ListFeaturedAsync(
         int limit,
@@ -27,6 +32,11 @@ public interface IProjectRepository
     Task<Project?> UpdateFeaturedStateAsync(
         int projectId,
         bool isFeatured,
+        CancellationToken cancellationToken = default);
+
+    Task<Project?> SetArchivedStateAsync(
+        int projectId,
+        bool isArchived,
         CancellationToken cancellationToken = default);
 
     Task<bool> ReorderFeaturedProjectsAsync(

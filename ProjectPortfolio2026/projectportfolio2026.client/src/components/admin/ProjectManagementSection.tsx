@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     fetchAdminProjects,
     setFeaturedProjectOrder,
+    setProjectArchivedState,
     setProjectFeaturedState
 } from '../../api/adminProjects';
 import type { ProjectSummary } from '../../app/types';
@@ -41,8 +42,10 @@ export function ProjectManagementSection() {
     const [isLoading, setIsLoading] = useState(true);
     const [inFlightProjectId, setInFlightProjectId] = useState<number | null>(null);
 
-    const featuredProjects = useMemo(() => sortFeaturedProjects(projects.filter(project => project.isFeatured)), [projects]);
-    const availableProjects = useMemo(() => sortByStartDate(projects.filter(project => !project.isFeatured)), [projects]);
+    const featuredProjects = useMemo(() => sortFeaturedProjects(projects.filter(project => project.isPublished && !project.isArchived && project.isFeatured)), [projects]);
+    const availableProjects = useMemo(() => sortByStartDate(projects.filter(project => project.isPublished && !project.isArchived && !project.isFeatured)), [projects]);
+    const draftProjects = useMemo(() => sortByStartDate(projects.filter(project => !project.isPublished && !project.isArchived)), [projects]);
+    const archivedProjects = useMemo(() => sortByStartDate(projects.filter(project => project.isArchived)), [projects]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -104,6 +107,22 @@ export function ProjectManagementSection() {
         }
     }, [refreshProjects]);
 
+    const handleSetArchived = useCallback(async (projectId: number, isArchived: boolean) => {
+        setInFlightProjectId(projectId);
+        setNotice(null);
+        setError(null);
+
+        try {
+            await setProjectArchivedState(projectId, isArchived);
+            await refreshProjects();
+            setNotice(isArchived ? 'Project was archived.' : 'Project was restored.');
+        } catch (caughtError) {
+            setError(caughtError instanceof Error ? caughtError.message : `Unable to ${isArchived ? 'archive' : 'restore'} project.`);
+        } finally {
+            setInFlightProjectId(null);
+        }
+    }, [refreshProjects]);
+
     const handleMove = useCallback(async (index: number, offset: number) => {
         const nextFeatured = [...featuredProjects];
         const destinationIndex = index + offset;
@@ -135,9 +154,9 @@ export function ProjectManagementSection() {
     return (
         <section className="admin-card admin-section-panel">
             <p className="eyebrow">Project Management</p>
-            <h2>Featured project selection and ordering</h2>
+            <h2>Project visibility and featured ordering</h2>
             <p>
-                Promote projects into the public featured area and reorder them so homepage and featured surfaces match your priority.
+                Promote and reorder active projects, or archive projects to hide them from public surfaces while retaining their history.
             </p>
 
             {isLoading ? <p className="helper-copy">Loading projects from admin endpoint...</p> : null}
@@ -187,6 +206,13 @@ export function ProjectManagementSection() {
                                             onClick={() => handleSetFeatured(project.id, false)}>
                                             Unfeature
                                         </button>
+                                        <button
+                                            className="secondary-action primary-action"
+                                            type="button"
+                                            disabled={inFlightProjectId !== null}
+                                            onClick={() => handleSetArchived(project.id, true)}>
+                                            Archive
+                                        </button>
                                     </div>
                                 </li>
                             ))}
@@ -219,6 +245,77 @@ export function ProjectManagementSection() {
                                             disabled={inFlightProjectId !== null || project.isPublished === false}
                                             onClick={() => handleSetFeatured(project.id, true)}>
                                             Feature
+                                        </button>
+                                        <button
+                                            className="secondary-action primary-action"
+                                            type="button"
+                                            disabled={inFlightProjectId !== null}
+                                            onClick={() => handleSetArchived(project.id, true)}>
+                                            Archive
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </article>
+
+                <article className="admin-card">
+                    <p className="eyebrow">Draft projects</p>
+                    <h3>Not published</h3>
+
+                    {draftProjects.length === 0 ? (
+                        <p className="secondary-copy">No draft projects are currently saved.</p>
+                    ) : (
+                        <ul className="admin-project-list">
+                            {draftProjects.map(project => (
+                                <li key={project.id} className="admin-project-item">
+                                    <div>
+                                        <strong>{project.title}</strong>
+                                        <p className="admin-project-meta">Draft - not visible on public project surfaces.</p>
+                                    </div>
+
+                                    <div className="admin-project-actions">
+                                        <button
+                                            className="secondary-action primary-action"
+                                            type="button"
+                                            disabled={inFlightProjectId !== null}
+                                            onClick={() => handleSetArchived(project.id, true)}>
+                                            Archive
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </article>
+
+                <article className="admin-card">
+                    <p className="eyebrow">Archived projects</p>
+                    <h3>Restore projects</h3>
+
+                    {archivedProjects.length === 0 ? (
+                        <p className="secondary-copy">No projects are currently archived.</p>
+                    ) : (
+                        <ul className="admin-project-list">
+                            {archivedProjects.map(project => (
+                                <li key={project.id} className="admin-project-item">
+                                    <div>
+                                        <strong>{project.title}</strong>
+                                        <p className="admin-project-meta">
+                                            {project.archivedAt
+                                                ? `Archived ${new Date(project.archivedAt).toLocaleDateString()}`
+                                                : 'Archived'}
+                                        </p>
+                                    </div>
+
+                                    <div className="admin-project-actions">
+                                        <button
+                                            className="primary-action"
+                                            type="button"
+                                            disabled={inFlightProjectId !== null}
+                                            onClick={() => handleSetArchived(project.id, false)}>
+                                            Restore
                                         </button>
                                     </div>
                                 </li>

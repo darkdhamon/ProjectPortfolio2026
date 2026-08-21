@@ -55,6 +55,8 @@ public sealed class ProjectRepositoryTests
             Assert.That(savedProject.Id, Is.GreaterThan(0));
             Assert.That(savedProject.IsPublished, Is.False);
             Assert.That(savedProject.IsFeatured, Is.False);
+            Assert.That(savedProject.IsArchived, Is.False);
+            Assert.That(savedProject.ArchivedAt, Is.Null);
             Assert.That(savedProject.DeveloperRoles.Select(role => role.Name), Is.EquivalentTo(new[] { "Backend" }));
             Assert.That(savedProject.ProjectTags.Where(projectTag => projectTag.Tag!.Category == TagCategory.Technology).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(new[] { ".NET" }));
             Assert.That(savedProject.ProjectTags.Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(new[] { "API Design" }));
@@ -236,6 +238,83 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task ListAsync_ExcludesArchivedProjectsFromResultAndAvailableSkills()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Archived Project",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Historical project.",
+            LongDescriptionMarkdown = "Archived content.",
+            IsPublished = true,
+            IsArchived = true,
+            ProjectTags = [CreateProjectTag(TagCategory.Skill, "React")]
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Active Project",
+            StartDate = new DateOnly(2026, 3, 1),
+            ShortDescription = "Live project.",
+            LongDescriptionMarkdown = "Available to public.",
+            IsPublished = true,
+            IsArchived = false,
+            ProjectTags = [CreateProjectTag(TagCategory.Skill, "Blazor")]
+        });
+
+        var page = await repository.ListAsync(null, [], 1, 10);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.TotalCount, Is.EqualTo(1));
+            Assert.That(page.Items, Has.Count.EqualTo(1));
+            Assert.That(page.Items[0].Title, Is.EqualTo("Active Project"));
+            Assert.That(page.AvailableSkills, Is.EqualTo(new[] { "Blazor" }));
+        });
+    }
+
+    [Test]
+    public async Task ListAdminAsync_IncludesArchivedProjectsInResult()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Archived Project",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Historical project.",
+            LongDescriptionMarkdown = "Archived content.",
+            IsPublished = true,
+            IsArchived = true,
+            ProjectTags = [CreateProjectTag(TagCategory.Skill, "React")]
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Active Project",
+            StartDate = new DateOnly(2026, 3, 1),
+            ShortDescription = "Live project.",
+            LongDescriptionMarkdown = "Available to public.",
+            IsPublished = true,
+            IsArchived = false,
+            ProjectTags = [CreateProjectTag(TagCategory.Skill, "Blazor")]
+        });
+
+        var page = await repository.ListAdminAsync(null, [], 1, 10);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.TotalCount, Is.EqualTo(2));
+            Assert.That(page.Items, Has.Count.EqualTo(2));
+            Assert.That(page.Items.Select(item => item.IsArchived), Is.EquivalentTo(new[] { true, false }));
+        });
+    }
+
+    [Test]
     public async Task ListFeaturedAsync_ReturnsAtMostFiveFeaturedProjects_WhenEnoughFeaturedProjectsExist()
     {
         await using var dbContext = CreateDbContext();
@@ -399,6 +478,42 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task ListFeaturedAsync_ExcludesArchivedProjectsFromFeaturedResults()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Archived Featured",
+            StartDate = new DateOnly(2026, 1, 1),
+            ShortDescription = "Archived and featured.",
+            LongDescriptionMarkdown = "Archived content.",
+            IsPublished = true,
+            IsFeatured = true,
+            IsArchived = true
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Public Project",
+            StartDate = new DateOnly(2026, 2, 1),
+            ShortDescription = "Public project.",
+            LongDescriptionMarkdown = "Available.",
+            IsPublished = true,
+            IsFeatured = true,
+            IsArchived = false
+        });
+
+        var projects = await repository.ListFeaturedAsync(5);
+
+        Assert.That(projects.Select(project => project.Title), Is.EqualTo(new[]
+        {
+            "Public Project"
+        }));
+    }
+
+    [Test]
     public async Task UpdateFeaturedStateAsync_AssignsOrderForFeaturedProjectsAndClearsForUnfeaturedProjects()
     {
         await using var dbContext = CreateDbContext();
@@ -445,66 +560,6 @@ public sealed class ProjectRepositoryTests
         var updatedProject = await repository.UpdateFeaturedStateAsync(999, true);
 
         Assert.That(updatedProject, Is.Null);
-    }
-
-    [Test]
-    public async Task UpdateFeaturedStateAsync_AssignsFreshOrder_WhenReFeaturingProjectWithStaleRank()
-    {
-        await using var dbContext = CreateDbContext();
-        var repository = CreateRepository(dbContext);
-
-        await repository.AddAsync(new Project
-        {
-            Title = "Currently featured",
-            StartDate = new DateOnly(2026, 1, 1),
-            ShortDescription = "Featured project.",
-            LongDescriptionMarkdown = "Markdown.",
-            IsPublished = true,
-            IsFeatured = true,
-            FeaturedOrder = 4
-        });
-        var staleProject = await repository.AddAsync(new Project
-        {
-            Title = "Stale rank",
-            StartDate = new DateOnly(2026, 2, 1),
-            ShortDescription = "Previously featured project.",
-            LongDescriptionMarkdown = "Markdown.",
-            IsPublished = true,
-            IsFeatured = false,
-            FeaturedOrder = 1
-        });
-
-        var updatedProject = await repository.UpdateFeaturedStateAsync(staleProject.Id, true);
-
-        Assert.That(updatedProject!.IsFeatured, Is.True);
-        Assert.That(updatedProject.FeaturedOrder, Is.EqualTo(5));
-    }
-
-    [Test]
-    public async Task UpdateFeaturedStateAsync_SerializesConcurrentRankAllocation()
-    {
-        var databaseName = Guid.NewGuid().ToString("N");
-        var options = new DbContextOptionsBuilder<PortfolioDbContext>()
-            .UseInMemoryDatabase(databaseName)
-            .Options;
-
-        await using (var seedContext = new PortfolioDbContext(options))
-        {
-            var seedRepository = CreateRepository(seedContext);
-            await seedRepository.AddAsync(CreateProject("First candidate"));
-            await seedRepository.AddAsync(CreateProject("Second candidate"));
-        }
-
-        await using var firstContext = new PortfolioDbContext(options);
-        await using var secondContext = new PortfolioDbContext(options);
-        var firstRepository = CreateRepository(firstContext);
-        var secondRepository = CreateRepository(secondContext);
-
-        var updates = await Task.WhenAll(
-            firstRepository.UpdateFeaturedStateAsync(1, true),
-            secondRepository.UpdateFeaturedStateAsync(2, true));
-
-        Assert.That(updates.Select(project => project!.FeaturedOrder), Is.EquivalentTo(new[] { 0, 1 }));
     }
 
     [Test]
@@ -561,6 +616,48 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task ReorderFeaturedProjectsAsync_IgnoresNonPositiveProjectIds()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var featuredProject = await repository.AddAsync(new Project
+        {
+            Title = "Alpha",
+            StartDate = new DateOnly(2026, 1, 1),
+            ShortDescription = "Featured alpha.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = true
+        });
+
+        var secondFeaturedProject = await repository.AddAsync(new Project
+        {
+            Title = "Beta",
+            StartDate = new DateOnly(2026, 2, 1),
+            ShortDescription = "Featured beta.",
+            LongDescriptionMarkdown = "Markdown.",
+            IsPublished = true,
+            IsFeatured = true
+        });
+
+        var isUpdated = await repository.ReorderFeaturedProjectsAsync([
+            0,
+            featuredProject.Id,
+            -1,
+            secondFeaturedProject.Id
+        ]);
+
+        var featuredProjects = await repository.ListFeaturedAsync(5);
+        var featuredOrders = featuredProjects
+            .ToDictionary(project => project.Id, project => project.FeaturedOrder);
+
+        Assert.That(isUpdated, Is.True);
+        Assert.That(featuredOrders[featuredProject.Id], Is.EqualTo(0));
+        Assert.That(featuredOrders[secondFeaturedProject.Id], Is.EqualTo(1));
+    }
+
+    [Test]
     public async Task ReorderFeaturedProjectsAsync_ReturnsFalse_WhenAnyFeatureProjectCannotBeFound()
     {
         await using var dbContext = CreateDbContext();
@@ -585,102 +682,149 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
-    public async Task ReorderFeaturedProjectsAsync_ReturnsFalse_WhenProjectIsNotFeatured()
+    public async Task ReorderFeaturedProjectsAsync_SerializesWithConcurrentUnfeature()
     {
-        await using var dbContext = CreateDbContext();
-        var repository = CreateRepository(dbContext);
+        var databaseName = Guid.NewGuid().ToString("N");
+        var options = new DbContextOptionsBuilder<PortfolioDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
 
-        var featuredProject = await repository.AddAsync(new Project
+        await using (var seedContext = new PortfolioDbContext(options))
         {
-            Title = "Featured",
-            StartDate = new DateOnly(2026, 1, 1),
-            ShortDescription = "Featured project.",
-            LongDescriptionMarkdown = "Markdown.",
-            IsPublished = true,
-            IsFeatured = true,
-            FeaturedOrder = 0
-        });
-        var unfeaturedProject = await repository.AddAsync(new Project
-        {
-            Title = "Not featured",
-            StartDate = new DateOnly(2026, 2, 1),
-            ShortDescription = "Available project.",
-            LongDescriptionMarkdown = "Markdown.",
-            IsPublished = true,
-            IsFeatured = false
-        });
+            var seedRepository = CreateRepository(seedContext);
+            await seedRepository.AddAsync(CreateFeaturedProject("First", 0));
+            await seedRepository.AddAsync(CreateFeaturedProject("Second", 1));
+        }
 
-        var isUpdated = await repository.ReorderFeaturedProjectsAsync([
-            featuredProject.Id,
-            unfeaturedProject.Id
-        ]);
+        await using var reorderContext = new PortfolioDbContext(options);
+        await using var unfeatureContext = new PortfolioDbContext(options);
+        var reorderRepository = CreateRepository(reorderContext);
+        var unfeatureRepository = CreateRepository(unfeatureContext);
 
-        Assert.That(isUpdated, Is.False);
-        var unchangedProject = await repository.GetByIdAsync(unfeaturedProject.Id);
-        Assert.That(unchangedProject!.IsFeatured, Is.False);
-        Assert.That(unchangedProject.FeaturedOrder, Is.Null);
+        await Task.WhenAll(
+            reorderRepository.ReorderFeaturedProjectsAsync([2, 1]),
+            unfeatureRepository.UpdateFeaturedStateAsync(1, false));
+
+        await using var verificationContext = new PortfolioDbContext(options);
+        var firstProject = await verificationContext.Projects.SingleAsync(project => project.Id == 1);
+        Assert.That(firstProject.IsFeatured, Is.False);
+        Assert.That(firstProject.FeaturedOrder, Is.Null);
     }
 
     [Test]
-    public async Task ReorderFeaturedProjectsAsync_ReturnsFalse_WhenFeaturedProjectIsOmitted()
+    public async Task SetArchivedStateAsync_RecordsTimestamp_WhenArchivedAndClearsWhenRestored()
     {
         await using var dbContext = CreateDbContext();
         var repository = CreateRepository(dbContext);
 
-        var firstProject = await repository.AddAsync(new Project
+        var project = await repository.AddAsync(new Project
         {
-            Title = "First",
-            StartDate = new DateOnly(2026, 1, 1),
-            ShortDescription = "First project.",
-            LongDescriptionMarkdown = "Markdown.",
-            IsPublished = true,
-            IsFeatured = true,
-            FeaturedOrder = 0
-        });
-        var omittedProject = await repository.AddAsync(new Project
-        {
-            Title = "Omitted",
-            StartDate = new DateOnly(2026, 2, 1),
-            ShortDescription = "Omitted project.",
-            LongDescriptionMarkdown = "Markdown.",
-            IsPublished = true,
-            IsFeatured = true,
-            FeaturedOrder = 1
-        });
-
-        var isUpdated = await repository.ReorderFeaturedProjectsAsync([firstProject.Id]);
-
-        Assert.That(isUpdated, Is.False);
-        var unchangedProject = await repository.GetByIdAsync(omittedProject.Id);
-        Assert.That(unchangedProject!.FeaturedOrder, Is.EqualTo(1));
-    }
-
-    [Test]
-    public async Task ListAllAsync_IncludesUnpublishedProjects()
-    {
-        await using var dbContext = CreateDbContext();
-        var repository = CreateRepository(dbContext);
-
-        await repository.AddAsync(new Project
-        {
-            Title = "Published",
-            StartDate = new DateOnly(2026, 1, 1),
-            ShortDescription = "Published project.",
-            LongDescriptionMarkdown = "Markdown.",
+            Title = "Archivable Project",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Live project.",
+            LongDescriptionMarkdown = "Project body.",
             IsPublished = true
         });
-        await repository.AddAsync(new Project
+
+        var archived = await repository.SetArchivedStateAsync(project.Id, true);
+
+        Assert.That(archived, Is.Not.Null);
+        Assert.That(archived!.IsArchived, Is.True);
+        Assert.That(archived.ArchivedAt, Is.Not.Null);
+
+        var restored = await repository.SetArchivedStateAsync(project.Id, false);
+
+        Assert.That(restored, Is.Not.Null);
+        Assert.That(restored!.IsArchived, Is.False);
+        Assert.That(restored.ArchivedAt, Is.Null);
+    }
+
+    [Test]
+    public async Task SetArchivedStateAsync_DoesNotRefreshTimestamp_WhenAlreadyArchived()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var project = await repository.AddAsync(new Project
         {
-            Title = "Draft",
-            StartDate = new DateOnly(2026, 2, 1),
-            ShortDescription = "Draft project.",
-            LongDescriptionMarkdown = "Markdown.",
-            IsPublished = false
+            Title = "Retry Project",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Live project.",
+            LongDescriptionMarkdown = "Project body.",
+            IsPublished = true
         });
 
-        var projects = await repository.ListAllAsync();
+        var archived = await repository.SetArchivedStateAsync(project.Id, true);
+        var archivedAtAtInitialArchive = archived?.ArchivedAt;
 
-        Assert.That(projects.Select(project => project.Title), Is.EquivalentTo(new[] { "Published", "Draft" }));
+        var archivedAgain = await repository.SetArchivedStateAsync(project.Id, true);
+
+        Assert.That(archivedAgain, Is.Not.Null);
+        Assert.That(archivedAgain!.ArchivedAt, Is.EqualTo(archivedAtAtInitialArchive));
+    }
+
+    [Test]
+    public async Task ListAdminAsync_UsesProjectIdAsStablePaginationTieBreaker()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+        var sharedDate = new DateOnly(2026, 4, 1);
+
+        for (var index = 0; index < 3; index += 1)
+        {
+            await repository.AddAsync(new Project
+            {
+                Title = "Matching Project",
+                StartDate = sharedDate,
+                ShortDescription = $"Matching project {index}.",
+                LongDescriptionMarkdown = "Matching content.",
+                IsPublished = true
+            });
+        }
+
+        var firstPage = await repository.ListAdminAsync(null, [], 1, 2);
+        var secondPage = await repository.ListAdminAsync(null, [], 2, 2);
+        var returnedIds = firstPage.Items.Concat(secondPage.Items).Select(project => project.Id).ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(returnedIds, Has.Count.EqualTo(3));
+            Assert.That(returnedIds, Is.Ordered.Ascending);
+            Assert.That(returnedIds.Distinct().Count(), Is.EqualTo(3));
+        });
+    }
+
+    [Test]
+    public async Task SetArchivedStateAsync_ReturnsLoadedRelationships_WhenStateIsUnchanged()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var project = await repository.AddAsync(new Project
+        {
+            Title = "Retry Project With Relationships",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Live project.",
+            LongDescriptionMarkdown = "Project body.",
+            IsPublished = true,
+            Screenshots =
+            [
+                new ProjectScreenshot
+                {
+                    ImageUrl = "/images/retry.png",
+                    SortOrder = 0
+                }
+            ]
+        });
+
+        await repository.SetArchivedStateAsync(project.Id, true);
+        dbContext.ChangeTracker.Clear();
+
+        var archivedAgain = await repository.SetArchivedStateAsync(project.Id, true);
+
+        Assert.That(archivedAgain, Is.Not.Null);
+        Assert.That(archivedAgain!.Screenshots, Has.Count.EqualTo(1));
+        Assert.That(archivedAgain.Screenshots.Single().ImageUrl, Is.EqualTo("/images/retry.png"));
     }
 
     private static PortfolioDbContext CreateDbContext()
@@ -700,15 +844,17 @@ public sealed class ProjectRepositoryTests
             new FeaturedProjectSelector());
     }
 
-    private static Project CreateProject(string title)
+    private static Project CreateFeaturedProject(string title, int featuredOrder)
     {
         return new Project
         {
             Title = title,
             StartDate = new DateOnly(2026, 1, 1),
-            ShortDescription = $"{title} description.",
+            ShortDescription = $"{title} project.",
             LongDescriptionMarkdown = "Markdown.",
-            IsPublished = true
+            IsPublished = true,
+            IsFeatured = true,
+            FeaturedOrder = featuredOrder
         };
     }
 

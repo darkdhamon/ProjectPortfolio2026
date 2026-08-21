@@ -3353,9 +3353,17 @@
         position: static;
     }
 
-    .image-shell,
-    .detail-visual {
+    .image-shell {
         min-height: 0;
+    }
+
+    .detail-visual {
+        aspect-ratio: auto;
+        min-height: 0;
+    }
+
+    .detail-visual img {
+        height: auto;
     }
 
     .carousel-shell {

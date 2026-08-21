@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     fetchAdminProjects,
     setFeaturedProjectOrder,
+    setProjectArchivedState,
     setProjectFeaturedState
 } from './adminProjects';
 import { csrfCookieName, csrfHeaderName } from './http';
@@ -11,6 +12,9 @@ const fetchMock = vi.fn<typeof fetch>();
 describe('adminProjects api helpers', () => {
     beforeEach(() => {
         vi.stubGlobal('fetch', fetchMock);
+        vi.stubGlobal('crypto', {
+            randomUUID: vi.fn(() => 'request-103')
+        });
         document.cookie = `${csrfCookieName}=csrf-token-value`;
     });
 
@@ -21,7 +25,9 @@ describe('adminProjects api helpers', () => {
     });
 
     it('fetches project summaries for admin with a default page', async () => {
-        fetchMock.mockResolvedValueOnce(jsonResponse([
+        fetchMock.mockResolvedValueOnce(jsonResponse({
+            requestId: 'request-103',
+            items: [
                 {
                     id: 10,
                     title: 'Portfolio Refresh',
@@ -34,15 +40,45 @@ describe('adminProjects api helpers', () => {
                     skills: ['React'],
                     technologies: ['TypeScript']
                 }
-            ]));
+            ],
+            page: 1,
+            pageSize: 50,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'TypeScript']
+        }));
 
         const projects = await fetchAdminProjects();
 
         expect(projects).toHaveLength(1);
-        expect(fetchMock).toHaveBeenCalledWith('/api/admin/projects', expect.objectContaining({
-            credentials: 'include',
+        expect(fetchMock).toHaveBeenCalledWith('/api/admin/projects?page=1&pageSize=50&requestId=request-103', expect.objectContaining({
             signal: expect.any(AbortSignal)
         }));
+    });
+
+    it('loads every admin project page', async () => {
+        fetchMock
+            .mockResolvedValueOnce(jsonResponse({
+                items: [{ id: 10, title: 'First page' }],
+                page: 1,
+                pageSize: 50,
+                totalCount: 2,
+                hasMore: true,
+                availableSkills: []
+            }))
+            .mockResolvedValueOnce(jsonResponse({
+                items: [{ id: 60, title: 'Second page' }],
+                page: 2,
+                pageSize: 50,
+                totalCount: 2,
+                hasMore: false,
+                availableSkills: []
+            }));
+
+        const projects = await fetchAdminProjects();
+
+        expect(projects.map(project => project.id)).toEqual([10, 60]);
+        expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/projects?page=2&pageSize=50&requestId=request-103', expect.anything());
     });
 
     it('sends featured-state updates through the admin endpoint', async () => {
@@ -84,6 +120,19 @@ describe('adminProjects api helpers', () => {
 
         expect(headers.get('Content-Type')).toBe('application/json');
         expect(headers.get(csrfHeaderName)).toBe('csrf-token-value');
+    });
+
+    it.each([
+        [true, 'archive'],
+        [false, 'restore']
+    ])('sends archived-state updates through the admin endpoint', async (isArchived, route) => {
+        fetchMock.mockResolvedValueOnce(jsonResponse({ id: 10 }));
+
+        await setProjectArchivedState(10, isArchived);
+
+        expect(fetchMock).toHaveBeenCalledWith(`/api/admin/projects/10/${route}`, expect.objectContaining({
+            method: 'PUT'
+        }));
     });
 });
 

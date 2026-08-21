@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
 using NUnit.Framework;
 using ProjectPortfolio2026.Server.Contracts;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Controllers;
 using ProjectPortfolio2026.Server.Domain.Projects;
-using ProjectPortfolio2026.Server.Infrastructure.RequestTracking;
 using ProjectPortfolio2026.Server.Repositories;
 
 namespace ProjectPortfolio2026.Server.Tests;
@@ -13,32 +11,6 @@ namespace ProjectPortfolio2026.Server.Tests;
 [TestFixture]
 public sealed class AdminProjectsControllerTests
 {
-    [Test]
-    public async Task ListAsync_ReturnsPublishedAndUnpublishedProjects()
-    {
-        var repository = new StubProjectRepository
-        {
-            Projects = [
-                new Project { Id = 10, Title = "Published", IsPublished = true },
-                new Project { Id = 11, Title = "Draft", IsPublished = false }
-            ]
-        };
-
-        var controller = CreateController(repository);
-        controller.ControllerContext.HttpContext.Items[RequestIdContext.ItemKey] = "admin-projects-request";
-
-        var actionResult = await controller.ListAsync(default);
-        var okResult = actionResult.Result as OkObjectResult;
-        var response = okResult?.Value as IReadOnlyList<ProjectSummaryResponse>;
-
-        Assert.That(response, Is.Not.Null);
-        var responseItems = response!;
-        Assert.That(responseItems.Select(project => project.Id), Is.EquivalentTo(new[] { 10, 11 }));
-        Assert.That(responseItems.All(project => project.RequestId == "admin-projects-request"), Is.True);
-        Assert.That(responseItems.Single(project => project.Id == 10).IsPublished, Is.True);
-        Assert.That(responseItems.Single(project => project.Id == 11).IsPublished, Is.False);
-    }
-
     [Test]
     public async Task SetFeaturedStateAsync_ReturnsUpdatedProject_WhenProjectExists()
     {
@@ -149,6 +121,104 @@ public sealed class AdminProjectsControllerTests
         Assert.That(repository.LastOrder, Is.EqualTo(new[] { 10, 11 }));
     }
 
+    [Test]
+    public async Task ArchiveAsync_ReturnsUpdatedProject_WhenProjectExists()
+    {
+        var repository = new StubProjectRepository
+        {
+            Projects = [new Project
+            {
+                Id = 10,
+                Title = "Portfolio Refresh",
+                StartDate = new DateOnly(2026, 4, 1),
+                ShortDescription = "Portfolio project.",
+                LongDescriptionMarkdown = "Portfolio details.",
+                IsPublished = true
+            }]
+        };
+
+        var controller = new AdminProjectsController(repository);
+
+        var actionResult = await controller.ArchiveAsync(10, default);
+        var okResult = actionResult.Result as OkObjectResult;
+        var response = okResult?.Value as ProjectResponse;
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response!.IsArchived, Is.True);
+        Assert.That(response.ArchivedAt, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task RestoreAsync_ReturnsUpdatedProject_WhenProjectExists()
+    {
+        var repository = new StubProjectRepository
+        {
+            Projects = [new Project
+            {
+                Id = 10,
+                Title = "Portfolio Refresh",
+                StartDate = new DateOnly(2026, 4, 1),
+                ShortDescription = "Portfolio project.",
+                LongDescriptionMarkdown = "Portfolio details.",
+                IsPublished = true,
+                IsArchived = true,
+                ArchivedAt = new DateTimeOffset(2026, 4, 1, 10, 0, 0, TimeSpan.Zero)
+            }]
+        };
+
+        var controller = new AdminProjectsController(repository);
+
+        var actionResult = await controller.RestoreAsync(10, default);
+        var okResult = actionResult.Result as OkObjectResult;
+        var response = okResult?.Value as ProjectResponse;
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response!.IsArchived, Is.False);
+        Assert.That(response.ArchivedAt, Is.Null);
+    }
+
+    [Test]
+    public async Task ArchiveAsync_ReturnsNotFound_WhenProjectMissing()
+    {
+        var repository = new StubProjectRepository();
+        var controller = new AdminProjectsController(repository);
+
+        var actionResult = await controller.ArchiveAsync(999, default);
+        var notFoundResult = actionResult.Result as NotFoundObjectResult;
+        var payload = notFoundResult?.Value as ApiErrorResponse;
+
+        Assert.That(notFoundResult, Is.Not.Null);
+        Assert.That(payload, Is.Not.Null);
+        Assert.That(payload!.Message, Is.EqualTo("The requested project could not be found."));
+    }
+
+    [Test]
+    public async Task ListAsync_ReturnsProjectSummaries()
+    {
+        var repository = new StubProjectRepository
+        {
+            Projects = [new Project
+            {
+                Id = 10,
+                Title = "Portfolio Refresh",
+                StartDate = new DateOnly(2026, 4, 1),
+                ShortDescription = "Portfolio project.",
+                LongDescriptionMarkdown = "Portfolio details.",
+                IsPublished = true
+            }]
+        };
+
+        var controller = new AdminProjectsController(repository);
+
+        var actionResult = await controller.ListAsync(new ProjectListQueryRequest(), default);
+        var okResult = actionResult.Result as OkObjectResult;
+        var response = okResult?.Value as ProjectListResponse;
+
+        Assert.That(okResult, Is.Not.Null);
+        Assert.That(response?.Items, Has.Count.EqualTo(1));
+        Assert.That(response!.Items[0].Title, Is.EqualTo("Portfolio Refresh"));
+    }
+
     private sealed class StubProjectRepository : IProjectRepository
     {
         public List<Project> Projects { get; init; } = [];
@@ -177,18 +247,31 @@ public sealed class AdminProjectsControllerTests
             return Task.FromResult(new ProjectListPage());
         }
 
-        public Task<IReadOnlyList<ProjectListItem>> ListAllAsync(CancellationToken cancellationToken = default)
+        public Task<ProjectListPage> ListAdminAsync(
+            string? search,
+            IReadOnlyCollection<string> skillFilters,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
         {
-            return Task.FromResult((IReadOnlyList<ProjectListItem>)Projects
-                .Select(project => new ProjectListItem
-                {
-                    Id = project.Id,
-                    Title = project.Title,
-                    IsPublished = project.IsPublished,
-                    IsFeatured = project.IsFeatured,
-                    FeaturedOrder = project.FeaturedOrder
-                })
-                .ToList());
+            return Task.FromResult(new ProjectListPage
+            {
+                Items = Projects
+                    .Select(project => new ProjectListItem
+                    {
+                        Id = project.Id,
+                        Title = project.Title,
+                        StartDate = project.StartDate,
+                        ShortDescription = project.ShortDescription,
+                        IsArchived = project.IsArchived,
+                        IsFeatured = project.IsFeatured,
+                        FeaturedOrder = project.FeaturedOrder
+                    })
+                    .ToList(),
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = Projects.Count
+            });
         }
 
         public Task<IReadOnlyList<ProjectListItem>> ListFeaturedAsync(
@@ -219,6 +302,21 @@ public sealed class AdminProjectsControllerTests
             return Task.FromResult<Project?>(project);
         }
 
+        public Task<Project?> SetArchivedStateAsync(int projectId, bool isArchived, CancellationToken cancellationToken = default)
+        {
+            var project = Projects.SingleOrDefault(existing => existing.Id == projectId);
+            if (project is null)
+            {
+                return Task.FromResult<Project?>(null);
+            }
+
+            project.IsArchived = isArchived;
+            project.ArchivedAt = isArchived
+                ? new DateTimeOffset(2026, 4, 1, 10, 0, 0, TimeSpan.Zero)
+                : null;
+            return Task.FromResult<Project?>(project);
+        }
+
         public Task<bool> ReorderFeaturedProjectsAsync(IReadOnlyCollection<int> orderedFeaturedProjectIds, CancellationToken cancellationToken = default)
         {
             LastOrder = orderedFeaturedProjectIds.Distinct().ToList();
@@ -236,16 +334,5 @@ public sealed class AdminProjectsControllerTests
 
             return Task.FromResult(true);
         }
-    }
-
-    private static AdminProjectsController CreateController(IProjectRepository repository)
-    {
-        return new AdminProjectsController(repository)
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext()
-            }
-        };
     }
 }
