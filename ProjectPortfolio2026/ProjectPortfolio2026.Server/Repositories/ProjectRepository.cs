@@ -442,7 +442,7 @@ public sealed class ProjectRepository(
             }
 
             var currentFeaturedProjects = await dbContext.Projects
-                .Where(project => allFeaturedProjectIds.Contains(project.Id))
+                .Where(project => project.IsFeatured && project.FeaturedOrder.HasValue)
                 .ToListAsync(cancellationToken);
 
             foreach (var project in currentFeaturedProjects)

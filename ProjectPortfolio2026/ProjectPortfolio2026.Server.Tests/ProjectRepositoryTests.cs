@@ -737,8 +737,8 @@ public sealed class ProjectRepositoryTests
         {
             Assert.That(persistedProjects[secondVisible.Id].FeaturedOrder, Is.EqualTo(0));
             Assert.That(persistedProjects[firstVisible.Id].FeaturedOrder, Is.EqualTo(1));
-            Assert.That(persistedProjects[archived.Id].FeaturedOrder, Is.EqualTo(2));
-            Assert.That(persistedProjects[unpublished.Id].FeaturedOrder, Is.EqualTo(3));
+            Assert.That(persistedProjects[archived.Id].FeaturedOrder, Is.Null);
+            Assert.That(persistedProjects[unpublished.Id].FeaturedOrder, Is.Null);
         });
     }
 
