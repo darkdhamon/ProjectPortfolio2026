@@ -229,6 +229,49 @@ describe('http api helpers', () => {
             'Fallback auth error'
         )).rejects.toThrow('Fallback auth error');
     });
+
+    it('surfaces standard problem details from failed auth requests', async () => {
+        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+            title: 'Social links could not be saved.',
+            detail: 'No public portfolio profile is available to receive social links.'
+        }), {
+            status: 409,
+            headers: {
+                'Content-Type': 'application/problem+json'
+            }
+        }));
+
+        await expect(fetchAuthJson(
+            '/api/admin/social-links',
+            {
+                method: 'PUT'
+            },
+            'Unable to save social links.'
+        )).rejects.toThrow(
+            'Social links could not be saved. No public portfolio profile is available to receive social links.'
+        );
+    });
+
+    it('preserves api message precedence over problem details', async () => {
+        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+            message: 'Specific API message',
+            title: 'Problem title',
+            detail: 'Problem detail'
+        }), {
+            status: 400,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }));
+
+        await expect(fetchAuthJson(
+            '/api/test',
+            {
+                method: 'GET'
+            },
+            'Fallback auth error'
+        )).rejects.toThrow('Specific API message');
+    });
 });
 
 function jsonResponse(payload: object) {

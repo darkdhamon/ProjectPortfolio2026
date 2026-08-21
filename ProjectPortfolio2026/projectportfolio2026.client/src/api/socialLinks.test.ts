@@ -96,6 +96,22 @@ describe('socialLinks api helpers', () => {
             }
         ]);
     });
+
+    it('surfaces the server explanation when no public profile can receive social links', async () => {
+        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+            title: 'Social links could not be saved.',
+            detail: 'No public portfolio profile is available to receive social links.'
+        }), {
+            status: 409,
+            headers: {
+                'Content-Type': 'application/problem+json'
+            }
+        }));
+
+        await expect(saveAdminSocialLinks([])).rejects.toThrow(
+            'Social links could not be saved. No public portfolio profile is available to receive social links.'
+        );
+    });
 });
 
 function jsonResponse(payload: object) {
