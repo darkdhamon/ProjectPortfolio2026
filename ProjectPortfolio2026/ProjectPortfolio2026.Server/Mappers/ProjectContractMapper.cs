@@ -165,6 +165,7 @@ public static class ProjectContractMapper
             ShortDescription = project.ShortDescription,
             GitHubUrl = project.GitHubUrl,
             DemoUrl = project.DemoUrl,
+            IsPublished = project.IsPublished,
             IsFeatured = project.IsFeatured,
             IsArchived = project.IsArchived,
             ArchivedAt = project.ArchivedAt,

@@ -692,6 +692,37 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task ListAdminAsync_UsesProjectIdAsStablePaginationTieBreaker()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+        var sharedDate = new DateOnly(2026, 4, 1);
+
+        for (var index = 0; index < 3; index += 1)
+        {
+            await repository.AddAsync(new Project
+            {
+                Title = "Matching Project",
+                StartDate = sharedDate,
+                ShortDescription = $"Matching project {index}.",
+                LongDescriptionMarkdown = "Matching content.",
+                IsPublished = true
+            });
+        }
+
+        var firstPage = await repository.ListAdminAsync(null, [], 1, 2);
+        var secondPage = await repository.ListAdminAsync(null, [], 2, 2);
+        var returnedIds = firstPage.Items.Concat(secondPage.Items).Select(project => project.Id).ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(returnedIds, Has.Count.EqualTo(3));
+            Assert.That(returnedIds, Is.Ordered.Ascending);
+            Assert.That(returnedIds.Distinct().Count(), Is.EqualTo(3));
+        });
+    }
+
+    [Test]
     public async Task SetArchivedStateAsync_ReturnsLoadedRelationships_WhenStateIsUnchanged()
     {
         await using var dbContext = CreateDbContext();

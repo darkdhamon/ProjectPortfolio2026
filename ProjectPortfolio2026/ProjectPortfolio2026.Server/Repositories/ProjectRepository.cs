@@ -85,6 +85,7 @@ public sealed class ProjectRepository(
                 ShortDescription = project.ShortDescription,
                 GitHubUrl = project.GitHubUrl,
                 DemoUrl = project.DemoUrl,
+                IsPublished = project.IsPublished,
                 IsFeatured = project.IsFeatured,
                 FeaturedOrder = project.FeaturedOrder,
                 IsArchived = project.IsArchived,
@@ -169,6 +170,7 @@ public sealed class ProjectRepository(
             .ThenByDescending(project => project.EndDate ?? project.StartDate)
             .ThenByDescending(project => project.StartDate)
             .ThenBy(project => project.Title)
+            .ThenBy(project => project.Id)
             .Skip((normalizedPage - 1) * normalizedPageSize)
             .Take(normalizedPageSize)
             .Select(project => new ProjectListItem
@@ -181,6 +183,7 @@ public sealed class ProjectRepository(
                 ShortDescription = project.ShortDescription,
                 GitHubUrl = project.GitHubUrl,
                 DemoUrl = project.DemoUrl,
+                IsPublished = project.IsPublished,
                 IsFeatured = project.IsFeatured,
                 FeaturedOrder = project.FeaturedOrder,
                 IsArchived = project.IsArchived,
@@ -235,6 +238,7 @@ public sealed class ProjectRepository(
                 ShortDescription = project.ShortDescription,
                 GitHubUrl = project.GitHubUrl,
                 DemoUrl = project.DemoUrl,
+                IsPublished = project.IsPublished,
                 IsFeatured = project.IsFeatured,
                 FeaturedOrder = project.FeaturedOrder,
                 IsArchived = project.IsArchived,

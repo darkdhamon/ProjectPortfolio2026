@@ -42,8 +42,9 @@ export function ProjectManagementSection() {
     const [isLoading, setIsLoading] = useState(true);
     const [inFlightProjectId, setInFlightProjectId] = useState<number | null>(null);
 
-    const featuredProjects = useMemo(() => sortFeaturedProjects(projects.filter(project => !project.isArchived && project.isFeatured)), [projects]);
-    const availableProjects = useMemo(() => sortByStartDate(projects.filter(project => !project.isArchived && !project.isFeatured)), [projects]);
+    const featuredProjects = useMemo(() => sortFeaturedProjects(projects.filter(project => project.isPublished && !project.isArchived && project.isFeatured)), [projects]);
+    const availableProjects = useMemo(() => sortByStartDate(projects.filter(project => project.isPublished && !project.isArchived && !project.isFeatured)), [projects]);
+    const draftProjects = useMemo(() => sortByStartDate(projects.filter(project => !project.isPublished && !project.isArchived)), [projects]);
     const archivedProjects = useMemo(() => sortByStartDate(projects.filter(project => project.isArchived)), [projects]);
 
     useEffect(() => {
@@ -241,6 +242,36 @@ export function ProjectManagementSection() {
                                             onClick={() => handleSetFeatured(project.id, true)}>
                                             Feature
                                         </button>
+                                        <button
+                                            className="secondary-action primary-action"
+                                            type="button"
+                                            disabled={inFlightProjectId !== null}
+                                            onClick={() => handleSetArchived(project.id, true)}>
+                                            Archive
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </article>
+
+                <article className="admin-card">
+                    <p className="eyebrow">Draft projects</p>
+                    <h3>Not published</h3>
+
+                    {draftProjects.length === 0 ? (
+                        <p className="secondary-copy">No draft projects are currently saved.</p>
+                    ) : (
+                        <ul className="admin-project-list">
+                            {draftProjects.map(project => (
+                                <li key={project.id} className="admin-project-item">
+                                    <div>
+                                        <strong>{project.title}</strong>
+                                        <p className="admin-project-meta">Draft - not visible on public project surfaces.</p>
+                                    </div>
+
+                                    <div className="admin-project-actions">
                                         <button
                                             className="secondary-action primary-action"
                                             type="button"

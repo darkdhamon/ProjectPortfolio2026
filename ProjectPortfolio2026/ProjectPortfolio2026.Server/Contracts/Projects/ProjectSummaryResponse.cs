@@ -20,6 +20,8 @@ public sealed class ProjectSummaryResponse : ApiResponseDto
 
     public string? DemoUrl { get; set; }
 
+    public bool IsPublished { get; set; }
+
     public bool IsFeatured { get; set; }
 
     public int? FeaturedOrder { get; set; }
