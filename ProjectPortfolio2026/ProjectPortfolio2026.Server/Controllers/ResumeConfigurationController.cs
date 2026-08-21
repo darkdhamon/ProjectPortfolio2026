@@ -21,16 +21,15 @@ public sealed class ResumeConfigurationController(IResumeConfigurationRepository
         var requestId = HttpContext.Items[RequestIdContext.ItemKey] as string;
         if (!ResumeConfigurationRules.HasCompletePublicConfiguration(configuration))
         {
-        return NotFound(new ApiErrorResponse
+            return NotFound(new ApiErrorResponse
             {
-            RequestId = requestId,
-            StatusCode = StatusCodes.Status404NotFound,
-            ErrorCode = "resume_configuration_missing",
-            Message = "The requested resume configuration could not be found."
+                RequestId = requestId,
+                StatusCode = StatusCodes.Status404NotFound,
+                ErrorCode = "resume_configuration_missing",
+                Message = "The requested resume configuration could not be found."
             });
         }
 
         return Ok(configuration!.ToResponse(requestId));
     }
 }
-
