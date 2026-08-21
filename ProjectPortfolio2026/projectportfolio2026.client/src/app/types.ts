@@ -8,8 +8,11 @@ export interface ProjectSummary {
     shortDescription: string;
     gitHubUrl?: string | null;
     demoUrl?: string | null;
+    isPublished: boolean;
     isFeatured: boolean;
     featuredOrder?: number | null;
+    isArchived?: boolean;
+    archivedAt?: string | null;
     skills: string[];
     technologies: string[];
 }

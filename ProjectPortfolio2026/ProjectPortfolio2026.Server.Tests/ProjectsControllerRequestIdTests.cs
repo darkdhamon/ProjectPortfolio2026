@@ -177,6 +177,31 @@ public sealed class ProjectsControllerRequestIdTests
         Assert.That(response?.Message, Is.EqualTo("The requested project could not be found."));
     }
 
+    [Test]
+    public async Task GetByIdAsync_ReturnsNotFoundForArchivedProject()
+    {
+        var repository = new StubProjectRepository();
+        repository.Projects.Add(new Project
+        {
+            Id = 31,
+            Title = "Archived Portfolio",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "No longer public.",
+            LongDescriptionMarkdown = "Archived project.",
+            IsPublished = true,
+            IsArchived = true
+        });
+
+        var controller = CreateController(repository);
+
+        var actionResult = await controller.GetByIdAsync(31, CancellationToken.None);
+        var notFoundResult = actionResult.Result as NotFoundObjectResult;
+        var response = notFoundResult?.Value as ApiErrorResponse;
+
+        Assert.That(notFoundResult, Is.Not.Null);
+        Assert.That(response?.Message, Is.EqualTo("The requested project could not be found."));
+    }
+
     private static ProjectsController CreateController(IProjectRepository repository)
     {
         return new ProjectsController(repository)
@@ -213,7 +238,13 @@ public sealed class ProjectsControllerRequestIdTests
 
         public Task<Project?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(Projects.SingleOrDefault(project => project.Id == id));
+            var project = Projects.SingleOrDefault(project => project.Id == id);
+            if (project is null || project.IsArchived)
+            {
+                return Task.FromResult<Project?>(null);
+            }
+
+            return Task.FromResult(project);
         }
 
         public Task<ProjectListPage> ListAsync(
@@ -228,6 +259,16 @@ public sealed class ProjectsControllerRequestIdTests
             LastListPage = page;
             LastListPageSize = pageSize;
             return Task.FromResult(ListResult);
+        }
+
+        public Task<ProjectListPage> ListAdminAsync(
+            string? search,
+            IReadOnlyCollection<string> skillFilters,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new ProjectListPage());
         }
 
         public Task<IReadOnlyList<ProjectListItem>> ListFeaturedAsync(
@@ -252,6 +293,14 @@ public sealed class ProjectsControllerRequestIdTests
         public Task<Project?> UpdateFeaturedStateAsync(
             int projectId,
             bool isFeatured,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Project?>(null);
+        }
+
+        public Task<Project?> SetArchivedStateAsync(
+            int projectId,
+            bool isArchived,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<Project?>(null);

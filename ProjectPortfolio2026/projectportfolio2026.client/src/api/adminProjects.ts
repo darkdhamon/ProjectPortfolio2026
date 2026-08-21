@@ -11,15 +11,24 @@ export interface ProjectFeaturedOrderRequest {
 
 export async function fetchAdminProjects(signal?: AbortSignal): Promise<ProjectSummary[]> {
     const requestId = crypto.randomUUID();
-    const response = await fetchJsonWithStartupRetry<ProjectListResponse>(
-        `/api/projects?page=1&pageSize=50&requestId=${requestId}`,
-        {
-            signal: signal ?? new AbortController().signal
-        },
-        'Unable to load projects right now.'
-    );
+    const requestSignal = signal ?? new AbortController().signal;
+    const projects: ProjectSummary[] = [];
+    let page = 1;
+    let hasMore = true;
 
-    return response.items;
+    while (hasMore) {
+        const response = await fetchJsonWithStartupRetry<ProjectListResponse>(
+            `/api/admin/projects?page=${page}&pageSize=50&requestId=${requestId}`,
+            { signal: requestSignal },
+            'Unable to load projects right now.'
+        );
+
+        projects.push(...response.items);
+        hasMore = response.hasMore;
+        page += 1;
+    }
+
+    return projects;
 }
 
 export async function setProjectFeaturedState(projectId: number, isFeatured: boolean): Promise<ProjectSummary> {
@@ -43,5 +52,13 @@ export async function setFeaturedProjectOrder(projectIds: number[]): Promise<voi
             body: JSON.stringify({ projectIds } as ProjectFeaturedOrderRequest)
         },
         'Unable to save featured project order.'
+    );
+}
+
+export async function setProjectArchivedState(projectId: number, isArchived: boolean): Promise<void> {
+    await fetchAuthJson<unknown>(
+        `/api/admin/projects/${projectId}/${isArchived ? 'archive' : 'restore'}`,
+        { method: 'PUT' },
+        `Unable to ${isArchived ? 'archive' : 'restore'} project.`
     );
 }
