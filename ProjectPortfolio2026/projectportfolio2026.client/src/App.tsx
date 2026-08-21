@@ -7,6 +7,7 @@ import { AdminWorkspacePage } from './components/admin/AdminWorkspacePage';
 import { ProjectManagementSection } from './components/admin/ProjectManagementSection';
 import { LoginPage } from './components/admin/LoginPage';
 import { ResumeImportPage } from './components/admin/ResumeImportPage';
+import { SocialLinksSection } from './components/admin/SocialLinksSection';
 import { ResumeConfigurationSection } from './components/admin/ResumeConfigurationSection';
 import { type AccountDraft } from './components/admin/mockAuth';
 import { SiteShell, type SiteShellContent } from './components/shell/SiteShell';
@@ -235,7 +236,9 @@ function App() {
                             ? <ProjectManagementSection />
                             : route.section === 'resume'
                                 ? <ResumeConfigurationSection />
-                                : undefined
+                                : route.section === 'social-links'
+                                    ? <SocialLinksSection />
+                                    : undefined
                     }
                 />
             ) : route.kind === 'admin-account' && currentUser ? (
