@@ -244,7 +244,7 @@ public sealed class ProjectsControllerRequestIdTests
                 return Task.FromResult<Project?>(null);
             }
 
-            return Task.FromResult(project);
+            return Task.FromResult<Project?>(project);
         }
 
         public Task<ProjectListPage> ListAsync(
@@ -276,6 +276,11 @@ public sealed class ProjectsControllerRequestIdTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(FeaturedResult);
+        }
+
+        public Task<IReadOnlyList<ProjectListItem>> ListAllAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult((IReadOnlyList<ProjectListItem>)[]);
         }
 
         public Task<Project?> UpdateAsync(Project project, CancellationToken cancellationToken = default)

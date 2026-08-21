@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using ProjectPortfolio2026.Server.Data;
 using ProjectPortfolio2026.Server.Contracts.Projects;
 using ProjectPortfolio2026.Server.Domain.Projects;
@@ -12,6 +13,8 @@ public sealed class ProjectRepository(
     IProjectTagNormalizer projectTagNormalizer,
     IFeaturedProjectSelector featuredProjectSelector) : IProjectRepository
 {
+    private static readonly SemaphoreSlim FeaturedOrderLock = new(1, 1);
+
     public async Task<Project> AddAsync(Project project, CancellationToken cancellationToken = default)
     {
         await projectTagNormalizer.NormalizeAsync(project, cancellationToken);
@@ -259,6 +262,38 @@ public sealed class ProjectRepository(
         return featuredProjectSelector.Select(publishedProjects, limit);
     }
 
+    public async Task<IReadOnlyList<ProjectListItem>> ListAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await CreateProjectQuery()
+            .OrderByDescending(project => project.StartDate)
+            .ThenBy(project => project.Title)
+            .Select(project => new ProjectListItem
+            {
+                Id = project.Id,
+                Title = project.Title,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                PrimaryImageUrl = project.PrimaryImageUrl,
+                ShortDescription = project.ShortDescription,
+                GitHubUrl = project.GitHubUrl,
+                DemoUrl = project.DemoUrl,
+                IsPublished = project.IsPublished,
+                IsFeatured = project.IsFeatured,
+                FeaturedOrder = project.FeaturedOrder,
+                Skills = project.ProjectTags
+                    .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
+                    .Select(projectTag => projectTag.Tag!.DisplayName)
+                    .OrderBy(skill => skill)
+                    .ToList(),
+                Technologies = project.ProjectTags
+                    .Where(projectTag => projectTag.Tag!.Category == TagCategory.Technology)
+                    .Select(projectTag => projectTag.Tag!.DisplayName)
+                    .OrderBy(technology => technology)
+                    .ToList()
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Project?> UpdateAsync(Project project, CancellationToken cancellationToken = default)
     {
         await projectTagNormalizer.NormalizeAsync(project, cancellationToken);
@@ -294,33 +329,50 @@ public sealed class ProjectRepository(
         bool isFeatured,
         CancellationToken cancellationToken = default)
     {
-        var project = await dbContext.Projects
-            .SingleOrDefaultAsync(existingProject => existingProject.Id == projectId, cancellationToken);
-
-        if (project is null)
+        await FeaturedOrderLock.WaitAsync(cancellationToken);
+        try
         {
-            return null;
-        }
+            await using var transaction = dbContext.Database.IsRelational()
+                ? await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
+                : null;
+            var project = await dbContext.Projects
+                .SingleOrDefaultAsync(existingProject => existingProject.Id == projectId, cancellationToken);
 
-        project.IsFeatured = isFeatured;
-
-        if (isFeatured)
-        {
-            if (!project.FeaturedOrder.HasValue)
+            if (project is null)
             {
-                var highestOrder = await dbContext.Projects
-                    .Where(existing => existing.IsFeatured && existing.FeaturedOrder.HasValue)
-                    .MaxAsync(existing => (int?)existing.FeaturedOrder, cancellationToken) ?? -1;
-                project.FeaturedOrder = highestOrder + 1;
+                return null;
             }
-        }
-        else
-        {
-            project.FeaturedOrder = null;
-        }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return await GetRequiredProjectAsync(projectId, cancellationToken);
+            var wasFeatured = project.IsFeatured;
+            project.IsFeatured = isFeatured;
+
+            if (isFeatured)
+            {
+                if (!wasFeatured || !project.FeaturedOrder.HasValue)
+                {
+                    var highestOrder = await dbContext.Projects
+                        .Where(existing => existing.IsFeatured && existing.FeaturedOrder.HasValue)
+                        .MaxAsync(existing => (int?)existing.FeaturedOrder, cancellationToken) ?? -1;
+                    project.FeaturedOrder = highestOrder + 1;
+                }
+            }
+            else
+            {
+                project.FeaturedOrder = null;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            return await GetRequiredProjectAsync(projectId, cancellationToken);
+        }
+        finally
+        {
+            FeaturedOrderLock.Release();
+        }
     }
 
     public async Task<Project?> SetArchivedStateAsync(
@@ -354,47 +406,71 @@ public sealed class ProjectRepository(
         IReadOnlyCollection<int> orderedFeaturedProjectIds,
         CancellationToken cancellationToken = default)
     {
-        var distinctOrderedProjectIds = orderedFeaturedProjectIds
-            .Where(projectId => projectId > 0)
-            .Distinct()
-            .ToList();
-
-        var projectsForReorder = await dbContext.Projects
-            .Where(project => distinctOrderedProjectIds.Contains(project.Id))
-            .ToListAsync(cancellationToken);
-
-        if (projectsForReorder.Count != distinctOrderedProjectIds.Count)
+        await FeaturedOrderLock.WaitAsync(cancellationToken);
+        try
         {
-            return false;
+            await using var transaction = dbContext.Database.IsRelational()
+                ? await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
+                : null;
+            var distinctOrderedProjectIds = orderedFeaturedProjectIds
+                .Where(projectId => projectId > 0)
+                .Distinct()
+                .ToList();
+
+            var projectsForReorder = await dbContext.Projects
+                .Where(project =>
+                    distinctOrderedProjectIds.Contains(project.Id) &&
+                    project.IsFeatured &&
+                    project.IsPublished &&
+                    !project.IsArchived)
+                .ToListAsync(cancellationToken);
+
+            if (projectsForReorder.Count != distinctOrderedProjectIds.Count)
+            {
+                return false;
+            }
+
+            var allFeaturedProjectIds = await dbContext.Projects
+                .Where(project => project.IsFeatured && project.IsPublished && !project.IsArchived)
+                .Select(project => project.Id)
+                .ToListAsync(cancellationToken);
+
+            if (allFeaturedProjectIds.Count != distinctOrderedProjectIds.Count ||
+                allFeaturedProjectIds.Except(distinctOrderedProjectIds).Any())
+            {
+                return false;
+            }
+
+            var currentFeaturedProjects = await dbContext.Projects
+                .Where(project => project.IsFeatured && project.FeaturedOrder.HasValue)
+                .ToListAsync(cancellationToken);
+
+            foreach (var project in currentFeaturedProjects)
+            {
+                project.FeaturedOrder = null;
+            }
+
+            var rankedProjects = distinctOrderedProjectIds
+                .Select((projectId, rank) => new { projectId, rank })
+                .ToDictionary(item => item.projectId, item => item.rank);
+
+            foreach (var project in projectsForReorder)
+            {
+                project.FeaturedOrder = rankedProjects[project.Id];
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            return true;
         }
-
-        var allFeaturedProjectIds = await dbContext.Projects
-            .Where(project => project.IsFeatured)
-            .Select(project => project.Id)
-            .ToListAsync(cancellationToken);
-
-        var currentFeaturedProjects = await dbContext.Projects
-            .Where(project => allFeaturedProjectIds.Contains(project.Id))
-            .ToListAsync(cancellationToken);
-
-        foreach (var project in currentFeaturedProjects)
+        finally
         {
-            project.IsFeatured = true;
-            project.FeaturedOrder = null;
+            FeaturedOrderLock.Release();
         }
-
-        var rankedProjects = distinctOrderedProjectIds
-            .Select((projectId, rank) => new { projectId, rank })
-            .ToDictionary(item => item.projectId, item => item.rank);
-
-        foreach (var project in projectsForReorder)
-        {
-            project.IsFeatured = true;
-            project.FeaturedOrder = rankedProjects[project.Id];
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return true;
     }
 
     private IQueryable<Project> CreateProjectQuery()

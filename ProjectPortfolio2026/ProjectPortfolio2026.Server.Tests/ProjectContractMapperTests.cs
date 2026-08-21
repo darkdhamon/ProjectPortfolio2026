@@ -73,7 +73,7 @@ public sealed class ProjectContractMapperTests
             Assert.That(project.DemoUrl, Is.EqualTo("https://example.test/demo"));
             Assert.That(project.IsPublished, Is.True);
             Assert.That(project.IsFeatured, Is.True);
-            Assert.That(project.FeaturedOrder, Is.EqualTo(2));
+            Assert.That(project.FeaturedOrder, Is.Null);
             Assert.That(project.Screenshots, Has.Count.EqualTo(1));
             Assert.That(project.Screenshots[0].Caption, Is.EqualTo("Shot 1"));
             Assert.That(project.DeveloperRoles.Select(role => role.Name), Is.EquivalentTo(["Backend", "Architect"]));
@@ -100,6 +100,7 @@ public sealed class ProjectContractMapperTests
             StartDate = new DateOnly(2025, 1, 1),
             ShortDescription = "Old short.",
             LongDescriptionMarkdown = "Old long.",
+            FeaturedOrder = 3,
             DeveloperRoles = [new ProjectDeveloperRole { Name = "Old Role" }],
             ProjectTags =
             [
@@ -150,7 +151,7 @@ public sealed class ProjectContractMapperTests
             Assert.That(existingProject.DemoUrl, Is.EqualTo("https://example.test/new-demo"));
             Assert.That(existingProject.IsPublished, Is.True);
             Assert.That(existingProject.IsFeatured, Is.True);
-            Assert.That(existingProject.FeaturedOrder, Is.EqualTo(7));
+            Assert.That(existingProject.FeaturedOrder, Is.EqualTo(3));
             Assert.That(existingProject.DeveloperRoles.Select(role => role.Name), Is.EquivalentTo(["Backend"]));
             Assert.That(existingProject.ProjectTags.Where(projectTag => projectTag.Tag?.Category == TagCategory.Technology).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(["SQL Server"]));
             Assert.That(existingProject.ProjectTags.Where(projectTag => projectTag.Tag?.Category == TagCategory.Skill).Select(projectTag => projectTag.Tag!.DisplayName), Is.EquivalentTo(["Testing"]));
@@ -159,6 +160,34 @@ public sealed class ProjectContractMapperTests
             Assert.That(existingProject.Collaborators[0].Roles.Select(role => role.Name), Is.EquivalentTo(["Reviewer"]));
             Assert.That(existingProject.Milestones.Select(milestone => milestone.Title), Is.EquivalentTo(["New Milestone"]));
         });
+    }
+
+    [Test]
+    public void ApplyTo_ClearsFeaturedOrder_WhenProjectIsUnfeatured()
+    {
+        var existingProject = new Project
+        {
+            Title = "Featured project",
+            StartDate = new DateOnly(2026, 1, 1),
+            ShortDescription = "Short summary.",
+            LongDescriptionMarkdown = "Long summary.",
+            IsFeatured = true,
+            FeaturedOrder = 2
+        };
+        var request = new ProjectRequest
+        {
+            Title = existingProject.Title,
+            StartDate = existingProject.StartDate,
+            ShortDescription = existingProject.ShortDescription,
+            LongDescriptionMarkdown = existingProject.LongDescriptionMarkdown,
+            IsFeatured = false,
+            FeaturedOrder = 2
+        };
+
+        request.ApplyTo(existingProject);
+
+        Assert.That(existingProject.IsFeatured, Is.False);
+        Assert.That(existingProject.FeaturedOrder, Is.Null);
     }
 
     [Test]

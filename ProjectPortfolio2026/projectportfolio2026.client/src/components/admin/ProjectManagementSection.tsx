@@ -87,6 +87,7 @@ export function ProjectManagementSection() {
             setError(null);
         } catch (caughtError) {
             setError(caughtError instanceof Error ? caughtError.message : 'Unable to refresh projects right now.');
+            throw caughtError;
         }
     }, []);
 
@@ -187,14 +188,14 @@ export function ProjectManagementSection() {
                                         <button
                                             className="secondary-action primary-action"
                                             type="button"
-                                            disabled={featuredProjects.length < 2 || inFlightProjectId === project.id}
+                                            disabled={featuredProjects.length < 2 || inFlightProjectId !== null}
                                             onClick={() => handleMove(index, -1)}>
                                             Move up
                                         </button>
                                         <button
                                             className="secondary-action primary-action"
                                             type="button"
-                                            disabled={featuredProjects.length < 2 || inFlightProjectId === project.id}
+                                            disabled={featuredProjects.length < 2 || inFlightProjectId !== null}
                                             onClick={() => handleMove(index, 1)}>
                                             Move down
                                         </button>
@@ -232,13 +233,16 @@ export function ProjectManagementSection() {
                                     <div>
                                         <strong>{project.title}</strong>
                                         <p className="admin-project-meta">{project.shortDescription}</p>
+                                        {project.isPublished === false ? (
+                                            <p className="admin-project-meta">Draft — publish this project before featuring it.</p>
+                                        ) : null}
                                     </div>
 
                                     <div className="admin-project-actions">
                                         <button
                                             className="primary-action"
                                             type="button"
-                                            disabled={inFlightProjectId !== null}
+                                            disabled={inFlightProjectId !== null || project.isPublished === false}
                                             onClick={() => handleSetFeatured(project.id, true)}>
                                             Feature
                                         </button>
