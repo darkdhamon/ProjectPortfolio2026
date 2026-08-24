@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import {
@@ -265,7 +265,83 @@ describe('App', () => {
         expect(screen.getByRole('button', { name: 'React' })).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getByLabelText('Projects ending in Present')).toBeInTheDocument();
         expect(screen.getByLabelText('Projects ending in 2024')).toBeInTheDocument();
+
+        const featuredProjectCard = screen.getByRole('heading', { name: 'Portfolio Refresh' }).closest('article');
+        expect(featuredProjectCard).not.toBeNull();
+        expect(within(featuredProjectCard as HTMLElement).getByText('Skills')).toBeInTheDocument();
+        expect(within(featuredProjectCard as HTMLElement).getByText('Technology Stack')).toBeInTheDocument();
+        expect(within(featuredProjectCard as HTMLElement).getByLabelText('Portfolio Refresh skills')).toHaveTextContent('React');
+        expect(within(featuredProjectCard as HTMLElement).getByLabelText('Portfolio Refresh technologies')).toHaveTextContent('TypeScript');
+
         expect(fetchMock).toHaveBeenCalledWith('/api/projects?page=1&pageSize=6&requestId=request-1', expect.any(Object));
+    });
+
+    it('renders only the populated project metadata groups', async () => {
+        window.history.replaceState({}, '', '/projects');
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Skills Only Project',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Keeps only the skills section visible.',
+                    isFeatured: false,
+                    skills: ['React'],
+                    technologies: []
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React']
+        });
+
+        render(<App />);
+
+        const projectCard = (await screen.findByRole('heading', { name: 'Skills Only Project' })).closest('article');
+        expect(projectCard).not.toBeNull();
+        expect(within(projectCard as HTMLElement).getByText('Skills')).toBeInTheDocument();
+        expect(within(projectCard as HTMLElement).queryByText('Technology Stack')).not.toBeInTheDocument();
+        expect(within(projectCard as HTMLElement).getByLabelText('Skills Only Project skills')).toHaveTextContent('React');
+        expect(within(projectCard as HTMLElement).queryByLabelText('Skills Only Project technologies')).not.toBeInTheDocument();
+    });
+
+    it('omits project metadata when no skills or technologies are published', async () => {
+        window.history.replaceState({}, '', '/projects');
+        queueFetchJson(/^\/api\/projects\?/, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Metadata Free Project',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Has no metadata tags to render.',
+                    isFeatured: false,
+                    skills: [],
+                    technologies: []
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: []
+        });
+
+        render(<App />);
+
+        const projectCard = (await screen.findByRole('heading', { name: 'Metadata Free Project' })).closest('article');
+        expect(projectCard).not.toBeNull();
+        expect(within(projectCard as HTMLElement).queryByText('Skills')).not.toBeInTheDocument();
+        expect(within(projectCard as HTMLElement).queryByText('Technology Stack')).not.toBeInTheDocument();
+        expect(within(projectCard as HTMLElement).queryByLabelText('Metadata Free Project skills')).not.toBeInTheDocument();
+        expect(within(projectCard as HTMLElement).queryByLabelText('Metadata Free Project technologies')).not.toBeInTheDocument();
     });
 
     it('renders the work history page from the public endpoint', async () => {
@@ -371,6 +447,18 @@ describe('App', () => {
                 });
             }
 
+            if (url === '/api/resume-configuration?requestId=request-1') {
+                return jsonResponse({
+                    requestId: 'request-1',
+                    id: 1,
+                    sourceType: 'hosted-file',
+                    sourceUrl: 'https://cdn.example.dev/resume.pdf',
+                    displayLabel: 'Download Resume',
+                    summary: 'ATS-friendly PDF.',
+                    isConfigured: true
+                });
+            }
+
             throw new Error(`Unexpected fetch request: ${url}`);
         });
 
@@ -378,14 +466,19 @@ describe('App', () => {
 
         expect(await screen.findByRole('heading', { name: 'Bronze Loft' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Resume' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByText('Open to senior full-stack roles')).toBeInTheDocument();
-        expect(screen.getByText('Senior Software Engineer')).toBeInTheDocument();
+        expect(screen.getAllByText('Open to senior full-stack roles')).toHaveLength(2);
+        expect(await screen.findByText('Senior Software Engineer')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /bronze@example\.dev/i })).toHaveAttribute('href', 'mailto:bronze@example.dev');
         expect(screen.getByRole('link', { name: /GitHub.*@darkdhamon/i })).toHaveAttribute('href', 'https://github.com/darkdhamon');
-        expect(screen.getByRole('button', { name: 'Filter Resume' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Highlight Skills' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Download PDF' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Open Static Resume' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Full history' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Last 10 years' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'Last 5 years' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'All employers' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Top 3' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'Top 5' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'Download PDF' })).toBeEnabled();
+        expect(screen.getByRole('link', { name: 'Download Resume' })).toHaveAttribute('href', 'https://cdn.example.dev/resume.pdf');
+        expect(screen.getByText('ATS-friendly PDF.')).toBeInTheDocument();
     });
 
     it('renders the contact page from the portfolio profile endpoint and highlights contact navigation', async () => {
@@ -594,19 +687,185 @@ describe('App', () => {
         render(<App />);
 
         expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Search the archive, then stack skills to narrow the field.' })).toBeInTheDocument();
+        expect(screen.getAllByText('Showing 1 published project').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('No active filters').length).toBeGreaterThan(0);
 
         fireEvent.change(screen.getByRole('searchbox', { name: 'Search projects' }), {
             target: { value: 'React' }
         });
 
         expect(await screen.findByRole('heading', { name: 'React Search Result' })).toBeInTheDocument();
+        expect(screen.getAllByText('1 active filter').length).toBeGreaterThan(0);
         expect(window.location.search).toBe('?search=React');
 
         fireEvent.click(screen.getByRole('button', { name: 'Testing' }));
 
         expect(await screen.findByRole('heading', { name: 'Testing Skill Result' })).toBeInTheDocument();
+        expect(screen.getAllByText('2 active filters').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'true');
         expect(window.location.search).toBe('?search=React&skills=Testing');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Hide skills' }));
+
+        expect(screen.queryByRole('button', { name: 'Testing' })).not.toBeInTheDocument();
+        expect(screen.getByText('1 selected skill')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Show skills' }));
+
+        expect(screen.getByRole('button', { name: 'Testing' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Collapse filters' }));
+
+        expect(screen.queryByRole('searchbox', { name: 'Search projects' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Expand filters' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand filters' }));
+
+        expect(screen.getByRole('searchbox', { name: 'Search projects' })).toBeInTheDocument();
+
+        const resetRequestPath = '/api/projects?page=1&pageSize=6&requestId=request-1';
+
+        queueFetchJson(resetRequestPath, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+        queueFetchJson(resetRequestPath, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+        expect(screen.getByRole('searchbox', { name: 'Search projects' })).toHaveValue('');
+        expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getAllByText('No active filters').length).toBeGreaterThan(0);
+        expect(screen.getByRole('button', { name: 'Reset filters' })).toBeDisabled();
+        expect(window.location.search).toBe('');
+    });
+
+    it('clears search and skill filters from the reset action', async () => {
+        window.history.replaceState({}, '', '/projects?search=React&skills=Testing');
+        const initialFilteredRequest = '/api/projects?page=1&pageSize=6&requestId=request-1&search=React&skills=Testing';
+        const intermediateSearchOnlyRequest = '/api/projects?page=1&pageSize=6&requestId=request-1&search=React';
+        const finalResetRequest = '/api/projects?page=1&pageSize=6&requestId=request-1';
+
+        queueFetchJson(initialFilteredRequest, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 44,
+                    title: 'Testing Skill Result',
+                    startDate: '2023-01-01',
+                    endDate: '2023-04-01',
+                    primaryImageUrl: null,
+                    shortDescription: 'Filtered by selected skill.',
+                    isFeatured: false,
+                    skills: ['Testing'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+        // React may briefly issue a search-only request before the deferred reset settles.
+        queueFetchJson(intermediateSearchOnlyRequest, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 43,
+                    title: 'React Search Result',
+                    startDate: '2024-06-01',
+                    endDate: '2024-09-01',
+                    primaryImageUrl: null,
+                    shortDescription: 'Matched the search query before the deferred reset completed.',
+                    isFeatured: false,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+        queueFetchJson(finalResetRequest, {
+            requestId: 'request-1',
+            items: [
+                {
+                    id: 42,
+                    title: 'Portfolio Refresh',
+                    startDate: '2025-01-01',
+                    endDate: null,
+                    primaryImageUrl: null,
+                    shortDescription: 'Rebuilt the public portfolio experience.',
+                    isFeatured: true,
+                    skills: ['React'],
+                    technologies: ['TypeScript']
+                }
+            ],
+            page: 1,
+            pageSize: 6,
+            totalCount: 1,
+            hasMore: false,
+            availableSkills: ['React', 'Testing']
+        });
+
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Testing Skill Result' })).toBeInTheDocument();
+        expect(screen.getByRole('searchbox', { name: 'Search projects' })).toHaveValue('React');
+        expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'true');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
+
+        expect(await screen.findByRole('heading', { name: 'Portfolio Refresh' })).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledWith(finalResetRequest, expect.any(Object));
+        expect(screen.getByRole('searchbox', { name: 'Search projects' })).toHaveValue('');
+        expect(screen.getByRole('button', { name: 'Testing' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getAllByText('No active filters').length).toBeGreaterThan(0);
+        expect(screen.getByRole('button', { name: 'Reset filters' })).toBeDisabled();
+        expect(window.location.pathname).toBe('/projects');
+        expect(window.location.search).toBe('');
     });
 
     it('renders the detail view and preserves list filters in the back link', async () => {
@@ -701,6 +960,8 @@ describe('App', () => {
         expect(screen.getByRole('heading', { name: 'Screenshots' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Collaborators' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Milestones' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Project overview facts')).toBeInTheDocument();
+        expect(screen.getByLabelText('Project stack')).toBeInTheDocument();
         expect(screen.getByRole('region', { name: 'Project screenshot carousel' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Show next screenshot' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Live Demo' })).toHaveAttribute('href', 'https://example.com/launch-control');
@@ -709,6 +970,10 @@ describe('App', () => {
         expect(screen.getByText('Planned')).toBeInTheDocument();
         expect(screen.getByText('Taylor Dev')).toBeInTheDocument();
         expect(screen.getByText('Designer | QA')).toBeInTheDocument();
+        expect(screen.getByText('Roles, skills, and technologies that shaped the delivery.')).toBeInTheDocument();
+        expect(screen.getByText('Primary Preview')).toBeInTheDocument();
+        expect(screen.getByText('The screenshot gallery below expands on this project view.')).toBeInTheDocument();
+        expect(screen.getByText('The delivery story, implementation context, and outcome for this project.')).toBeInTheDocument();
         expect(screen.getByText('Overview dashboard')).toBeInTheDocument();
         expect(screen.getByText('Screenshot 1 of 2')).toBeInTheDocument();
         expect(screen.getAllByAltText('Launch Control screenshot 2')).toHaveLength(2);
@@ -963,7 +1228,7 @@ describe('App', () => {
         expect(window.location.search).toBe('?redirect=%2Fadmin');
     });
 
-    it('signs in through the mock login page and reveals admin account navigation', async () => {
+    it('signs in through the mock login page and reveals admin workspace navigation', async () => {
         window.history.replaceState({}, '', '/login?redirect=%2Fadmin');
         queueFetchJson('/api/auth/me', {
             isAuthenticated: false,
@@ -983,6 +1248,28 @@ describe('App', () => {
             email: 'admin@example.com',
             displayName: 'admin'
         });
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/admin/resume-configuration', {
+            id: 0,
+            sourceType: 'none',
+            sourceUrl: null,
+            displayLabel: null,
+            summary: null,
+            isConfigured: false
+        });
         render(<App />);
 
         fireEvent.change(screen.getByLabelText('Username or email'), {
@@ -993,13 +1280,52 @@ describe('App', () => {
         });
         fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
 
-        expect(await screen.findByRole('heading', { name: 'Admin dashboard mockup' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Account Settings' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Content Management Overview' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Open Resume Configuration' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
         expect(screen.getByText('Welcome')).toBeInTheDocument();
         expect(screen.getAllByText('admin').length).toBeGreaterThan(0);
         expect(screen.getByText('Signed in as admin')).toBeInTheDocument();
         expect(window.location.pathname).toBe('/admin');
+
+        fireEvent.click(screen.getByRole('link', { name: 'Open Resume Configuration' }));
+
+        expect(await screen.findByRole('heading', { name: 'Manage the public resume source' })).toBeInTheDocument();
+        expect(window.location.pathname).toBe('/admin/resume');
+
+        fireEvent.click(screen.getByRole('link', { name: 'Start Resume Import' }));
+
+        expect(await screen.findByRole('heading', { name: 'Choose a source for resume import' })).toBeInTheDocument();
+        expect(window.location.pathname).toBe('/admin/resume/import');
+    });
+
+    it('loads the social links section directly from /admin/social-links', async () => {
+        window.history.replaceState({}, '', '/admin/social-links');
+        queueFetchJson('/api/auth/me', {
+            isAuthenticated: true,
+            isAdmin: true,
+            userName: 'admin',
+            email: 'admin@example.com',
+            displayName: 'admin'
+        });
+        queueFetchJson('/api/admin/social-links', [
+            {
+                id: 2,
+                platform: 'github',
+                label: 'GitHub',
+                url: 'https://github.com/darkdhamon',
+                handle: '@darkdhamon',
+                summary: 'Primary code profile.',
+                sortOrder: 1,
+                isVisible: true
+            }
+        ]);
+        render(<App />);
+
+        expect(await screen.findByRole('heading', { name: 'Manage social links' })).toBeInTheDocument();
+        expect(await screen.findByLabelText('Platform 1')).toHaveValue('github');
+        expect(screen.getByRole('button', { name: 'Save social links' })).toBeInTheDocument();
+        expect(window.location.pathname).toBe('/admin/social-links');
     });
 
     it('redirects direct account access to login when signed out', async () => {
@@ -1064,7 +1390,7 @@ describe('App', () => {
         render(<App />);
 
         fireEvent.click(screen.getByRole('button', { name: 'Log In' }));
-        fireEvent.click(await screen.findByRole('link', { name: 'Account Settings' }));
+        fireEvent.click(await screen.findByRole('link', { name: 'Open Account Settings' }));
 
         expect(await screen.findByRole('heading', { name: 'Manage your current admin account' })).toBeInTheDocument();
 
@@ -1107,7 +1433,22 @@ describe('App helpers', () => {
         });
 
         expect(parseRoute({ pathname: '/admin', search: '' })).toEqual({
-            kind: 'admin'
+            kind: 'admin',
+            section: 'dashboard'
+        });
+
+        expect(parseRoute({ pathname: '/admin/resume', search: '' })).toEqual({
+            kind: 'admin',
+            section: 'resume'
+        });
+
+        expect(parseRoute({ pathname: '/admin/social-links', search: '' })).toEqual({
+            kind: 'admin',
+            section: 'social-links'
+        });
+
+        expect(parseRoute({ pathname: '/admin/resume/import', search: '' })).toEqual({
+            kind: 'admin-resume-import'
         });
 
         expect(parseRoute({ pathname: '/admin/account', search: '' })).toEqual({

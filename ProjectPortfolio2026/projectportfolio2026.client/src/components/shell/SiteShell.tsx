@@ -28,6 +28,7 @@ const navItems: readonly NavItem[] = [
 
 interface SiteShellProps {
     activeNavLabel: string;
+    activePathname: string;
     content: SiteShellContent;
     currentUserDisplayName: string;
     isAuthenticated: boolean;
@@ -39,6 +40,7 @@ interface SiteShellProps {
 
 export function SiteShell({
     activeNavLabel,
+    activePathname,
     content,
     currentUserDisplayName,
     isAuthenticated,
@@ -86,16 +88,16 @@ export function SiteShell({
                                     {isAuthenticated ? (
                                         <div className="admin-subnav" aria-label="Admin navigation">
                                             <InternalLink
-                                                className={`subnav-link${content.title === 'Admin Dashboard' ? ' active' : ''}`}
+                                                className={`subnav-link${activePathname.startsWith('/admin') && activePathname !== '/admin/account' ? ' active' : ''}`}
                                                 href="/admin"
-                                                ariaCurrent={content.title === 'Admin Dashboard' ? 'page' : undefined}
+                                                ariaCurrent={activePathname.startsWith('/admin') && activePathname !== '/admin/account' ? 'page' : undefined}
                                                 onNavigate={onNavigate}>
-                                                Dashboard
+                                                Workspace
                                             </InternalLink>
                                             <InternalLink
-                                                className={`subnav-link${content.title === 'Account Settings' ? ' active' : ''}`}
+                                                className={`subnav-link${activePathname === '/admin/account' ? ' active' : ''}`}
                                                 href="/admin/account"
-                                                ariaCurrent={content.title === 'Account Settings' ? 'page' : undefined}
+                                                ariaCurrent={activePathname === '/admin/account' ? 'page' : undefined}
                                                 onNavigate={onNavigate}>
                                                 Account Settings
                                             </InternalLink>

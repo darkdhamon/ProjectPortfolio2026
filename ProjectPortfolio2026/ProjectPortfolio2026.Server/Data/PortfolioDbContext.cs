@@ -20,6 +20,8 @@ public sealed class PortfolioDbContext(DbContextOptions<PortfolioDbContext> opti
 
     public DbSet<PortfolioSocialLink> PortfolioSocialLinks => Set<PortfolioSocialLink>();
 
+    public DbSet<ResumeConfiguration> ResumeConfigurations => Set<ResumeConfiguration>();
+
     public DbSet<Project> Projects => Set<Project>();
 
     public DbSet<ProjectCollaborator> ProjectCollaborators => Set<ProjectCollaborator>();

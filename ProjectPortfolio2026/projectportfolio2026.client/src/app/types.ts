@@ -8,7 +8,11 @@ export interface ProjectSummary {
     shortDescription: string;
     gitHubUrl?: string | null;
     demoUrl?: string | null;
+    isPublished: boolean;
     isFeatured: boolean;
+    featuredOrder?: number | null;
+    isArchived?: boolean;
+    archivedAt?: string | null;
     skills: string[];
     technologies: string[];
 }
@@ -125,6 +129,18 @@ export interface PortfolioProfile {
     availabilitySummary?: string | null;
     contactMethods: PortfolioContactMethod[];
     socialLinks: PortfolioSocialLink[];
+}
+
+export type ResumeSourceType = 'none' | 'hosted-file' | 'embed';
+
+export interface ResumeConfiguration {
+    requestId?: string;
+    id: number;
+    sourceType: ResumeSourceType;
+    sourceUrl?: string | null;
+    displayLabel?: string | null;
+    summary?: string | null;
+    isConfigured: boolean;
 }
 
 export interface ApiErrorResponse {

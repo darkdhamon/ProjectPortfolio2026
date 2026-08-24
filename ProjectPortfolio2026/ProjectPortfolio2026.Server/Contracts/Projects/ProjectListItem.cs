@@ -18,7 +18,15 @@ public sealed class ProjectListItem
 
     public string? DemoUrl { get; set; }
 
+    public bool IsPublished { get; set; }
+
     public bool IsFeatured { get; set; }
+
+    public int? FeaturedOrder { get; set; }
+
+    public bool IsArchived { get; set; }
+
+    public DateTimeOffset? ArchivedAt { get; set; }
 
     public List<string> Skills { get; set; } = [];
 

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     csrfHeaderName,
     csrfCookieName,
+    fetchAuthFormData,
     fetchAuthJson,
     fetchJsonWithStartupRetry,
     fetchResponsePayloadWithStartupRetry,
@@ -188,6 +189,30 @@ describe('http api helpers', () => {
         expect(headers.get(csrfHeaderName)).toBeNull();
     });
 
+    it('preserves form-data payloads for authenticated uploads', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }));
+        document.cookie = `${csrfCookieName}=csrf-token-value`;
+
+        const formData = new FormData();
+        formData.set('file', new Blob(['resume']), 'resume.pdf');
+
+        await fetchAuthFormData(
+            '/api/admin/resume-import/parse',
+            {
+                method: 'POST',
+                body: formData
+            },
+            'Fallback upload error'
+        );
+
+        const [, options] = fetchMock.mock.calls[0];
+        const headers = options?.headers as Headers;
+
+        expect(headers.get('Content-Type')).toBeNull();
+        expect(headers.get(csrfHeaderName)).toBe('csrf-token-value');
+        expect(options?.body).toBe(formData);
+    });
+
     it('throws the fallback error when an auth request fails without an api message', async () => {
         fetchMock.mockResolvedValueOnce(new Response('{}', {
             status: 401,
@@ -203,6 +228,49 @@ describe('http api helpers', () => {
             },
             'Fallback auth error'
         )).rejects.toThrow('Fallback auth error');
+    });
+
+    it('surfaces standard problem details from failed auth requests', async () => {
+        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+            title: 'Social links could not be saved.',
+            detail: 'No public portfolio profile is available to receive social links.'
+        }), {
+            status: 409,
+            headers: {
+                'Content-Type': 'application/problem+json'
+            }
+        }));
+
+        await expect(fetchAuthJson(
+            '/api/admin/social-links',
+            {
+                method: 'PUT'
+            },
+            'Unable to save social links.'
+        )).rejects.toThrow(
+            'Social links could not be saved. No public portfolio profile is available to receive social links.'
+        );
+    });
+
+    it('preserves api message precedence over problem details', async () => {
+        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+            message: 'Specific API message',
+            title: 'Problem title',
+            detail: 'Problem detail'
+        }), {
+            status: 400,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }));
+
+        await expect(fetchAuthJson(
+            '/api/test',
+            {
+                method: 'GET'
+            },
+            'Fallback auth error'
+        )).rejects.toThrow('Specific API message');
     });
 });
 

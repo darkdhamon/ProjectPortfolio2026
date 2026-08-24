@@ -2,7 +2,7 @@ namespace ProjectPortfolio2026.ResumeParser.Models;
 
 public sealed class ResumeDocument
 {
-    public ResumeHeader Header { get; init; } = new();
+    public ResumeHeader? Header { get; init; }
 
     public string? ProfessionalSummary { get; init; }
 

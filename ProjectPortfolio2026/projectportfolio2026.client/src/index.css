@@ -1,11 +1,23 @@
 :root {
-  font-family: Aptos, "Trebuchet MS", "Segoe UI", sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color: #233550;
-  background:
+  --pp-font-body: Aptos, "Trebuchet MS", "Segoe UI", sans-serif;
+  --pp-font-heading: Georgia, "Times New Roman", serif;
+  --pp-font-size-base: 1rem;
+  --pp-font-size-section-title: clamp(1.45rem, 4vw, 2.15rem);
+  --pp-line-height-body: 1.62;
+  --pp-line-height-heading: 1.18;
+  --pp-color-body: #233550;
+  --pp-color-h1: #fdf8ec;
+  --pp-color-h2: #10233d;
+  --pp-page-background:
     radial-gradient(circle at top left, rgba(245, 183, 48, 0.18), transparent 30%),
     linear-gradient(180deg, #fffaf1 0%, #f4f7fb 52%, #eef2f8 100%);
+
+  font-family: var(--pp-font-body);
+  font-size: var(--pp-font-size-base);
+  line-height: var(--pp-line-height-body);
+  font-weight: 400;
+  color: var(--pp-color-body);
+  background: var(--pp-page-background);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -30,13 +42,14 @@ body {
 h1,
 h2 {
   margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  color: #fdf8ec;
+  font-family: var(--pp-font-heading);
+  color: var(--pp-color-h1);
+  line-height: var(--pp-line-height-heading);
 }
 
 h2 {
-  color: #10233d;
-  font-size: 1.45rem;
+  color: var(--pp-color-h2);
+  font-size: var(--pp-font-size-section-title);
 }
 
 p {

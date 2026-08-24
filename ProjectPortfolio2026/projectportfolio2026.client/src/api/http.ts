@@ -1,5 +1,7 @@
 export interface ApiErrorResponse {
     message?: string;
+    title?: string;
+    detail?: string;
 }
 
 export const startupRetryMessage = 'The portfolio API is still starting up. Please wait a moment and try again.';
@@ -19,11 +21,20 @@ function isRetryableApiError(error: unknown): error is RetryableApiError {
     return error instanceof RetryableApiError;
 }
 
-function isApiErrorResponse(payload: unknown): payload is ApiErrorResponse {
-    return typeof payload === 'object'
-        && payload !== null
-        && 'message' in payload
-        && (typeof (payload as ApiErrorResponse).message === 'string' || typeof (payload as ApiErrorResponse).message === 'undefined');
+function readApiErrorMessage(payload: unknown) {
+    if (typeof payload !== 'object' || payload === null) {
+        return undefined;
+    }
+
+    const errorResponse = payload as ApiErrorResponse;
+    if (typeof errorResponse.message === 'string' && errorResponse.message.trim()) {
+        return errorResponse.message;
+    }
+
+    const title = typeof errorResponse.title === 'string' ? errorResponse.title.trim() : '';
+    const detail = typeof errorResponse.detail === 'string' ? errorResponse.detail.trim() : '';
+
+    return [title, detail].filter(Boolean).join(' ') || undefined;
 }
 
 async function waitForRetry(delayMs: number, signal: AbortSignal) {
@@ -84,7 +95,7 @@ export async function fetchResponsePayloadWithStartupRetry<TPayload>(
             const payload = await readResponsePayload<TPayload>(response);
 
             if (!response.ok && !acceptedErrorStatuses.includes(response.status)) {
-                const apiMessage = isApiErrorResponse(payload) ? payload.message : undefined;
+                const apiMessage = readApiErrorMessage(payload);
 
                 if (response.status >= 500) {
                     throw new RetryableApiError(apiMessage ?? startupRetryMessage);
@@ -115,8 +126,40 @@ export async function fetchAuthJson<TPayload>(
     fallbackMessage: string,
     acceptedErrorStatuses: number[] = []
 ) {
+    return fetchAuthPayload<TPayload>(
+        input,
+        init,
+        fallbackMessage,
+        acceptedErrorStatuses,
+        'application/json'
+    );
+}
+
+export async function fetchAuthFormData<TPayload>(
+    input: string,
+    init: RequestInit,
+    fallbackMessage: string,
+    acceptedErrorStatuses: number[] = []
+) {
+    return fetchAuthPayload<TPayload>(
+        input,
+        init,
+        fallbackMessage,
+        acceptedErrorStatuses
+    );
+}
+
+async function fetchAuthPayload<TPayload>(
+    input: string,
+    init: RequestInit,
+    fallbackMessage: string,
+    acceptedErrorStatuses: number[] = [],
+    contentType?: string
+) {
     const headers = new Headers(init.headers);
-    headers.set('Content-Type', 'application/json');
+    if (contentType) {
+        headers.set('Content-Type', contentType);
+    }
 
     const csrfToken = shouldSendCsrfToken(init.method) ? readCookieValue(csrfCookieName) : null;
     if (csrfToken) {
@@ -132,7 +175,7 @@ export async function fetchAuthJson<TPayload>(
     const payload = await readResponsePayload<TPayload>(response);
 
     if (!response.ok && !acceptedErrorStatuses.includes(response.status)) {
-        const apiMessage = isApiErrorResponse(payload) ? payload.message : undefined;
+        const apiMessage = readApiErrorMessage(payload);
         throw new Error(apiMessage ?? fallbackMessage);
     }
 

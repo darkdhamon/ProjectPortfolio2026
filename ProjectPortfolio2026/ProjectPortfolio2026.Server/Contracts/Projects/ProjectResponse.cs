@@ -26,6 +26,12 @@ public sealed class ProjectResponse : ApiResponseDto
 
     public bool IsFeatured { get; set; }
 
+    public int? FeaturedOrder { get; set; }
+
+    public bool IsArchived { get; set; }
+
+    public DateTimeOffset? ArchivedAt { get; set; }
+
     public List<ProjectScreenshotResponse> Screenshots { get; set; } = [];
 
     public List<string> DeveloperRoles { get; set; } = [];

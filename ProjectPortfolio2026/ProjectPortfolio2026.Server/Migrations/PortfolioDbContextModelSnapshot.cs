@@ -17,7 +17,7 @@ namespace ProjectPortfolio2026.Server.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -364,6 +364,38 @@ namespace ProjectPortfolio2026.Server.Migrations
                     b.ToTable("PortfolioSocialLinks", (string)null);
                 });
 
+            modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Portfolio.ResumeConfiguration", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DisplayLabel")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasDefaultValue("none");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(280)
+                        .HasColumnType("nvarchar(280)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ResumeConfigurations", (string)null);
+                });
+
             modelBuilder.Entity("ProjectPortfolio2026.Server.Domain.Projects.Project", b =>
                 {
                     b.Property<int>("Id")
@@ -372,6 +404,9 @@ namespace ProjectPortfolio2026.Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("DemoUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -379,9 +414,17 @@ namespace ProjectPortfolio2026.Server.Migrations
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
 
+                    b.Property<int?>("FeaturedOrder")
+                        .HasColumnType("int");
+
                     b.Property<string>("GitHubUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<bool>("IsFeatured")
                         .ValueGeneratedOnAdd()

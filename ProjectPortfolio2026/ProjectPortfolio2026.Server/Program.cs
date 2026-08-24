@@ -25,10 +25,7 @@ var resolvedConnectionString = ConnectionStringPathResolver.ResolveDataPaths(
     connectionString,
     builder.Environment.ContentRootPath);
 
-builder.Services.AddControllers(options =>
-{
-    options.Filters.Add<RequestTrackingFilter>();
-});
+builder.Services.AddProjectPortfolioControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddAntiforgery(options =>
 {
@@ -82,6 +79,7 @@ builder.Services
     });
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IPortfolioProfileRepository, PortfolioProfileRepository>();
+builder.Services.AddScoped<IResumeConfigurationRepository, ResumeConfigurationRepository>();
 builder.Services.AddScoped<IPortfolioLinkFormatter, PortfolioLinkFormatter>();
 builder.Services.AddScoped<IProjectTagNormalizer, ProjectTagNormalizer>();
 builder.Services.AddScoped<IFeaturedProjectSelector, FeaturedProjectSelector>();
@@ -90,6 +88,12 @@ builder.Services.AddScoped<IEmployerRepository, EmployerRepository>();
 builder.Services.AddResumeDocumentParser();
 builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IResumeImportFileStore>(_ => new TemporaryResumeFileStore());
+builder.Services.AddScoped<IResumeParserService, DeferredResumeParserService>();
+builder.Services
+    .AddHttpClient<IResumeImportService, ResumeImportService>()
+    .ConfigureHttpClient(static client => client.Timeout = Timeout.InfiniteTimeSpan)
+    .ConfigurePrimaryHttpMessageHandler(ResumeImportService.CreateConfiguredSourceHttpMessageHandler);
 builder.Services.AddScoped<RequestTrackingFilter>();
 
 var app = builder.Build();

@@ -91,7 +91,7 @@ public sealed class HeuristicResumeDocumentParserTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(document.Header.FullName, Is.EqualTo("Jane Example"));
+            Assert.That(document.Header!.FullName, Is.EqualTo("Jane Example"));
             Assert.That(document.Header.EmailAddress, Is.EqualTo("jane@example.com"));
             Assert.That(document.Header.PhoneNumbers, Has.Count.EqualTo(1));
             Assert.That(document.Header.Profiles.Select(profile => profile.Label), Does.Contain("GitHub"));
@@ -143,7 +143,7 @@ public sealed class HeuristicResumeDocumentParserTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(document.Header.FullName, Is.EqualTo("Alex Candidate"));
+            Assert.That(document.Header!.FullName, Is.EqualTo("Alex Candidate"));
             Assert.That(document.WorkExperience, Has.Count.EqualTo(1));
             Assert.That(document.WorkExperience[0].JobTitle, Is.EqualTo("Platform Engineer"));
             Assert.That(document.WorkExperience[0].EmployerName, Is.Null);
@@ -237,7 +237,7 @@ public sealed class HeuristicResumeDocumentParserTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(document.Header.FullName, Is.EqualTo("Jamie Resume"));
+            Assert.That(document.Header!.FullName, Is.EqualTo("Jamie Resume"));
             Assert.That(document.WorkExperience, Has.Count.EqualTo(1));
             Assert.That(document.WorkExperience[0].EmployerName, Is.EqualTo("Fabrikam"));
             Assert.That(document.Metadata["contentType"], Does.Contain("officedocument"));
