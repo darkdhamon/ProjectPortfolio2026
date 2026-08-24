@@ -238,6 +238,92 @@ public sealed class ProjectRepositoryTests
     }
 
     [Test]
+    public async Task GetByIdAsync_ExcludesArchivedProjectFromPublicQuery()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        var archivedProject = await repository.AddAsync(new Project
+        {
+            Title = "Archived Project",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "No longer published.",
+            LongDescriptionMarkdown = "Archive body.",
+            IsPublished = true,
+            IsArchived = true
+        });
+        var activeProject = await repository.AddAsync(new Project
+        {
+            Title = "Active Project",
+            StartDate = new DateOnly(2026, 5, 1),
+            ShortDescription = "Still public.",
+            LongDescriptionMarkdown = "Public body.",
+            IsPublished = true,
+            IsArchived = false
+        });
+
+        var foundProject = await repository.GetByIdAsync(archivedProject.Id);
+        var visibleProject = await repository.GetByIdAsync(activeProject.Id);
+
+        Assert.That(foundProject, Is.Null);
+        Assert.That(visibleProject, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task ListAllAsync_IncludesArchivedProjectsAndSortsByDateThenTitle()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = CreateRepository(dbContext);
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Zeta Active Project",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Published and active.",
+            LongDescriptionMarkdown = "Active body.",
+            IsPublished = true
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Archived Project",
+            StartDate = new DateOnly(2026, 4, 1),
+            ShortDescription = "Published and archived.",
+            LongDescriptionMarkdown = "Archived body.",
+            IsPublished = true,
+            IsArchived = true,
+            ArchivedAt = DateTimeOffset.UtcNow
+        });
+
+        await repository.AddAsync(new Project
+        {
+            Title = "Older Project",
+            StartDate = new DateOnly(2025, 12, 1),
+            ShortDescription = "Older published.",
+            LongDescriptionMarkdown = "Older body.",
+            IsPublished = false
+        });
+
+        var projects = await repository.ListAllAsync();
+
+        Assert.That(projects.Select(project => project.Title), Is.EqualTo(new[]
+        {
+            "Archived Project",
+            "Zeta Active Project",
+            "Older Project"
+        }));
+
+        var projectsByTitle = projects.ToDictionary(project => project.Title);
+        Assert.Multiple(() =>
+        {
+            Assert.That(projectsByTitle["Archived Project"].IsArchived, Is.True);
+            Assert.That(projectsByTitle["Archived Project"].ArchivedAt, Is.Not.Null);
+            Assert.That(projectsByTitle["Zeta Active Project"].IsArchived, Is.False);
+            Assert.That(projectsByTitle["Zeta Active Project"].ArchivedAt, Is.Null);
+        });
+    }
+
+    [Test]
     public async Task ListAsync_ExcludesArchivedProjectsFromResultAndAvailableSkills()
     {
         await using var dbContext = CreateDbContext();

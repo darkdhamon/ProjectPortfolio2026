@@ -280,6 +280,8 @@ public sealed class ProjectRepository(
                 IsPublished = project.IsPublished,
                 IsFeatured = project.IsFeatured,
                 FeaturedOrder = project.FeaturedOrder,
+                IsArchived = project.IsArchived,
+                ArchivedAt = project.ArchivedAt,
                 Skills = project.ProjectTags
                     .Where(projectTag => projectTag.Tag!.Category == TagCategory.Skill)
                     .Select(projectTag => projectTag.Tag!.DisplayName)
