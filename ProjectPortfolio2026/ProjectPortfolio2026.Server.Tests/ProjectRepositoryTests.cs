@@ -277,8 +277,8 @@ public sealed class ProjectRepositoryTests
 
         await repository.AddAsync(new Project
         {
-            Title = "Active Project",
-            StartDate = new DateOnly(2026, 3, 1),
+            Title = "Zeta Active Project",
+            StartDate = new DateOnly(2026, 4, 1),
             ShortDescription = "Published and active.",
             LongDescriptionMarkdown = "Active body.",
             IsPublished = true
@@ -309,9 +309,18 @@ public sealed class ProjectRepositoryTests
         Assert.That(projects.Select(project => project.Title), Is.EqualTo(new[]
         {
             "Archived Project",
-            "Active Project",
+            "Zeta Active Project",
             "Older Project"
         }));
+
+        var projectsByTitle = projects.ToDictionary(project => project.Title);
+        Assert.Multiple(() =>
+        {
+            Assert.That(projectsByTitle["Archived Project"].IsArchived, Is.True);
+            Assert.That(projectsByTitle["Archived Project"].ArchivedAt, Is.Not.Null);
+            Assert.That(projectsByTitle["Zeta Active Project"].IsArchived, Is.False);
+            Assert.That(projectsByTitle["Zeta Active Project"].ArchivedAt, Is.Null);
+        });
     }
 
     [Test]
